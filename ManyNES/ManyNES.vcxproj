@@ -1,0 +1,126 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{215961E4-CFF2-49D7-8F9E-BDEFF156992A}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>ManyNES</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v120_xp</PlatformToolset>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v120_xp</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <IncludePath>$(SolutionDir)\Contrib\SDL2\include;$(SolutionDir)\Contrib\glew\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)\Contrib\SDL2\lib\x86;$(SolutionDir)\Contrib\glew\lib\x86;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <IncludePath>$(SolutionDir)\Contrib\SDL2\include;$(SolutionDir)\Contrib\glew\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)\Contrib\SDL2\lib\x86;$(SolutionDir)\Contrib\glew\lib\x86;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>opengl32.lib;glew32s.lib;SDL2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PostBuildEvent>
+      <Command>@xcopy /EQY "$(SolutionDir)Contrib\SDL2\lib\x86\SDL2.dll" "$(OutputPath)"</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Deploy 3rd parties</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>opengl32.lib;glew32s.lib;SDL2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PostBuildEvent>
+      <Command>@xcopy /EQY "$(SolutionDir)Contrib\SDL2\lib\x86\SDL2.dll" "$(OutputPath)"</Command>
+    </PostBuildEvent>
+    <PostBuildEvent>
+      <Message>Deploy 3rd parties</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="Main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="nes.h" />
+    <ClInclude Include="Palette.h" />
+    <ClInclude Include="r6502.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <MASM Include="nes.asm" />
+    <MASM Include="nes_io.asm" />
+    <MASM Include="r6502.asm">
+      <EnableMASM51Compatibility Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</EnableMASM51Compatibility>
+      <EnableMASM51Compatibility Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</EnableMASM51Compatibility>
+      <EnableAssemblyGeneratedCodeListing Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</EnableAssemblyGeneratedCodeListing>
+      <EnableAssemblyGeneratedCodeListing Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</EnableAssemblyGeneratedCodeListing>
+      <AssembledCodeListingFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).lst</AssembledCodeListingFile>
+      <AssembledCodeListingFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).lst</AssembledCodeListingFile>
+    </MASM>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="debug.inc" />
+    <None Include="nes.inc" />
+    <None Include="r6502.inc" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\masm.targets" />
+  </ImportGroup>
+</Project>

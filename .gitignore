@@ -1,0 +1,8 @@
+*.sdf
+/Debug
+*.lst
+*.user
+/ManyNES/Debug
+*.suo
+*.opensdf
+/ManyNES/*.nes
