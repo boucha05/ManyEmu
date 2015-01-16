@@ -27,11 +27,11 @@ struct cpu6502 {
   extern "C" {
 #endif
 
-#pragma aux cpu6502_Reset "_*" parm [ebx];
+/*#pragma aux cpu6502_Reset "_*" parm [ebx];
 int cpu6502_Reset(struct cpu6502 *CPU);
 
 #pragma aux cpu6502_Execute "_*" parm [ebx];
-int cpu6502_Execute(void);
+int cpu6502_Execute(void);*/
 
 #ifdef __cplusplus
   }

@@ -5,6 +5,7 @@
 #include <gl/glew.h>
 #include <assert.h>
 #include <vector>
+#include "nes.h"
 
 class Application
 {
@@ -25,6 +26,8 @@ private:
     SDL_Surface*            mScreen;
     SDL_Surface*            mSurface;
     bool                    mValid;
+    NES::Rom*               mRom;
+    NES::Context*           mContext;
 };
 
 Application::Application()
@@ -78,11 +81,31 @@ bool Application::create()
     };
     SDL_SetPaletteColors(mSurface->format->palette, colors, 0, 64);
 
+    mRom = NES::Rom::load("mario.nes");
+    if (!mRom)
+        return false;
+
+    mContext = NES::Context::create(*mRom);
+    if (!mContext)
+        return false;
+
     return true;
 }
 
 void Application::destroy()
 {
+    if (mContext)
+    {
+        mContext->dispose();
+        mContext = nullptr;
+    }
+
+    if (mRom)
+    {
+        mRom->dispose();
+        mRom = nullptr;
+    }
+
     if (mWindow)
     {
         SDL_DestroyWindow(mWindow);
@@ -118,10 +141,6 @@ void Application::handleEvents()
 
 void Application::update()
 {
-}
-
-void Application::render()
-{
     if (SDL_LockSurface(mSurface) == 0)
     {
         uint8_t* buffer = static_cast<uint8_t*>(mSurface->pixels);
@@ -132,9 +151,15 @@ void Application::render()
                 *buffer++ = static_cast<uint8_t>(x * y) & 63;
             }
         }
+
+        mContext->update(mSurface->pixels, mSurface->pitch);
+
         SDL_UnlockSurface(mSurface);
     }
+}
 
+void Application::render()
+{
     SDL_Rect rect = { 0, 0, 256, 256 };
     SDL_BlitSurface(mSurface, nullptr, mScreen, &rect);
 
