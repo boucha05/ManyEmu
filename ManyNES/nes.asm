@@ -1,11 +1,11 @@
-; ÕÍÍ NES.ASM ÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ¸
-; ³     Multitarget interface for the NES                                   ³
-; ÔÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍÍ¾
+; ***************************************************************************
+; *     Multitarget interface for the NES                                   *
+; ***************************************************************************
 
 ;DEBUG   equ     1
 
 
-; °°° HEADER °°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
+; === HEADER ================================================================
 
 .386
 .model  flat, c
@@ -15,7 +15,7 @@ include r6502.inc
 
 
 
-; °°° DATA °°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
+; === DATA ==================================================================
 
 .data
 
@@ -91,15 +91,13 @@ MemoryMapper    dd      offset m00, offset mXX, offset mXX, offset mXX
 CallFunc        dd      0
 
 
-; °°° CODE °°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
+; === CODE ==================================================================
 
 .code
 
 align
 
-include NES_IO.ASM
-
-; ÄÄÄ conNES_Reset ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; *** conNES_Reset **********************************************************
 ;       Executes a reset of the console.  This function initialize the ROM
 ; and RAM infos and mappers and send a RESET signal to the CPU.  All the
 ; variables of the RAM must be set to 0 or to the wanted value.
@@ -109,9 +107,11 @@ include NES_IO.ASM
 ; In:           eax =   Pointer on the NES structure
 ;
 ; Out:          eax =   Error code (0 = okay)
-; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
-conNES_Reset:
-        push    ebx ecx edx
+; ***************************************************************************
+conNES_Reset    proc
+        push    ebx
+        push    ecx
+        push    edx
 
         ; Save the structure first
         mov     ebx, [eax + conNESs.conNES_CPU]
@@ -186,18 +186,20 @@ conNES_Reset:
         jnz     @@Error3
 
         ; Reset any other value needed
-        IO_ResetCPU
+        call    ResetCPU
 
         ; Do a CPU reset
         mov     eax, CPU_RAM
-        mov     [ebx + cpu6502_pc_base], eax
+        mov     [ebx + cpu6502s.cpu6502_pc_base], eax
         call    cpu6502_Reset
         test    eax, eax
         jnz     @@Error1
 
         xor     eax, eax
 @@Done:
-        pop     edx ecx ebx
+        pop     edx
+        pop     ecx
+        pop     ebx
         ret
 
 @@Error1:
@@ -209,9 +211,9 @@ conNES_Reset:
 @@Error3:
         mov     eax, NES_ERR_MAPPER
         jmp     @@Done
+conNES_Reset    endp
 
-
-; ÄÄÄ conNES_Execute ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
+; *** conNES_Execute ********************************************************
 ;       Execute ecx clock cycles.
 ;
 ; Syntax:       void conNES_Execute(void)
@@ -219,9 +221,14 @@ conNES_Reset:
 ; In:           None
 ;
 ; Out:          eax =   Error code (0 = okay)
-; ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ
-conNES_Execute:
-        push    edi ebx ecx edx esi ebp
+; ***************************************************************************
+conNES_Execute  proc
+        push    edi
+        push    ebx
+        push    ecx
+        push    edx
+        push    esi
+        push    ebp
 
         ; Get a pointer on the RAM structure and on the number of cycles then
         ; keep the number of cycles per row in a register
@@ -262,7 +269,7 @@ conNES_Execute:
         ; Check if we can draw the done row
         cmp     eax, FirstHiddenRow
         jge     @@SkipDrawCurRow
-        IO_DrawCurRow
+        call    DrawCurRow
         jmp     @@DoneIncreaseRow
 
 @@SkipDrawCurRow:
@@ -270,7 +277,7 @@ conNES_Execute:
 @@DoneVRet:
         cmp     eax, RowsPerFrame
         jnge    @@DoneIncreaseRow
-        IO_UpdateFrame
+        call    UpdateFrame
         and     reg2001, not 0c0h
         xor     eax, eax
 
@@ -293,7 +300,12 @@ conNES_Execute:
         xor     eax, eax
 @@Done:
         mov     conNES_NCycles, edi
-        pop     ebp esi edx ecx ebx edi
+        pop     ebp
+        pop     esi
+        pop     edx
+        pop     ecx
+        pop     ebx
+        pop     edi
         ret
 
         ; Time for a NMI
@@ -309,7 +321,7 @@ conNES_Execute:
         DUMP    "@@Error1"
         mov     eax, NES_ERR_EXECUTE
         jmp     @@Done
-
+conNES_Execute  endp
 
 
 ; ***************************************************************************
@@ -386,7 +398,8 @@ map_No_WRAM:
 
 ; --- $8000-$FFFF -----------------------------------------------------------
 map_PRG_ROM:
-        push    ecx esi
+        push    ecx
+        push    esi
 
         ; Map the write function
         mov     Write_JMP_Table[20h], offset Write_ERROR
@@ -428,13 +441,17 @@ map_PRG_ROM:
         DUMPD   edi
         DUMP    " after"
 
-        pop     esi ecx
+        pop     esi
+        pop     ecx
         ret
 
 
 ; --- PPU: $0000-$1FFF ------------------------------------------------------
 map_CHR_RAM:
-        push    eax ecx esi edi
+        push    eax
+        push    ecx
+        push    esi
+        push    edi
 
         ; Get a pointer on the VRAM
         mov     esi, RAM
@@ -450,7 +467,10 @@ map_CHR_RAM:
         mov     ecx, 800h
 
 @@NoVROM:
-        pop     edi esi ecx eax
+        pop     edi
+        pop     esi
+        pop     ecx
+        pop     eax
         ret
 
 
@@ -609,13 +629,12 @@ w2007:
         mov     edi, dword ptr reg2006b
         add     edi, PPU_Pattern_0
         mov     [edi], al
-        IO_WriteVRAM
+        ;IO_WriteVRAM
         mov     edi, IncrementVRAM
         add     word ptr reg2006b, di
         ret
 
-global  NES_Read2007:   proc
-NES_Read2007:
+NES_Read2007    proc
         push    edx
 
         mov     edx, dword ptr reg2006b
@@ -626,6 +645,7 @@ NES_Read2007:
 
         pop     edx
         ret
+NES_Read2007    endp
 
 IO_w:
         dd      offset w40XX, offset w40XX, offset w40XX, offset w40XX
@@ -640,9 +660,7 @@ w40XX:
 
 
 ; --- Main Write function ---
-global  NES_Write:      proc
-
-NES_Write:
+NES_Write   proc
         DUMPD   edx
         DUMP    " = NES_Write"
         DUMPB   al
@@ -650,6 +668,7 @@ NES_Write:
         mov     edi, edx
         shr     edi, 12
         jmp     dword ptr Write_JMP_Table[edi*4]
+NES_Write   endp
 
 Write_JMP_Table label   dword
         dd      16 dup (?)

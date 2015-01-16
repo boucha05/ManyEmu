@@ -1,12 +1,13 @@
-; NES_IO.ASM
+; nes_io.inc
 
-global C video_buffer:          dword
-global C BufferToVideo:         proc
-global C SwapPages:             proc
-global C Palette:               dword
+.386
+.model  flat, c
+include nes.inc
 
+.code
 
 row_ptr                 dd      ?
+video_buffer            dd      0   ; THIS SHOULD BE PROVIDED BY THE ENGINE
 
 bit0lut         label   dword
         I = 0
@@ -29,22 +30,6 @@ bit1lut         label   dword
 
 ; === MACROS ================================================================
 
-IO_ResetCPU     macro
-        call    ResetCPU
-endm
-
-IO_DrawCurRow   macro
-        call    DrawCurRow
-endm
-
-IO_UpdateFrame  macro
-        call    UpdateFrame
-endm
-
-IO_SetPalette   macro
-        call    SetPalette
-endm
-
 IO_WriteVRAM    macro
         local   @@Done, @@Palette
         sub     edi, PPU_Pattern_0
@@ -60,7 +45,6 @@ IO_WriteVRAM    macro
         cmp     edi, 20h
         jge     @@Done
         inc     edi
-        call    SetPalette
 @@Done:
 endm
 
@@ -69,12 +53,12 @@ endm
 
 ; *** ResetCPU **************************************************************
 
-ResetCPU:
+ResetCPU    proc
         mov     eax, video_buffer
         mov     row_ptr, eax
         mov     row_number, 0
         ret
-
+ResetCPU    endp
 
 
 ; *** DrawCurRow ************************************************************
@@ -85,8 +69,14 @@ row_number      dd      0
 ;shift_mask      dd      0
 tile_count      dd      0
 pattern_pos     dd      0
-DrawCurRow:
-        push    eax ebx ecx edx esi edi ebp
+DrawCurRow  proc
+        push    eax
+        push    ebx
+        push    ecx
+        push    edx
+        push    esi
+        push    edi
+        push    ebp
 
         ; Get the position in the Name Table and in the attribute table
         xor     edx, edx
@@ -159,13 +149,20 @@ DrawCurRow:
         inc     row_number
         add     row_ptr, 32*9
 
-        pop     ebp edi esi edx ecx ebx eax
+        pop     ebp
+        pop     edi
+        pop     esi
+        pop     edx
+        pop     ecx
+        pop     ebx
+        pop     eax
         ret
+DrawCurRow  endp
 
 
 ; *** UpdateFrame ***********************************************************
 
-UpdateFrame:
+UpdateFrame proc
         push    eax
 
         ; Copy the buffer to the RAM
@@ -181,31 +178,6 @@ UpdateFrame:
 
         pop     eax
         ret
+UpdateFrame endp
 
-
-; *** SetPalette ************************************************************
-; in:   al = index in the lookup table, edi = palette entry
-SetPalette:
-        DUMP    "PALETTE"
-        push    eax
-
-        ; Get a pointer on the RGB entry of the palette
-        and     eax, 0ffh
-        add     eax, [eax * 2]
-        xchg    eax, edi
-
-        ; Write the 3 bytes to the DAC register
-        mov     edx, 3c8h
-        inc     al
-        out     dx, al
-        inc     edx
-        mov     al, [edi]
-        out     dx, al
-        mov     al, [edi + 1]
-        out     dx, al
-        mov     al, [edi + 2]
-        out     dx, al
-
-        pop     edx eax
-        ret
-
+end

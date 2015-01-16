@@ -6,9 +6,8 @@
 
 ; === HEADER ================================================================
 
-.586
+.386
 .model  flat, c
-;locals
 include debug.inc
 include r6502.inc
 
@@ -918,23 +917,23 @@ DecimalMode:
 op_end          clk
 endm
 
-op_ADC  0, imm,    %069h, 2             ; --- ADC ---
-op_ADC  0, zero,   %065h, 3
-op_ADC  0, zero_x, %075h, 4
-op_ADC  0, abs,    %06dh, 4
-op_ADC  0, abs_x_p,%07dh, 4
-op_ADC  0, abs_y_p,%079h, 4
-op_ADC  0, ind_x,  %061h, 6
-op_ADC  0, ind_y_p,%071h, 5
+op_ADC  0, imm,     069h, 2             ; --- ADC ---
+op_ADC  0, zero,    065h, 3
+op_ADC  0, zero_x,  075h, 4
+op_ADC  0, abs,     06dh, 4
+op_ADC  0, abs_x_p, 07dh, 4
+op_ADC  0, abs_y_p, 079h, 4
+op_ADC  0, ind_x,   061h, 6
+op_ADC  0, ind_y_p, 071h, 5
 
-op_ADC  1, imm,    %0e9h, 2             ; --- SBC ---
-op_ADC  1, zero,   %0e5h, 3
-op_ADC  1, zero_x, %0f5h, 4
-op_ADC  1, abs,    %0edh, 4
-op_ADC  1, abs_x_p,%0fdh, 4
-op_ADC  1, abs_y_p,%0f9h, 4
-op_ADC  1, ind_x,  %0e1h, 6
-op_ADC  1, ind_y_p,%0f1h, 5
+op_ADC  1, imm,     0e9h, 2             ; --- SBC ---
+op_ADC  1, zero,    0e5h, 3
+op_ADC  1, zero_x,  0f5h, 4
+op_ADC  1, abs,     0edh, 4
+op_ADC  1, abs_x_p, 0fdh, 4
+op_ADC  1, abs_y_p, 0f9h, 4
+op_ADC  1, ind_x,   0e1h, 6
+op_ADC  1, ind_y_p, 0f1h, 5
 
 
 op_ASL          macro   operate, rotate, dest, etype, opcode, clk
@@ -956,29 +955,29 @@ op_begin        opcode
 op_end          clk
 endm
 
-op_ASL  shl, 0, REG_A, acc,    %00ah, 2 ; --- ASL ---
-op_ASL  shl, 0, 0,     zero,   %006h, 5
-op_ASL  shl, 0, 0,     zero_x, %016h, 6
-op_ASL  shl, 0, 0,     abs,    %00eh, 6
-op_ASL  shl, 0, 0,     abs_x,  %01eh, 7
+op_ASL  shl, 0, REG_A, acc,    00ah, 2 ; --- ASL ---
+op_ASL  shl, 0, 0,     zero,   006h, 5
+op_ASL  shl, 0, 0,     zero_x, 016h, 6
+op_ASL  shl, 0, 0,     abs,    00eh, 6
+op_ASL  shl, 0, 0,     abs_x,  01eh, 7
 
-op_ASL  shr, 0, REG_A, acc,    %04ah, 2 ; --- LSR ---
-op_ASL  shr, 0, 0,     zero,   %046h, 5
-op_ASL  shr, 0, 0,     zero_x, %056h, 6
-op_ASL  shr, 0, 0,     abs,    %04eh, 6
-op_ASL  shr, 0, 0,     abs_x,  %05eh, 7
+op_ASL  shr, 0, REG_A, acc,    04ah, 2 ; --- LSR ---
+op_ASL  shr, 0, 0,     zero,   046h, 5
+op_ASL  shr, 0, 0,     zero_x, 056h, 6
+op_ASL  shr, 0, 0,     abs,    04eh, 6
+op_ASL  shr, 0, 0,     abs_x,  05eh, 7
 
-op_ASL  rol, 1, REG_A, acc,    %02ah, 2 ; --- ROL ---
-op_ASL  rol, 1, 0,     zero,   %026h, 5
-op_ASL  rol, 1, 0,     zero_x, %036h, 6
-op_ASL  rol, 1, 0,     abs,    %02eh, 6
-op_ASL  rol, 1, 0,     abs_x,  %03eh, 7
+op_ASL  rol, 1, REG_A, acc,    02ah, 2 ; --- ROL ---
+op_ASL  rol, 1, 0,     zero,   026h, 5
+op_ASL  rol, 1, 0,     zero_x, 036h, 6
+op_ASL  rol, 1, 0,     abs,    02eh, 6
+op_ASL  rol, 1, 0,     abs_x,  03eh, 7
 
-op_ASL  ror, 1, REG_A, acc,    %06ah, 2 ; --- ROR ---
-op_ASL  ror, 1, 0,     zero,   %066h, 5
-op_ASL  ror, 1, 0,     zero_x, %076h, 6
-op_ASL  ror, 1, 0,     abs,    %06eh, 6
-op_ASL  ror, 1, 0,     abs_x,  %07eh, 7
+op_ASL  ror, 1, REG_A, acc,    06ah, 2 ; --- ROR ---
+op_ASL  ror, 1, 0,     zero,   066h, 5
+op_ASL  ror, 1, 0,     zero_x, 076h, 6
+op_ASL  ror, 1, 0,     abs,    06eh, 6
+op_ASL  ror, 1, 0,     abs_x,  07eh, 7
 
 
 op_DEC_INC      macro   operate, etype, mem_reg, opcode, clk
@@ -1001,19 +1000,19 @@ op_begin        opcode
 op_end          clk
 endm
 
-op_DEC_INC dec, zero,   0,     %0c6h, 5 ; --- DEC ---
-op_DEC_INC dec, zero_x, 0,     %0d6h, 6
-op_DEC_INC dec, abs,    0,     %0ceh, 6
-op_DEC_INC dec, abs_x,  0,     %0deh, 7
-op_DEC_INC dec, imp,    REG_X, %0cah, 2 ; --- DEX ---
-op_DEC_INC dec, imp,    REG_Y, %088h, 2 ; --- DEY ---
+op_DEC_INC dec, zero,   0,     0c6h, 5 ; --- DEC ---
+op_DEC_INC dec, zero_x, 0,     0d6h, 6
+op_DEC_INC dec, abs,    0,     0ceh, 6
+op_DEC_INC dec, abs_x,  0,     0deh, 7
+op_DEC_INC dec, imp,    REG_X, 0cah, 2 ; --- DEX ---
+op_DEC_INC dec, imp,    REG_Y, 088h, 2 ; --- DEY ---
 
-op_DEC_INC inc, zero,   0,     %0e6h, 5 ; --- INC ---
-op_DEC_INC inc, zero_x, 0,     %0f6h, 6
-op_DEC_INC inc, abs,    0,     %0eeh, 6
-op_DEC_INC inc, abs_x,  0,     %0feh, 7
-op_DEC_INC inc, imp,    REG_X, %0e8h, 2 ; --- INX ---
-op_DEC_INC inc, imp,    REG_Y, %0c8h, 2 ; --- INY ---
+op_DEC_INC inc, zero,   0,     0e6h, 5 ; --- INC ---
+op_DEC_INC inc, zero_x, 0,     0f6h, 6
+op_DEC_INC inc, abs,    0,     0eeh, 6
+op_DEC_INC inc, abs_x,  0,     0feh, 7
+op_DEC_INC inc, imp,    REG_X, 0e8h, 2 ; --- INX ---
+op_DEC_INC inc, imp,    REG_Y, 0c8h, 2 ; --- INY ---
 
 
 
@@ -1029,32 +1028,32 @@ op_begin        opcode
 op_end          clk
 endm
 
-op_LOGICAL and, imm,    %029h, 2        ; --- AND ---
-op_LOGICAL and, zero,   %025h, 3
-op_LOGICAL and, zero_x, %035h, 4
-op_LOGICAL and, abs,    %02dh, 4
-op_LOGICAL and, abs_x_p,%03dh, 4
-op_LOGICAL and, abs_y_p,%039h, 4
-op_LOGICAL and, ind_x,  %021h, 6
-op_LOGICAL and, ind_y_p,%031h, 5
+op_LOGICAL and, imm,     029h, 2        ; --- AND ---
+op_LOGICAL and, zero,    025h, 3
+op_LOGICAL and, zero_x,  035h, 4
+op_LOGICAL and, abs,     02dh, 4
+op_LOGICAL and, abs_x_p, 03dh, 4
+op_LOGICAL and, abs_y_p, 039h, 4
+op_LOGICAL and, ind_x,   021h, 6
+op_LOGICAL and, ind_y_p, 031h, 5
 
-op_LOGICAL xor, imm,    %049h, 2        ; --- EOR ---
-op_LOGICAL xor, zero,   %045h, 3
-op_LOGICAL xor, zero_x, %055h, 4
-op_LOGICAL xor, abs,    %04dh, 4
-op_LOGICAL xor, abs_x_p,%05dh, 4
-op_LOGICAL xor, abs_y_p,%059h, 4
-op_LOGICAL xor, ind_x,  %041h, 6
-op_LOGICAL xor, ind_y_p,%051h, 5
+op_LOGICAL xor, imm,     049h, 2        ; --- EOR ---
+op_LOGICAL xor, zero,    045h, 3
+op_LOGICAL xor, zero_x,  055h, 4
+op_LOGICAL xor, abs,     04dh, 4
+op_LOGICAL xor, abs_x_p, 05dh, 4
+op_LOGICAL xor, abs_y_p, 059h, 4
+op_LOGICAL xor, ind_x,   041h, 6
+op_LOGICAL xor, ind_y_p, 051h, 5
 
-op_LOGICAL or,  imm,    %009h, 2        ; --- ORA ---
-op_LOGICAL or,  zero,   %005h, 3
-op_LOGICAL or,  zero_x, %015h, 4
-op_LOGICAL or,  abs,    %00dh, 4
-op_LOGICAL or,  abs_x_p,%01dh, 4
-op_LOGICAL or,  abs_y_p,%019h, 4
-op_LOGICAL or,  ind_x,  %001h, 6
-op_LOGICAL or,  ind_y_p,%011h, 5
+op_LOGICAL or,  imm,     009h, 2        ; --- ORA ---
+op_LOGICAL or,  zero,    005h, 3
+op_LOGICAL or,  zero_x,  015h, 4
+op_LOGICAL or,  abs,     00dh, 4
+op_LOGICAL or,  abs_x_p, 01dh, 4
+op_LOGICAL or,  abs_y_p, 019h, 4
+op_LOGICAL or,  ind_x,   001h, 6
+op_LOGICAL or,  ind_y_p, 011h, 5
 
 
 op_BIT          macro   etype, opcode, clk
@@ -1070,8 +1069,8 @@ op_begin        opcode
 op_end          clk
 endm
 
-op_BIT  zero,   %024h, 3                ; --- BIT ---
-op_BIT  abs,    %02ch, 4
+op_BIT  zero,   024h, 3                ; --- BIT ---
+op_BIT  abs,    02ch, 4
 
 
 
@@ -1099,14 +1098,14 @@ op_begin        opcode
 op_end          2
 endm
 
-op_SEx  flag_c, 0  %018h                ; --- CLC ---
-op_SEx  FL_D,   0, %0d8h                ; --- CLD ---
-op_SEx  FL_I,   0, %058h                ; --- CLI ---
-op_SEx  flag_v, 0, %0b8h                ; --- CLV ---
+op_SEx  flag_c, 0, 018h                ; --- CLC ---
+op_SEx  FL_D,   0, 0d8h                ; --- CLD ---
+op_SEx  FL_I,   0, 058h                ; --- CLI ---
+op_SEx  flag_v, 0, 0b8h                ; --- CLV ---
 
-op_SEx  flag_c, 1, %038h                ; --- SEC ---
-op_SEx  FL_D,   1, %0f8h                ; --- SED ---
-op_SEx  FL_I,   1, %078h                ; --- SEI ---
+op_SEx  flag_c, 1, 038h                ; --- SEC ---
+op_SEx  FL_D,   1, 0f8h                ; --- SED ---
+op_SEx  FL_I,   1, 078h                ; --- SEI ---
 
 
 ; =====> Comparison instructions <=====
@@ -1122,18 +1121,18 @@ op_begin        opcode
 op_end          clk
 endm
 
-op_CMP  imm,    REG_A, %0c9h, 2         ; --- CMP ---
-op_CMP  zero,   REG_A, %0c5h, 3
-op_CMP  zero_x, REG_A, %0d5h, 4
-op_CMP  abs,    REG_A, %0cdh, 4
-op_CMP  abs_x_p,REG_A, %0ddh, 4
-op_CMP  abs_y_p,REG_A, %0d9h, 4
-op_CMP  ind_x,  REG_A, %0c1h, 6
-op_CMP  ind_y_p,REG_A, %0d1h, 5
+op_CMP  imm,    REG_A, 0c9h, 2         ; --- CMP ---
+op_CMP  zero,   REG_A, 0c5h, 3
+op_CMP  zero_x, REG_A, 0d5h, 4
+op_CMP  abs,    REG_A, 0cdh, 4
+op_CMP  abs_x_p,REG_A, 0ddh, 4
+op_CMP  abs_y_p,REG_A, 0d9h, 4
+op_CMP  ind_x,  REG_A, 0c1h, 6
+op_CMP  ind_y_p,REG_A, 0d1h, 5
 
-op_CMP  imm,    REG_X, %0e0h, 2         ; --- CPX ---
-op_CMP  zero,   REG_X, %0e4h, 3
-op_CMP  abs,    REG_X, %0ech, 4
+op_CMP  imm,    REG_X, 0e0h, 2         ; --- CPX ---
+op_CMP  zero,   REG_X, 0e4h, 3
+op_CMP  abs,    REG_X, 0ech, 4
 
 op_CMP  imm,    REG_Y, %0c0h, 2         ; --- CPY ---
 op_CMP  zero,   REG_Y, %0c4h, 3
@@ -1170,14 +1169,14 @@ Done:
 op_end          2
 endm
 
-op_Bxx  flag_c, z, %090h                ; --- BCC ---
-op_Bxx  flag_c, nz,%0b0h                ; --- BCS ---
-op_Bxx  flag_z, nz,%0f0h                ; --- BEQ ---
-op_Bxx  flag_s, ns,%030h                ; --- BMI ---
-op_Bxx  flag_z, z, %0d0h                ; --- BNE ---
-op_Bxx  flag_s, s, %010h                ; --- BPL ---
-op_Bxx  flag_v, z, %050h                ; --- BVC ---
-op_Bxx  flag_v, nz,%070h                ; --- BVS ---
+op_Bxx  flag_c, z,  090h                ; --- BCC ---
+op_Bxx  flag_c, nz, 0b0h                ; --- BCS ---
+op_Bxx  flag_z, nz, 0f0h                ; --- BEQ ---
+op_Bxx  flag_s, ns, 030h                ; --- BMI ---
+op_Bxx  flag_z, z,  0d0h                ; --- BNE ---
+op_Bxx  flag_s, s,  010h                ; --- BPL ---
+op_Bxx  flag_v, z,  050h                ; --- BVC ---
+op_Bxx  flag_v, nz, 070h                ; --- BVS ---
 
 
 op_JMP          macro   ind, opcode, clk
@@ -1194,8 +1193,8 @@ op_begin        opcode
 op_end          clk
 endm
 
-op_JMP  0, %04ch, 3                     ; --- JMP ---
-op_JMP  1, %06ch, 5
+op_JMP  0, 04ch, 3                     ; --- JMP ---
+op_JMP  1, 06ch, 5
 
 op_begin        %020h                   ; --- JSR ---
         mov     ax, [REG_PCe]
@@ -1244,20 +1243,20 @@ op_begin        opcode
 op_end          clk
 endm
 
-op_PSH  REG_A,  %048h, 3                ; --- PHA ---
-op_PSH  REG_FL, %008h, 3                ; --- PHP ---
-op_PSH  REG_A,  %068h, 4                ; --- PLA ---
-op_PSH  REG_FL, %028h, 4                ; --- PLP ---
+op_PSH  REG_A,  048h, 3                ; --- PHA ---
+op_PSH  REG_FL, 008h, 3                ; --- PHP ---
+op_PSH  REG_A,  068h, 4                ; --- PLA ---
+op_PSH  REG_FL, 028h, 4                ; --- PLP ---
 
 
 
 ; =====> Misc opcodes <=====
 
-op_begin        %0eah                   ; --- NOP ---
+op_begin        0eah                   ; --- NOP ---
 op_end          2
 
 
-op_begin        %000h                   ; --- BRK ---
+op_begin        000h                   ; --- BRK ---
         GeneratePC
         add     REG_PC, 2
         pushw   REG_PC
@@ -1318,6 +1317,5 @@ instr_lut label dword                             ; Instruction set look-up tabl
         MAKEOP  %I
         I = I + 1
         ENDM
-
 
 end

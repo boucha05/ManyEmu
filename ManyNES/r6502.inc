@@ -35,15 +35,15 @@ cpu6502_ERR_WRITE       equ     3
 
 ; === DATA ==================================================================
 
-public  cpu6502_Loop
-public  cpu6502_Done
-public  cpu6502_NCycles
-public  cpu6502_Base
+externdef   cpu6502_Loop:       dword
+externdef   cpu6502_Done:       dword
+externdef   cpu6502_NCycles:    dword
+externdef   cpu6502_Base:       dword
 
 
 ; === CODE ==================================================================
 
-public  cpu6502_Reset
-public  cpu6502_NMI
-public  cpu6502_INT
-public  cpu6502_Execute
+externdef   cpu6502_Reset:      proc
+externdef   cpu6502_NMI:        proc
+externdef   cpu6502_INT:        proc
+externdef   cpu6502_Execute:    proc

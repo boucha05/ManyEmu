@@ -62,6 +62,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>opengl32.lib;glew32s.lib;SDL2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateMapFile>true</GenerateMapFile>
     </Link>
     <PostBuildEvent>
       <Command>@xcopy /EQY "$(SolutionDir)Contrib\SDL2\lib\x86\SDL2.dll" "$(OutputPath)"</Command>
@@ -69,6 +70,12 @@
     <PostBuildEvent>
       <Message>Deploy 3rd parties</Message>
     </PostBuildEvent>
+    <MASM>
+      <EnableAssemblyGeneratedCodeListing>true</EnableAssemblyGeneratedCodeListing>
+    </MASM>
+    <MASM>
+      <AssembledCodeListingFile>%(Filename).lst</AssembledCodeListingFile>
+    </MASM>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -86,6 +93,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>opengl32.lib;glew32s.lib;SDL2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateMapFile>true</GenerateMapFile>
     </Link>
     <PostBuildEvent>
       <Command>@xcopy /EQY "$(SolutionDir)Contrib\SDL2\lib\x86\SDL2.dll" "$(OutputPath)"</Command>
@@ -93,6 +101,12 @@
     <PostBuildEvent>
       <Message>Deploy 3rd parties</Message>
     </PostBuildEvent>
+    <MASM>
+      <EnableAssemblyGeneratedCodeListing>true</EnableAssemblyGeneratedCodeListing>
+    </MASM>
+    <MASM>
+      <AssembledCodeListingFile>%(Filename).lst</AssembledCodeListingFile>
+    </MASM>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
@@ -103,15 +117,11 @@
     <ClInclude Include="r6502.h" />
   </ItemGroup>
   <ItemGroup>
+    <MASM Include="io.asm" />
     <MASM Include="nes.asm" />
     <MASM Include="nes_io.asm" />
     <MASM Include="r6502.asm">
-      <EnableMASM51Compatibility Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</EnableMASM51Compatibility>
       <EnableMASM51Compatibility Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</EnableMASM51Compatibility>
-      <EnableAssemblyGeneratedCodeListing Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</EnableAssemblyGeneratedCodeListing>
-      <EnableAssemblyGeneratedCodeListing Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</EnableAssemblyGeneratedCodeListing>
-      <AssembledCodeListingFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename).lst</AssembledCodeListingFile>
-      <AssembledCodeListingFile Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename).lst</AssembledCodeListingFile>
     </MASM>
   </ItemGroup>
   <ItemGroup>

@@ -12,6 +12,7 @@
     <MASM Include="r6502.asm" />
     <MASM Include="nes.asm" />
     <MASM Include="nes_io.asm" />
+    <MASM Include="io.asm" />
   </ItemGroup>
   <ItemGroup>
     <None Include="r6502.inc" />

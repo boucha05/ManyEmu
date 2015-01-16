@@ -3,7 +3,7 @@
 ;***********
 
 
-; °°° STRUCTURES °°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
+; === STRUCTURES ============================================================
 
 ; The NES console structure
 conNESs         struct
@@ -13,7 +13,7 @@ conNESs         struct
 conNESs         ends
 
 
-; °°° CONSTANTS °°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
+; === CONSTANTS =============================================================
 
 
 ; --- CPU variables ---
@@ -59,14 +59,22 @@ NES_ERR_EXECUTE         equ     6       ; Execute error
 
 
 
-; °°° DATAS °°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
+; === DATAS =================================================================
 
-public  conNES_NCycles
+externdef   conNES_NCycles:     dword
+externdef   PPU_Name:           dword
+externdef   ScreenPatternTable: dword
+
+externdef   video_buffer:       dword
+externdef   BufferToVideo:      proc
+externdef   SwapPages:          proc
+externdef   Palette:            dword
 
 
-; °°° CODE °°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
+; === CODE ==================================================================
 
-public  conNES_Reset
-public  conNES_Setup
-public  conNES_Backup
-public  conNES_Execute
+externdef   conNES_Reset:   proc
+externdef   conNES_Execute: proc
+externdef   ResetCPU:       proc
+externdef   DrawCurRow:     proc
+externdef   UpdateFrame:    proc
