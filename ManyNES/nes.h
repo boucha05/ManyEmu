@@ -40,8 +40,8 @@ namespace NES
             const uint8_t*  chrRom;
         };
 
-        virtual void getDescription(Description& description) const = 0;
-        virtual void getContent(Content& content) const = 0;
+        virtual const Description& getDescription() const = 0;
+        virtual const Content& getContent() const = 0;
 
         static bool readDescription(Rom::Description& description, const char* path);
         static Rom* load(const char* path);

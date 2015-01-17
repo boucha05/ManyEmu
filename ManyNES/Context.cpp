@@ -1,4 +1,10 @@
 #include "nes.h"
+#include "Mappers.h"
+#include <vector>
+
+namespace
+{
+}
 
 namespace
 {
@@ -7,6 +13,7 @@ namespace
     public:
         ContextImpl()
             : rom(nullptr)
+            , mapper(nullptr)
         {
         }
 
@@ -19,11 +26,23 @@ namespace
         {
             rom = &_rom;
 
+            mapper = NES::MapperRegistry::getInstance().create(rom->getDescription().mapper);
+            if (!mapper)
+                return false;
+            if (!mapper->initialize(*rom))
+                return false;
+
             return true;
         }
 
         void destroy()
         {
+            if (mapper)
+            {
+                mapper->dispose();
+                mapper = nullptr;
+            }
+
             rom = nullptr;
         }
 
@@ -38,6 +57,7 @@ namespace
 
     private:
         const NES::Rom*     rom;
+        NES::Mapper*        mapper;
     };
 }
 

@@ -30,7 +30,6 @@ namespace
         fseek(file, 0, SEEK_END);
         size_t size = ftell(file);
         rewind(file);
-        //fseek(file, 0, SEEK_SET);
         size = std::min(size, maxSize);
 
         buffer.clear();
@@ -113,14 +112,14 @@ namespace
             delete this;
         }
 
-        virtual void getDescription(Description& _description) const
+        virtual const Description& getDescription() const
         {
-            _description = description;
+            return description;
         }
 
-        virtual void getContent(Content& _content) const
+        virtual const Content& getContent() const
         {
-            _content = content;
+            return content;
         }
 
         static bool getDescription(Description& description, const uint8_t* data, size_t size)
