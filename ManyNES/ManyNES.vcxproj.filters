@@ -6,12 +6,14 @@
     <ClCompile Include="Context.cpp" />
     <ClCompile Include="Mappers.cpp" />
     <ClCompile Include="Mapper0.cpp" />
+    <ClCompile Include="Cpu6502.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Palette.h" />
     <ClInclude Include="nes.h" />
     <ClInclude Include="r6502.h" />
     <ClInclude Include="Mappers.h" />
+    <ClInclude Include="Cpu6502.h" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="r6502.asm" />
