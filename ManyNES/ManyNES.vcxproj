@@ -109,6 +109,7 @@
     </MASM>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="MemoryBus.cpp" />
     <ClCompile Include="Context.cpp" />
     <ClCompile Include="Cpu6502.cpp" />
     <ClCompile Include="Main.cpp" />
@@ -117,6 +118,7 @@
     <ClCompile Include="Rom.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="MemoryBus.h" />
     <ClInclude Include="Cpu6502.h" />
     <ClInclude Include="Mappers.h" />
     <ClInclude Include="nes.h" />

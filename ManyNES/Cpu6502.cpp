@@ -1,4 +1,7 @@
 #include "Cpu6502.h"
+#include "MemoryBus.h"
+#include <assert.h>
+#include <memory.h>
 #include <stdio.h>
 
 namespace
@@ -26,11 +29,17 @@ namespace
     void NOT_IMPLEMENTED(const char* insn)
     {
         printf("Instruction %s not implemented\n", insn);
+        assert(false);
     }
 
     inline uint8_t read8(CPU_STATE& state, uint16_t addr)
     {
-        return state.mem[addr];
+        return memory_bus_read8(*state.bus, addr);
+    }
+
+    inline void write8(CPU_STATE& state, uint16_t addr, uint8_t value)
+    {
+        memory_bus_write8(*state.bus, addr, value);
     }
 
     inline uint16_t read16(CPU_STATE& state, uint16_t addr)
@@ -637,7 +646,22 @@ namespace
     */
 }
 
-void execute(CPU_STATE& state)
+void cpu_initialize(CPU_STATE& cpu)
+{
+    memset(&cpu, 0, sizeof(cpu));
+}
+
+bool cpu_create(CPU_STATE& cpu, MEMORY_BUS& bus)
+{
+    cpu.bus = &bus;
+    return true;
+}
+
+void cpu_destroy(CPU_STATE& cpu)
+{
+}
+
+void cpu_execute(CPU_STATE& state, int32_t clock)
 {
     uint8_t insn = fetch8(state);
     switch (insn)
@@ -796,4 +820,26 @@ void execute(CPU_STATE& state)
     default:
         NOT_IMPLEMENTED("???");
     }
+}
+
+Cpu6502::Cpu6502()
+{
+    cpu_initialize(mState);
+}
+
+Cpu6502::~Cpu6502()
+{
+    destroy();
+}
+
+bool Cpu6502::create(MEMORY_BUS& bus)
+{
+    if (cpu_create(mState, bus))
+        return false;
+    return true;
+}
+
+void Cpu6502::destroy()
+{
+    cpu_destroy(mState);
 }

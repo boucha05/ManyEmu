@@ -10,7 +10,7 @@ namespace
             delete this;
         }
 
-        virtual bool initialize(const NES::Rom& rom)
+        virtual bool initialize(const NES::Rom& rom, MemoryBus& cpuMemory)
         {
             return true;
         }

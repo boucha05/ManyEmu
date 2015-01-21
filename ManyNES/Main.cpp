@@ -62,8 +62,8 @@ void Application::terminate()
 
 bool Application::create()
 {
-    mWindow = SDL_CreateWindow("ManyNES", SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED, 1280, 720, SDL_WINDOW_SHOWN);
+    mWindow = SDL_CreateWindow("ManyNES", 100,
+        100, 512, 480, SDL_WINDOW_SHOWN);
     if (!mWindow)
         return false;
 

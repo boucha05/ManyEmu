@@ -7,6 +7,7 @@
     <ClCompile Include="Mappers.cpp" />
     <ClCompile Include="Mapper0.cpp" />
     <ClCompile Include="Cpu6502.cpp" />
+    <ClCompile Include="MemoryBus.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Palette.h" />
@@ -14,6 +15,7 @@
     <ClInclude Include="r6502.h" />
     <ClInclude Include="Mappers.h" />
     <ClInclude Include="Cpu6502.h" />
+    <ClInclude Include="MemoryBus.h" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="r6502.asm" />

@@ -1,5 +1,7 @@
 #include "nes.h"
+#include "Cpu6502.h"
 #include "Mappers.h"
+#include "MemoryBus.h"
 #include <vector>
 
 namespace
@@ -26,10 +28,13 @@ namespace
         {
             rom = &_rom;
 
+            if (cpu.create(cpuMemory.getState()))
+                return false;
+
             mapper = NES::MapperRegistry::getInstance().create(rom->getDescription().mapper);
             if (!mapper)
                 return false;
-            if (!mapper->initialize(*rom))
+            if (!mapper->initialize(*rom, cpuMemory))
                 return false;
 
             return true;
@@ -42,6 +47,8 @@ namespace
                 mapper->dispose();
                 mapper = nullptr;
             }
+
+            cpu.destroy();
 
             rom = nullptr;
         }
@@ -57,6 +64,8 @@ namespace
 
     private:
         const NES::Rom*     rom;
+        MemoryBus           cpuMemory;
+        Cpu6502             cpu;
         NES::Mapper*        mapper;
     };
 }

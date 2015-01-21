@@ -4,12 +4,14 @@
 #include "nes.h"
 #include <stdint.h>
 
+class MemoryBus;
+
 namespace NES
 {
     class Mapper : public IDisposable
     {
     public:
-        virtual bool initialize(const Rom& rom) = 0;
+        virtual bool initialize(const Rom& rom, MemoryBus& cpuMemory) = 0;
     };
 
     typedef Mapper* (*MapperCreateFunc)();
