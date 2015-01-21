@@ -21,12 +21,6 @@ struct CPU_STATE
     uint8_t             imm;
     uint16_t            addr;
     MEMORY_BUS*         bus;
-
-    static const uint32_t MEM_SIZE_LOG2 = 16;
-    static const uint32_t MEM_SIZE = 1 << MEM_SIZE_LOG2;
-    static const uint32_t MEM_PAGE_SIZE_LOG2 = 10;
-    static const uint32_t MEM_PAGE_SIZE = 1 << MEM_PAGE_SIZE_LOG2;
-    static const uint32_t MEM_PAGE_COUNT = 16 - MEM_PAGE_SIZE_LOG2;
 };
 
 void cpu_initialize(CPU_STATE& cpu);
@@ -41,6 +35,8 @@ public:
     ~Cpu6502();
     bool create(MEMORY_BUS& bus);
     void destroy();
+    void reset();
+    void execute(int32_t cycles);
     
     CPU_STATE& getState()
     {

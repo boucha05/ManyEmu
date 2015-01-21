@@ -6,6 +6,10 @@
 
 namespace
 {
+    static const uint16_t ADDR_VECTOR_NMI = 0xfffa;
+    static const uint16_t ADDR_VECTOR_RESET = 0xfffc;
+    static const uint16_t ADDR_VECTOR_IRQ = 0xfffe;
+
     // http://nesdev.com/6502.txt
     /*  00        01         02        03        04        05        06        07        08        09        0a        0b        0c        0d        0e        0f
     00  BRK_impl, ORA_indx,  NOP_impl, NOP_impl, NOP_impl, ORA_zpg,  ASL_zpg,  NOP_impl, PHP_impl, ORA_imm,  ASL_acc,  NOP_impl, NOP_impl, ORA_abs,  ASL_abs,  NOP_impl,
@@ -45,7 +49,7 @@ namespace
     inline uint16_t read16(CPU_STATE& state, uint16_t addr)
     {
         uint8_t lo = read8(state, addr);
-        uint8_t hi = read8(state, addr);
+        uint8_t hi = read8(state, addr + 1);
         uint16_t value = static_cast<uint16_t>(lo) | (static_cast<uint16_t>(hi) << 8);
         return value;
     }
@@ -663,162 +667,166 @@ void cpu_destroy(CPU_STATE& cpu)
 
 void cpu_execute(CPU_STATE& state, int32_t clock)
 {
-    uint8_t insn = fetch8(state);
-    switch (insn)
+    state.clk += clock;
+    while (state.clk > 0)
     {
-    case 0x69:  insn_adc(state, read8_imm(state),     2); break;
-    case 0x65:  insn_adc(state, read8_zpg(state),     3); break;
-    case 0x75:  insn_adc(state, read8_zpgx(state),    4); break;
-    case 0x6D:  insn_adc(state, read8_abs(state),     4); break;
-    case 0x7D:  insn_adc(state, read8_absx(state, 1), 4); break;
-    case 0x79:  insn_adc(state, read8_absx(state, 1), 4); break;
-    case 0x61:  insn_adc(state, read8_indx(state),    6); break;
-    case 0x71:  insn_adc(state, read8_indy(state, 1), 5); break;
-    case 0x29:  insn_and(state, read8_imm(state),     2); break;
-    case 0x25:  insn_and(state, read8_zpg(state),     3); break;
-    case 0x35:  insn_and(state, read8_zpgx(state),    4); break;
-    case 0x2D:  insn_and(state, read8_abs(state),     4); break;
-    case 0x3D:  insn_and(state, read8_absx(state, 1), 4); break;
-    case 0x39:  insn_and(state, read8_absx(state, 1), 4); break;
-    case 0x21:  insn_and(state, read8_indx(state),    6); break;
-    case 0x31:  insn_and(state, read8_indy(state),    5); break;
-    case 0x0A:  insn_asl(state,                   2); break;
-    case 0x06:  insn_asl(state, addr_zpg(state),  5); break;
-    case 0x16:  insn_asl(state, addr_zpgx(state), 6); break;
-    case 0x0E:  insn_asl(state, addr_abs(state),  6); break;
-    case 0x1E:  insn_asl(state, addr_absx(state), 7); break;
-    case 0x90:  insn_bcc(state); break;
-    case 0xB0:  insn_bcs(state); break;
-    case 0xF0:  insn_beq(state); break;
-    case 0x24:  insn_bit(state, read8_zpg(state), 3); break;
-    case 0x2C:  insn_bit(state, read8_abs(state), 3); break;
-    case 0x30:  insn_bmi(state); break;
-    case 0xD0:  insn_bmi(state); break;
-    case 0x10:  insn_bpl(state); break;
-    case 0x00:  insn_brk(state); break;
-    case 0x50:  insn_bvc(state); break;
-    case 0x70:  insn_bvs(state); break;
-    case 0x18:  insn_clc(state); break;
-    case 0xD8:  insn_cld(state); break;
-    case 0x58:  insn_cli(state); break;
-    case 0xB8:  insn_clv(state); break;
-    case 0xC9:  insn_cmp(state, read8_imm(state),     2); break;
-    case 0xC5:  insn_cmp(state, read8_zpg(state),     3); break;
-    case 0xD5:  insn_cmp(state, read8_zpgx(state),    4); break;
-    case 0xCD:  insn_cmp(state, read8_abs(state),     4); break;
-    case 0xDD:  insn_cmp(state, read8_absx(state, 1), 4); break;
-    case 0xD9:  insn_cmp(state, read8_absx(state, 1), 4); break;
-    case 0xC1:  insn_cmp(state, read8_indx(state),    6); break;
-    case 0xD1:  insn_cmp(state, read8_indy(state, 1), 5); break;
-    case 0xE0:  insn_cpx(state, read8_imm(state), 2); break;
-    case 0xE4:  insn_cpx(state, read8_zpg(state), 3); break;
-    case 0xEC:  insn_cpx(state, read8_abs(state), 4); break;
-    case 0xC0:  insn_cpy(state, read8_imm(state), 2); break;
-    case 0xC4:  insn_cpy(state, read8_zpg(state), 3); break;
-    case 0xCC:  insn_cpy(state, read8_abs(state), 4); break;
-    case 0xC6:  insn_dec(state, addr_zpg(state),  5); break;
-    case 0xD6:  insn_dec(state, addr_zpgx(state), 6); break;
-    case 0xCE:  insn_dec(state, addr_abs(state),  6); break;
-    case 0xDE:  insn_dec(state, addr_absx(state), 7); break;
-    case 0xCA:  insn_dex(state); break;
-    case 0x88:  insn_dey(state); break;
-    case 0x49:  insn_eor(state, read8_imm(state),     2); break;
-    case 0x45:  insn_eor(state, read8_zpg(state),     3); break;
-    case 0x55:  insn_eor(state, read8_zpgx(state),    4); break;
-    case 0x40:  insn_eor(state, read8_abs(state),     4); break;
-    case 0x5D:  insn_eor(state, read8_absx(state, 1), 4); break;
-    case 0x59:  insn_eor(state, read8_absx(state, 1), 4); break;
-    case 0x41:  insn_eor(state, read8_indx(state),    6); break;
-    case 0x51:  insn_eor(state, read8_indy(state, 1), 5); break;
-    case 0xE6:  insn_inc(state, addr_zpg(state),  5); break;
-    case 0xF6:  insn_inc(state, addr_zpgx(state), 6); break;
-    case 0xEE:  insn_inc(state, addr_abs(state),  6); break;
-    case 0xFE:  insn_inc(state, addr_absx(state), 7); break;
-    case 0xE8:  insn_inx(state); break;
-    case 0xC8:  insn_iny(state); break;
-    case 0x4C:  insn_jmp(state, addr_abs(state), 3); break;
-    case 0x6C:  insn_jmp(state, addr_ind(state), 5); break;
-    case 0x20:  insn_jsr(state); break;
-    case 0xA9:  insn_lda(state, read8_imm(state),     2); break;
-    case 0xA5:  insn_lda(state, read8_zpg(state),     3); break;
-    case 0xB5:  insn_lda(state, read8_zpgx(state),    4); break;
-    case 0xAD:  insn_lda(state, read8_abs(state),     4); break;
-    case 0xBD:  insn_lda(state, read8_absx(state, 1), 4); break;
-    case 0xB9:  insn_lda(state, read8_absx(state, 1), 4); break;
-    case 0xA1:  insn_lda(state, read8_indx(state),    6); break;
-    case 0xB1:  insn_lda(state, read8_indy(state, 1), 5); break;
-    case 0xA2:  insn_ldx(state, read8_imm(state),     2); break;
-    case 0xA6:  insn_ldx(state, read8_zpg(state),     3); break;
-    case 0xB6:  insn_ldx(state, read8_zpgy(state),    4); break;
-    case 0xAE:  insn_ldx(state, read8_abs(state),     4); break;
-    case 0xBE:  insn_ldx(state, read8_absx(state, 1), 4); break;
-    case 0xA0:  insn_ldy(state, read8_imm(state),     2); break;
-    case 0xA4:  insn_ldy(state, read8_zpg(state),     3); break;
-    case 0xB4:  insn_ldy(state, read8_zpgx(state),    4); break;
-    case 0xAC:  insn_ldy(state, read8_abs(state),     4); break;
-    case 0xBC:  insn_ldy(state, read8_absx(state, 1), 4); break;
-    case 0x4A:  insn_lsr(state); break;
-    case 0x46:  insn_lsr(state, read8_zpg(state),  5); break;
-    case 0x56:  insn_lsr(state, read8_zpgx(state), 6); break;
-    case 0x4E:  insn_lsr(state, read8_abs(state),  6); break;
-    case 0x5E:  insn_lsr(state, read8_absx(state), 7); break;
-    case 0xEA:  insn_nop(state); break;
-    case 0x09:  insn_ora(state, read8_imm(state),     2); break;
-    case 0x05:  insn_ora(state, read8_zpg(state),     3); break;
-    case 0x15:  insn_ora(state, read8_zpgx(state),    4); break;
-    case 0x0D:  insn_ora(state, read8_abs(state),     4); break;
-    case 0x1D:  insn_ora(state, read8_absx(state, 1), 4); break;
-    case 0x19:  insn_ora(state, read8_absx(state, 1), 4); break;
-    case 0x01:  insn_ora(state, read8_indx(state),    6); break;
-    case 0x11:  insn_ora(state, read8_indy(state),    5); break;
-    case 0x48:  insn_pha(state); break;
-    case 0x08:  insn_php(state); break;
-    case 0x68:  insn_pla(state); break;
-    case 0x28:  insn_plp(state); break;
-    case 0x2A:  insn_rol(state); break;
-    case 0x26:  insn_rol(state, read8_zpg(state),  5); break;
-    case 0x36:  insn_rol(state, read8_zpgx(state), 6); break;
-    case 0x2E:  insn_rol(state, read8_abs(state),  6); break;
-    case 0x3E:  insn_rol(state, read8_absx(state), 7); break;
-    case 0x6A:  insn_ror(state); break;
-    case 0x66:  insn_ror(state, read8_zpg(state),  5); break;
-    case 0x76:  insn_ror(state, read8_zpgx(state), 6); break;
-    case 0x6E:  insn_ror(state, read8_abs(state),  6); break;
-    case 0x7E:  insn_ror(state, read8_absx(state), 7); break;
-    case 0x4D:  insn_rti(state); break;
-    case 0x60:  insn_rts(state); break;
-    case 0xE9:  insn_sbc(state, read8_imm(state),     2); break;
-    case 0xE5:  insn_sbc(state, read8_zpg(state),     3); break;
-    case 0xF5:  insn_sbc(state, read8_zpgx(state),    4); break;
-    case 0xED:  insn_sbc(state, read8_abs(state),     4); break;
-    case 0xFD:  insn_sbc(state, read8_absx(state, 1), 4); break;
-    case 0xF9:  insn_sbc(state, read8_absx(state, 1), 4); break;
-    case 0xE1:  insn_sbc(state, read8_indx(state),    6); break;
-    case 0xF1:  insn_sbc(state, read8_indy(state),    5); break;
-    case 0x38:  insn_sec(state); break;
-    case 0xF8:  insn_sed(state); break;
-    case 0x78:  insn_sei(state); break;
-    case 0x85:  insn_sta(state, addr_zpg(state),  3); break;
-    case 0x95:  insn_sta(state, addr_zpgx(state), 4); break;
-    case 0x80:  insn_sta(state, addr_abs(state),  4); break;
-    case 0x9D:  insn_sta(state, addr_absx(state), 5); break;
-    case 0x99:  insn_sta(state, addr_absx(state), 5); break;
-    case 0x81:  insn_sta(state, addr_indx(state), 6); break;
-    case 0x91:  insn_sta(state, addr_indy(state), 6); break;
-    case 0x86:  insn_stx(state, addr_zpg(state),  3); break;
-    case 0x96:  insn_stx(state, addr_zpgy(state), 4); break;
-    case 0x8E:  insn_stx(state, addr_abs(state),  4); break;
-    case 0x84:  insn_sty(state, addr_zpg(state),  3); break;
-    case 0x94:  insn_sty(state, addr_zpgx(state), 4); break;
-    case 0x8C:  insn_sty(state, addr_abs(state),  4); break;
-    case 0xAA:  insn_tax(state); break;
-    case 0xA8:  insn_tay(state); break;
-    case 0xBA:  insn_tsx(state); break;
-    case 0x8A:  insn_txa(state); break;
-    case 0x9A:  insn_txs(state); break;
-    case 0x98:  insn_tya(state); break;
-    default:
-        NOT_IMPLEMENTED("???");
+        uint8_t insn = fetch8(state);
+        switch (insn)
+        {
+        case 0x69:  insn_adc(state, read8_imm(state),     2); break;
+        case 0x65:  insn_adc(state, read8_zpg(state),     3); break;
+        case 0x75:  insn_adc(state, read8_zpgx(state),    4); break;
+        case 0x6D:  insn_adc(state, read8_abs(state),     4); break;
+        case 0x7D:  insn_adc(state, read8_absx(state, 1), 4); break;
+        case 0x79:  insn_adc(state, read8_absx(state, 1), 4); break;
+        case 0x61:  insn_adc(state, read8_indx(state),    6); break;
+        case 0x71:  insn_adc(state, read8_indy(state, 1), 5); break;
+        case 0x29:  insn_and(state, read8_imm(state),     2); break;
+        case 0x25:  insn_and(state, read8_zpg(state),     3); break;
+        case 0x35:  insn_and(state, read8_zpgx(state),    4); break;
+        case 0x2D:  insn_and(state, read8_abs(state),     4); break;
+        case 0x3D:  insn_and(state, read8_absx(state, 1), 4); break;
+        case 0x39:  insn_and(state, read8_absx(state, 1), 4); break;
+        case 0x21:  insn_and(state, read8_indx(state),    6); break;
+        case 0x31:  insn_and(state, read8_indy(state),    5); break;
+        case 0x0A:  insn_asl(state,                   2); break;
+        case 0x06:  insn_asl(state, addr_zpg(state),  5); break;
+        case 0x16:  insn_asl(state, addr_zpgx(state), 6); break;
+        case 0x0E:  insn_asl(state, addr_abs(state),  6); break;
+        case 0x1E:  insn_asl(state, addr_absx(state), 7); break;
+        case 0x90:  insn_bcc(state); break;
+        case 0xB0:  insn_bcs(state); break;
+        case 0xF0:  insn_beq(state); break;
+        case 0x24:  insn_bit(state, read8_zpg(state), 3); break;
+        case 0x2C:  insn_bit(state, read8_abs(state), 3); break;
+        case 0x30:  insn_bmi(state); break;
+        case 0xD0:  insn_bmi(state); break;
+        case 0x10:  insn_bpl(state); break;
+        case 0x00:  insn_brk(state); break;
+        case 0x50:  insn_bvc(state); break;
+        case 0x70:  insn_bvs(state); break;
+        case 0x18:  insn_clc(state); break;
+        case 0xD8:  insn_cld(state); break;
+        case 0x58:  insn_cli(state); break;
+        case 0xB8:  insn_clv(state); break;
+        case 0xC9:  insn_cmp(state, read8_imm(state),     2); break;
+        case 0xC5:  insn_cmp(state, read8_zpg(state),     3); break;
+        case 0xD5:  insn_cmp(state, read8_zpgx(state),    4); break;
+        case 0xCD:  insn_cmp(state, read8_abs(state),     4); break;
+        case 0xDD:  insn_cmp(state, read8_absx(state, 1), 4); break;
+        case 0xD9:  insn_cmp(state, read8_absx(state, 1), 4); break;
+        case 0xC1:  insn_cmp(state, read8_indx(state),    6); break;
+        case 0xD1:  insn_cmp(state, read8_indy(state, 1), 5); break;
+        case 0xE0:  insn_cpx(state, read8_imm(state), 2); break;
+        case 0xE4:  insn_cpx(state, read8_zpg(state), 3); break;
+        case 0xEC:  insn_cpx(state, read8_abs(state), 4); break;
+        case 0xC0:  insn_cpy(state, read8_imm(state), 2); break;
+        case 0xC4:  insn_cpy(state, read8_zpg(state), 3); break;
+        case 0xCC:  insn_cpy(state, read8_abs(state), 4); break;
+        case 0xC6:  insn_dec(state, addr_zpg(state),  5); break;
+        case 0xD6:  insn_dec(state, addr_zpgx(state), 6); break;
+        case 0xCE:  insn_dec(state, addr_abs(state),  6); break;
+        case 0xDE:  insn_dec(state, addr_absx(state), 7); break;
+        case 0xCA:  insn_dex(state); break;
+        case 0x88:  insn_dey(state); break;
+        case 0x49:  insn_eor(state, read8_imm(state),     2); break;
+        case 0x45:  insn_eor(state, read8_zpg(state),     3); break;
+        case 0x55:  insn_eor(state, read8_zpgx(state),    4); break;
+        case 0x40:  insn_eor(state, read8_abs(state),     4); break;
+        case 0x5D:  insn_eor(state, read8_absx(state, 1), 4); break;
+        case 0x59:  insn_eor(state, read8_absx(state, 1), 4); break;
+        case 0x41:  insn_eor(state, read8_indx(state),    6); break;
+        case 0x51:  insn_eor(state, read8_indy(state, 1), 5); break;
+        case 0xE6:  insn_inc(state, addr_zpg(state),  5); break;
+        case 0xF6:  insn_inc(state, addr_zpgx(state), 6); break;
+        case 0xEE:  insn_inc(state, addr_abs(state),  6); break;
+        case 0xFE:  insn_inc(state, addr_absx(state), 7); break;
+        case 0xE8:  insn_inx(state); break;
+        case 0xC8:  insn_iny(state); break;
+        case 0x4C:  insn_jmp(state, addr_abs(state), 3); break;
+        case 0x6C:  insn_jmp(state, addr_ind(state), 5); break;
+        case 0x20:  insn_jsr(state); break;
+        case 0xA9:  insn_lda(state, read8_imm(state),     2); break;
+        case 0xA5:  insn_lda(state, read8_zpg(state),     3); break;
+        case 0xB5:  insn_lda(state, read8_zpgx(state),    4); break;
+        case 0xAD:  insn_lda(state, read8_abs(state),     4); break;
+        case 0xBD:  insn_lda(state, read8_absx(state, 1), 4); break;
+        case 0xB9:  insn_lda(state, read8_absx(state, 1), 4); break;
+        case 0xA1:  insn_lda(state, read8_indx(state),    6); break;
+        case 0xB1:  insn_lda(state, read8_indy(state, 1), 5); break;
+        case 0xA2:  insn_ldx(state, read8_imm(state),     2); break;
+        case 0xA6:  insn_ldx(state, read8_zpg(state),     3); break;
+        case 0xB6:  insn_ldx(state, read8_zpgy(state),    4); break;
+        case 0xAE:  insn_ldx(state, read8_abs(state),     4); break;
+        case 0xBE:  insn_ldx(state, read8_absx(state, 1), 4); break;
+        case 0xA0:  insn_ldy(state, read8_imm(state),     2); break;
+        case 0xA4:  insn_ldy(state, read8_zpg(state),     3); break;
+        case 0xB4:  insn_ldy(state, read8_zpgx(state),    4); break;
+        case 0xAC:  insn_ldy(state, read8_abs(state),     4); break;
+        case 0xBC:  insn_ldy(state, read8_absx(state, 1), 4); break;
+        case 0x4A:  insn_lsr(state); break;
+        case 0x46:  insn_lsr(state, read8_zpg(state),  5); break;
+        case 0x56:  insn_lsr(state, read8_zpgx(state), 6); break;
+        case 0x4E:  insn_lsr(state, read8_abs(state),  6); break;
+        case 0x5E:  insn_lsr(state, read8_absx(state), 7); break;
+        case 0xEA:  insn_nop(state); break;
+        case 0x09:  insn_ora(state, read8_imm(state),     2); break;
+        case 0x05:  insn_ora(state, read8_zpg(state),     3); break;
+        case 0x15:  insn_ora(state, read8_zpgx(state),    4); break;
+        case 0x0D:  insn_ora(state, read8_abs(state),     4); break;
+        case 0x1D:  insn_ora(state, read8_absx(state, 1), 4); break;
+        case 0x19:  insn_ora(state, read8_absx(state, 1), 4); break;
+        case 0x01:  insn_ora(state, read8_indx(state),    6); break;
+        case 0x11:  insn_ora(state, read8_indy(state),    5); break;
+        case 0x48:  insn_pha(state); break;
+        case 0x08:  insn_php(state); break;
+        case 0x68:  insn_pla(state); break;
+        case 0x28:  insn_plp(state); break;
+        case 0x2A:  insn_rol(state); break;
+        case 0x26:  insn_rol(state, read8_zpg(state),  5); break;
+        case 0x36:  insn_rol(state, read8_zpgx(state), 6); break;
+        case 0x2E:  insn_rol(state, read8_abs(state),  6); break;
+        case 0x3E:  insn_rol(state, read8_absx(state), 7); break;
+        case 0x6A:  insn_ror(state); break;
+        case 0x66:  insn_ror(state, read8_zpg(state),  5); break;
+        case 0x76:  insn_ror(state, read8_zpgx(state), 6); break;
+        case 0x6E:  insn_ror(state, read8_abs(state),  6); break;
+        case 0x7E:  insn_ror(state, read8_absx(state), 7); break;
+        case 0x4D:  insn_rti(state); break;
+        case 0x60:  insn_rts(state); break;
+        case 0xE9:  insn_sbc(state, read8_imm(state),     2); break;
+        case 0xE5:  insn_sbc(state, read8_zpg(state),     3); break;
+        case 0xF5:  insn_sbc(state, read8_zpgx(state),    4); break;
+        case 0xED:  insn_sbc(state, read8_abs(state),     4); break;
+        case 0xFD:  insn_sbc(state, read8_absx(state, 1), 4); break;
+        case 0xF9:  insn_sbc(state, read8_absx(state, 1), 4); break;
+        case 0xE1:  insn_sbc(state, read8_indx(state),    6); break;
+        case 0xF1:  insn_sbc(state, read8_indy(state),    5); break;
+        case 0x38:  insn_sec(state); break;
+        case 0xF8:  insn_sed(state); break;
+        case 0x78:  insn_sei(state); break;
+        case 0x85:  insn_sta(state, addr_zpg(state),  3); break;
+        case 0x95:  insn_sta(state, addr_zpgx(state), 4); break;
+        case 0x80:  insn_sta(state, addr_abs(state),  4); break;
+        case 0x9D:  insn_sta(state, addr_absx(state), 5); break;
+        case 0x99:  insn_sta(state, addr_absx(state), 5); break;
+        case 0x81:  insn_sta(state, addr_indx(state), 6); break;
+        case 0x91:  insn_sta(state, addr_indy(state), 6); break;
+        case 0x86:  insn_stx(state, addr_zpg(state),  3); break;
+        case 0x96:  insn_stx(state, addr_zpgy(state), 4); break;
+        case 0x8E:  insn_stx(state, addr_abs(state),  4); break;
+        case 0x84:  insn_sty(state, addr_zpg(state),  3); break;
+        case 0x94:  insn_sty(state, addr_zpgx(state), 4); break;
+        case 0x8C:  insn_sty(state, addr_abs(state),  4); break;
+        case 0xAA:  insn_tax(state); break;
+        case 0xA8:  insn_tay(state); break;
+        case 0xBA:  insn_tsx(state); break;
+        case 0x8A:  insn_txa(state); break;
+        case 0x9A:  insn_txs(state); break;
+        case 0x98:  insn_tya(state); break;
+        default:
+            NOT_IMPLEMENTED("???");
+        }
     }
 }
 
@@ -834,7 +842,7 @@ Cpu6502::~Cpu6502()
 
 bool Cpu6502::create(MEMORY_BUS& bus)
 {
-    if (cpu_create(mState, bus))
+    if (!cpu_create(mState, bus))
         return false;
     return true;
 }
@@ -842,4 +850,14 @@ bool Cpu6502::create(MEMORY_BUS& bus)
 void Cpu6502::destroy()
 {
     cpu_destroy(mState);
+}
+
+void Cpu6502::reset()
+{
+    mState.pc = read16(mState, ADDR_VECTOR_RESET);
+}
+
+void Cpu6502::execute(int32_t cycles)
+{
+    cpu_execute(mState, cycles);
 }

@@ -2,6 +2,7 @@
 #define __BUS_H__
 
 #include <stdint.h>
+#include <vector>
 
 struct MEM_PAGE_READ;
 struct MEM_PAGE_WRITE;
@@ -9,42 +10,49 @@ struct MEM_PAGE_WRITE;
 typedef bool(*Read8Func)(void* context, uint32_t addr, uint8_t value);
 typedef bool(*Write8Func)(void* context, uint32_t addr, uint8_t& value);
 
+struct MEM_ACCESS
+{
+    uint32_t                base;
+    union
+    {
+        struct
+        {
+            const uint8_t*  mem;
+            Read8Func*      func;
+        }                   read;
+        struct
+        {
+            uint8_t*        mem;
+            Write8Func*     func;
+        }                   write;
+    }                       io;
+
+    void setReadMemory(const uint8_t* _mem, uint32_t _base = 0);
+    void setReadMethod(Read8Func* _func, uint32_t _base = 0);
+    void setWriteMemory(uint8_t* _mem, uint32_t _base = 0);
+    void setWriteMethod(Write8Func* _func, uint32_t _base = 0);
+};
+
 struct MEM_PAGE
 {
-    MEM_PAGE*       next;
-    uint32_t        start;
-    uint32_t        size;
+    MEM_PAGE*               next;
+    MEM_ACCESS*             access;
+    uint32_t                start;
+    uint32_t                end;
+    uint32_t                offset;
 };
-
-struct MEM_PAGE_READ : public MEM_PAGE
-{
-    uint8_t*        mem;
-    Read8Func*      func;
-};
-
-struct MEM_PAGE_WRITE : public MEM_PAGE
-{
-    uint8_t*        mem;
-    Write8Func*     func;
-};
-
-static const uint32_t MEM_SIZE_LOG2 = 16;
-static const uint32_t MEM_SIZE = 1 << MEM_SIZE_LOG2;
-static const uint32_t MEM_PAGE_SIZE_LOG2 = 10;
-static const uint32_t MEM_PAGE_SIZE = 1 << MEM_PAGE_SIZE_LOG2;
-static const uint32_t MEM_PAGE_COUNT = 16 - MEM_PAGE_SIZE_LOG2;
 
 struct MEMORY_BUS
 {
-    MEM_PAGE_READ*      mem_page_read[MEM_PAGE_COUNT];
-    MEM_PAGE_WRITE*     mem_page_write[MEM_PAGE_COUNT];
+    static const uint32_t PAGE_TABLE_READ = 0;
+    static const uint32_t PAGE_TABLE_WRITE = 1;
+    static const uint32_t PAGE_TABLE_COUNT = 2;
+
+    uint32_t        mem_limit;
+    uint32_t        page_size_log2;
+    MEM_PAGE**      page_table[PAGE_TABLE_COUNT];
 };
 
-void memory_bus_initialize(MEMORY_BUS& bus);
-bool memory_bus_add_page_read(MEMORY_BUS& bus, MEM_PAGE_READ& mem_page_read);
-bool memory_bus_add_page_write(MEMORY_BUS& bus, MEM_PAGE_WRITE& mem_page_write);
-MEM_PAGE_READ* memory_bus_find_page_read(const MEMORY_BUS& bus, uint16_t addr);
-MEM_PAGE_WRITE* memory_bus_find_page_write(const MEMORY_BUS& bus, uint16_t addr);
 uint8_t memory_bus_read8(const MEMORY_BUS& bus, uint16_t addr);
 void memory_bus_write8(const MEMORY_BUS& bus, uint16_t addr, uint8_t value);
 
@@ -53,14 +61,24 @@ class MemoryBus
 public:
     MemoryBus();
     ~MemoryBus();
+    bool create(uint32_t memSizeLog2, uint32_t pageSizeLog2);
+    void destroy();
     
     MEMORY_BUS& getState()
     {
-        return mMemoryBus;
+        return mState;
     }
 
+    bool addMemoryRange(uint32_t pageTableId, uint16_t start, uint16_t end, MEM_ACCESS& access);
+
 private:
-    MEMORY_BUS  mMemoryBus;
+    MEMORY_BUS                  mState;
+    std::vector<MEM_PAGE*>      mPageReadRef;
+    std::vector<MEM_PAGE*>      mPageWriteRef;
+    std::vector<MEM_PAGE*>      mPageContainer;
+
+    void initialize();
+    MEM_PAGE* allocatePage();
 };
 
 #endif
