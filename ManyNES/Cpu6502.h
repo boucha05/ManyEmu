@@ -11,7 +11,7 @@ struct CPU_STATE
     uint8_t             x;
     uint8_t             y;
     uint8_t             sr;
-    uint16_t            sp;
+    uint8_t             sp;
     uint16_t            pc;
     int32_t             clk;
     uint8_t             flag_c;
@@ -26,6 +26,7 @@ struct CPU_STATE
 void cpu_initialize(CPU_STATE& cpu);
 bool cpu_create(CPU_STATE& cpu, MEMORY_BUS& bus);
 void cpu_destroy(CPU_STATE& cpu);
+void cpu_reset(CPU_STATE& cpu);
 void cpu_execute(CPU_STATE& cpu, int32_t clock);
 
 class Cpu6502

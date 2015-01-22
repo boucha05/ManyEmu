@@ -38,6 +38,7 @@ uint8_t memory_bus_read8(const MEMORY_BUS& bus, uint16_t addr)
             else
             {
                 ASSERT(access->io.read.func);
+                return access->io.read.func(access->context, addrFixed);
             }
         }
         page = page->next;
@@ -48,7 +49,31 @@ uint8_t memory_bus_read8(const MEMORY_BUS& bus, uint16_t addr)
 
 void memory_bus_write8(const MEMORY_BUS& bus, uint16_t addr, uint8_t value)
 {
-    NOT_IMPLEMENTED("memory_bus_initialize");
+    ASSERT(addr <= bus.mem_limit);
+    uint32_t pageIndex = addr >> bus.page_size_log2;
+    MEM_PAGE* page = bus.page_table[MEMORY_BUS::PAGE_TABLE_WRITE][pageIndex];
+    while (page)
+    {
+        if ((page->start <= addr) && (page->end >= addr))
+        {
+            MEM_ACCESS* access = page->access;
+            uint16_t addrFixed = addr - page->offset;
+            uint8_t* buffer = access->io.write.mem;
+            if (buffer)
+            {
+                buffer[addrFixed] = value;
+                return;
+            }
+            else
+            {
+                ASSERT(access->io.write.func);
+                access->io.write.func(access->context, addrFixed, value);
+                return;
+            }
+        }
+        page = page->next;
+    }
+    ASSERT(false);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -56,24 +81,32 @@ void memory_bus_write8(const MEMORY_BUS& bus, uint16_t addr, uint8_t value)
 void MEM_ACCESS::setReadMemory(const uint8_t* _mem, uint32_t _base)
 {
     base = _base;
+    context = 0;
     io.read.mem = _mem;
+    io.read.func = nullptr;
 }
 
-void MEM_ACCESS::setReadMethod(Read8Func* _func, uint32_t _base)
+void MEM_ACCESS::setReadMethod(Read8Func _func, void* _context, uint32_t _base)
 {
     base = _base;
+    context = _context;
+    io.read.mem = nullptr;
     io.read.func = _func;
 }
 
 void MEM_ACCESS::setWriteMemory(uint8_t* _mem, uint32_t _base)
 {
     base = _base;
+    context = 0;
     io.write.mem = _mem;
+    io.write.func = nullptr;
 }
 
-void MEM_ACCESS::setWriteMethod(Write8Func* _func, uint32_t _base)
+void MEM_ACCESS::setWriteMethod(Write8Func _func, void* _context, uint32_t _base)
 {
     base = _base;
+    context = _context;
+    io.write.mem = nullptr;
     io.write.func = _func;
 }
 

@@ -7,30 +7,31 @@
 struct MEM_PAGE_READ;
 struct MEM_PAGE_WRITE;
 
-typedef bool(*Read8Func)(void* context, uint32_t addr, uint8_t value);
-typedef bool(*Write8Func)(void* context, uint32_t addr, uint8_t& value);
+typedef uint8_t (*Read8Func)(void* context, uint32_t addr);
+typedef void (*Write8Func)(void* context, uint32_t addr, uint8_t value);
 
 struct MEM_ACCESS
 {
     uint32_t                base;
+    void*                   context;
     union
     {
         struct
         {
             const uint8_t*  mem;
-            Read8Func*      func;
+            Read8Func       func;
         }                   read;
         struct
         {
             uint8_t*        mem;
-            Write8Func*     func;
+            Write8Func      func;
         }                   write;
     }                       io;
 
     void setReadMemory(const uint8_t* _mem, uint32_t _base = 0);
-    void setReadMethod(Read8Func* _func, uint32_t _base = 0);
+    void setReadMethod(Read8Func _func, void* _context, uint32_t _base = 0);
     void setWriteMemory(uint8_t* _mem, uint32_t _base = 0);
-    void setWriteMethod(Write8Func* _func, uint32_t _base = 0);
+    void setWriteMethod(Write8Func _func, void* _context, uint32_t _base = 0);
 };
 
 struct MEM_PAGE
