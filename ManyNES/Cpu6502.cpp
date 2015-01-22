@@ -223,6 +223,21 @@ namespace
         return read8(state, ++state.sp + 0x100);
     }
 
+    inline void branch_if(CPU_STATE& state, bool branch)
+    {
+        int16_t offset = static_cast<int16_t>(static_cast<int8_t>(fetch8(state)));
+        uint16_t pc = state.pc;
+        uint16_t addr = pc + offset;
+        if (branch)
+        {
+            state.pc = addr;
+            --state.clk;
+            if ((pc & 0xff00) != (addr & 0xff00))
+                --state.clk;
+        }
+        state.clk -= 2;
+    }
+
     ///////////////////////////////////////////////////////////////////////////
 
     inline void insn_adc(CPU_STATE& state, uint8_t src, int32_t clk)
@@ -277,7 +292,7 @@ namespace
 
     inline void insn_bpl(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED("bpl");
+        branch_if(state, !state.flag_n);
     }
 
     inline void insn_brk(CPU_STATE& state)
@@ -752,7 +767,7 @@ void cpu_execute(CPU_STATE& state, int32_t clock)
         //case 0x2C:  insn_bit(state, read8_abs(state), 3); break;
         //case 0x30:  insn_bmi(state); break;
         //case 0xD0:  insn_bmi(state); break;
-        //case 0x10:  insn_bpl(state); break;
+        case 0x10:  insn_bpl(state); break;
         //case 0x00:  insn_brk(state); break;
         //case 0x50:  insn_bvc(state); break;
         //case 0x70:  insn_bvs(state); break;
