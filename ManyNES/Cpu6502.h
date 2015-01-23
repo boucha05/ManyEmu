@@ -38,6 +38,7 @@ public:
     void destroy();
     void reset();
     void execute(int32_t cycles);
+    uint16_t disassemble(char* buffer, size_t size, uint16_t addr);
     
     CPU_STATE& getState()
     {

@@ -39,6 +39,89 @@ namespace
     f0  BEQ_rel,  SBC_indy,  NOP_impl, NOP_impl, NOP_impl, SBC_zpgx, INC_zpgx, NOP_impl, SED_impl, SBC_absy, NOP_impl, NOP_impl, NOP_impl, SBC_absx, INC_absx, NOP_impl,
     */
 
+    enum ADDR_MODE
+    {
+        ADDR_IMPL,
+        ADDR_IMM,
+        ADDR_ACC,
+        ADDR_REL,
+        ADDR_ABS,
+        ADDR_ZPG,
+        ADDR_ABSX,
+        ADDR_ABSY,
+        ADDR_ZPGX,
+        ADDR_ZPGY,
+        ADDR_IND,
+        ADDR_INDX,
+        ADDR_INDY,
+    };
+
+    enum INSN_TYPE
+    {
+        INSN_ADC, INSN_AND, INSN_ASL, INSN_BCC, INSN_BCS, INSN_BEQ, INSN_BIT, INSN_BMI,
+        INSN_BNE, INSN_BPL, INSN_BRK, INSN_BVC, INSN_BVS, INSN_CLC, INSN_CLD, INSN_CLI,
+        INSN_CLV, INSN_CMP, INSN_CPX, INSN_CPY, INSN_DEC, INSN_DEX, INSN_DEY, INSN_EOR,
+        INSN_INC, INSN_INX, INSN_INY, INSN_JMP, INSN_JSR, INSN_LDA, INSN_LDX, INSN_LDY,
+        INSN_LSR, INSN_NOP, INSN_ORA, INSN_PHA, INSN_PHP, INSN_PLA, INSN_PLP, INSN_ROL,
+        INSN_ROR, INSN_RTI, INSN_RTS, INSN_SBC, INSN_SEC, INSN_SED, INSN_SEI, INSN_STA,
+        INSN_STX, INSN_STY, INSN_TAX, INSN_TAY, INSN_TSX, INSN_TXA, INSN_TXS, INSN_TYA,
+        INSN_XXX,
+    };
+
+    const char* insn_name[] =
+    {
+        "adc", "and", "asl", "bcc", "bcs", "beq", "bit", "bmi",
+        "bne", "bpl", "brk", "bvc", "bvs", "clc", "cld", "cli",
+        "clv", "cmp", "cpx", "cpy", "dec", "dex", "dey", "eor",
+        "inc", "inx", "iny", "jmp", "jsr", "lda", "ldx", "ldy",
+        "lsr", "nop", "ora", "pha", "php", "pla", "plp", "rol",
+        "ror", "rti", "rts", "sbc", "sec", "sed", "sei", "sta",
+        "stx", "sty", "tax", "tay", "tsx", "txa", "txs", "tya",
+        "???"
+    };
+
+    const uint8_t addr_mode_table[] =
+    {
+        //   00         01          02         03         04         05         06         07         08         09         0a         0b         0c         0d         0e         0f
+        ADDR_IMPL, ADDR_INDX,  ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ZPG,  ADDR_ZPG,  ADDR_IMPL, ADDR_IMPL, ADDR_IMM,  ADDR_ACC,  ADDR_IMPL, ADDR_IMPL, ADDR_ABS,  ADDR_ABS,  ADDR_IMPL, // 00
+        ADDR_REL,  ADDR_INDY,  ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ZPGX, ADDR_ZPGX, ADDR_IMPL, ADDR_IMPL, ADDR_ABSY, ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ABSX, ADDR_ABSX, ADDR_IMPL, // 10
+        ADDR_ABS,  ADDR_INDX,  ADDR_IMPL, ADDR_IMPL, ADDR_ZPG,  ADDR_ZPG,  ADDR_ZPG,  ADDR_IMPL, ADDR_IMPL, ADDR_IMM,  ADDR_ACC,  ADDR_IMPL, ADDR_ABS,  ADDR_ABS,  ADDR_ABS,  ADDR_IMPL, // 20
+        ADDR_REL,  ADDR_INDY,  ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ZPGX, ADDR_ZPGX, ADDR_IMPL, ADDR_IMPL, ADDR_ABSY, ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ABSX, ADDR_ABSX, ADDR_IMPL, // 30
+        ADDR_IMPL, ADDR_INDX,  ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ZPG,  ADDR_ZPG,  ADDR_IMPL, ADDR_IMPL, ADDR_IMM,  ADDR_ACC,  ADDR_IMPL, ADDR_ABS,  ADDR_ABS,  ADDR_ABS,  ADDR_IMPL, // 40
+        ADDR_REL,  ADDR_INDY,  ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ZPGX, ADDR_ZPGX, ADDR_IMPL, ADDR_IMPL, ADDR_ABSY, ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ABSX, ADDR_ABSX, ADDR_IMPL, // 50
+        ADDR_IMPL, ADDR_INDX,  ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ZPG,  ADDR_ZPG,  ADDR_IMPL, ADDR_IMPL, ADDR_IMM,  ADDR_ACC,  ADDR_IMPL, ADDR_IND,  ADDR_ABS,  ADDR_ABS,  ADDR_IMPL, // 60
+        ADDR_REL,  ADDR_INDY,  ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ZPGX, ADDR_ZPGX, ADDR_IMPL, ADDR_IMPL, ADDR_ABSY, ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ABSX, ADDR_ABSX, ADDR_IMPL, // 70
+        ADDR_IMPL, ADDR_INDX,  ADDR_IMPL, ADDR_IMPL, ADDR_ZPG,  ADDR_ZPG,  ADDR_ZPG,  ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ABS,  ADDR_ABS,  ADDR_ABS,  ADDR_IMPL, // 80
+        ADDR_REL,  ADDR_INDY,  ADDR_IMPL, ADDR_IMPL, ADDR_ZPGX, ADDR_ZPGX, ADDR_ZPGY, ADDR_IMPL, ADDR_IMPL, ADDR_ABSY, ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ABSX, ADDR_IMPL, ADDR_IMPL, // 90
+        ADDR_IMM,  ADDR_INDX,  ADDR_IMM,  ADDR_IMPL, ADDR_ZPG,  ADDR_ZPG,  ADDR_ZPG,  ADDR_IMPL, ADDR_IMPL, ADDR_IMM,  ADDR_IMPL, ADDR_IMPL, ADDR_ABS,  ADDR_ABS,  ADDR_ABS,  ADDR_IMPL, // a0
+        ADDR_REL,  ADDR_INDY,  ADDR_IMPL, ADDR_IMPL, ADDR_ZPGX, ADDR_ZPGX, ADDR_ZPGY, ADDR_IMPL, ADDR_IMPL, ADDR_ABSY, ADDR_IMPL, ADDR_IMPL, ADDR_ABSX, ADDR_ABSX, ADDR_ABSY, ADDR_IMPL, // b0
+        ADDR_IMM,  ADDR_INDX,  ADDR_IMPL, ADDR_IMPL, ADDR_ZPG,  ADDR_ZPG,  ADDR_ZPG,  ADDR_IMPL, ADDR_IMPL, ADDR_IMM,  ADDR_IMPL, ADDR_IMPL, ADDR_ABS,  ADDR_ABS,  ADDR_ABS,  ADDR_IMPL, // c0
+        ADDR_REL,  ADDR_INDY,  ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ZPGX, ADDR_ZPGX, ADDR_IMPL, ADDR_IMPL, ADDR_ABSY, ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ABSX, ADDR_ABSX, ADDR_IMPL, // d0
+        ADDR_IMM,  ADDR_INDX,  ADDR_IMPL, ADDR_IMPL, ADDR_ZPG,  ADDR_ZPG,  ADDR_ZPG,  ADDR_IMPL, ADDR_IMPL, ADDR_IMM,  ADDR_IMPL, ADDR_IMPL, ADDR_ABS,  ADDR_ABS,  ADDR_ABS,  ADDR_IMPL, // e0
+        ADDR_REL,  ADDR_INDY,  ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ZPGX, ADDR_ZPGX, ADDR_IMPL, ADDR_IMPL, ADDR_ABSY, ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ABSX, ADDR_ABSX, ADDR_IMPL, // f0
+    };
+
+    const uint8_t insn_table[] =
+    {
+        //   00        01        02        03        04        05        06        07        08        09        0a        0b        0c        0d        0e        0f
+        INSN_BRK, INSN_ORA, INSN_XXX, INSN_XXX, INSN_XXX, INSN_ORA, INSN_ASL, INSN_XXX, INSN_PHP, INSN_ORA, INSN_ASL, INSN_XXX, INSN_XXX, INSN_ORA, INSN_ASL, INSN_XXX, // 00
+        INSN_BPL, INSN_ORA, INSN_XXX, INSN_XXX, INSN_XXX, INSN_ORA, INSN_ASL, INSN_XXX, INSN_CLC, INSN_ORA, INSN_XXX, INSN_XXX, INSN_XXX, INSN_ORA, INSN_ASL, INSN_XXX, // 10
+        INSN_JSR, INSN_AND, INSN_XXX, INSN_XXX, INSN_BIT, INSN_AND, INSN_ROL, INSN_XXX, INSN_PLP, INSN_AND, INSN_ROL, INSN_XXX, INSN_BIT, INSN_AND, INSN_ROL, INSN_XXX, // 20
+        INSN_BMI, INSN_AND, INSN_XXX, INSN_XXX, INSN_XXX, INSN_AND, INSN_ROL, INSN_XXX, INSN_SEC, INSN_AND, INSN_XXX, INSN_XXX, INSN_XXX, INSN_AND, INSN_ROL, INSN_XXX, // 30
+        INSN_RTI, INSN_EOR, INSN_XXX, INSN_XXX, INSN_XXX, INSN_EOR, INSN_LSR, INSN_XXX, INSN_PHA, INSN_EOR, INSN_LSR, INSN_XXX, INSN_JMP, INSN_EOR, INSN_LSR, INSN_XXX, // 40
+        INSN_BVC, INSN_EOR, INSN_XXX, INSN_XXX, INSN_XXX, INSN_EOR, INSN_LSR, INSN_XXX, INSN_CLI, INSN_EOR, INSN_XXX, INSN_XXX, INSN_XXX, INSN_EOR, INSN_LSR, INSN_XXX, // 50
+        INSN_RTS, INSN_ADC, INSN_XXX, INSN_XXX, INSN_XXX, INSN_ADC, INSN_ROR, INSN_XXX, INSN_PLA, INSN_ADC, INSN_ROR, INSN_XXX, INSN_JMP, INSN_ADC, INSN_ROR, INSN_XXX, // 60
+        INSN_BVS, INSN_ADC, INSN_XXX, INSN_XXX, INSN_XXX, INSN_ADC, INSN_ROR, INSN_XXX, INSN_SEI, INSN_ADC, INSN_XXX, INSN_XXX, INSN_XXX, INSN_ADC, INSN_ROR, INSN_XXX, // 70
+        INSN_XXX, INSN_STA, INSN_XXX, INSN_XXX, INSN_STY, INSN_STA, INSN_STX, INSN_XXX, INSN_DEY, INSN_XXX, INSN_TXA, INSN_XXX, INSN_STY, INSN_STA, INSN_STX, INSN_XXX, // 80
+        INSN_BCC, INSN_STA, INSN_XXX, INSN_XXX, INSN_STY, INSN_STA, INSN_STX, INSN_XXX, INSN_TYA, INSN_STA, INSN_TXS, INSN_XXX, INSN_XXX, INSN_STA, INSN_XXX, INSN_XXX, // 90
+        INSN_LDY, INSN_LDA, INSN_LDX, INSN_XXX, INSN_LDY, INSN_LDA, INSN_LDX, INSN_XXX, INSN_TAY, INSN_LDA, INSN_TAX, INSN_XXX, INSN_LDY, INSN_LDA, INSN_LDX, INSN_XXX, // a0
+        INSN_BCS, INSN_LDA, INSN_XXX, INSN_XXX, INSN_LDY, INSN_LDA, INSN_LDX, INSN_XXX, INSN_CLV, INSN_LDA, INSN_TSX, INSN_XXX, INSN_LDY, INSN_LDA, INSN_LDX, INSN_XXX, // b0
+        INSN_CPY, INSN_CMP, INSN_XXX, INSN_XXX, INSN_CPY, INSN_CMP, INSN_DEC, INSN_XXX, INSN_INY, INSN_CMP, INSN_DEX, INSN_XXX, INSN_CPY, INSN_CMP, INSN_DEC, INSN_XXX, // c0
+        INSN_BNE, INSN_CMP, INSN_XXX, INSN_XXX, INSN_XXX, INSN_CMP, INSN_DEC, INSN_XXX, INSN_CLD, INSN_CMP, INSN_XXX, INSN_XXX, INSN_XXX, INSN_CMP, INSN_DEC, INSN_XXX, // d0
+        INSN_CPX, INSN_SBC, INSN_XXX, INSN_XXX, INSN_CPX, INSN_SBC, INSN_INC, INSN_XXX, INSN_INX, INSN_SBC, INSN_NOP, INSN_XXX, INSN_CPX, INSN_SBC, INSN_INC, INSN_XXX, // e0
+        INSN_BEQ, INSN_SBC, INSN_XXX, INSN_XXX, INSN_XXX, INSN_SBC, INSN_INC, INSN_XXX, INSN_SED, INSN_SBC, INSN_XXX, INSN_XXX, INSN_XXX, INSN_SBC, INSN_INC, INSN_XXX, // f0
+    };
+    
     void NOT_IMPLEMENTED_ADDR_MODE(const char* mode)
     {
         printf("Address mode %s not implemented\n", mode);
@@ -80,6 +163,52 @@ namespace
         uint8_t hi = fetch8(state);
         uint16_t addr = static_cast<uint16_t>(lo) | (static_cast<uint16_t>(hi) << 8);
         return addr;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+
+    uint8_t peek8(CPU_STATE& state, uint16_t& addr)
+    {
+        return read8(state, addr++);
+    }
+
+    uint16_t peek16(CPU_STATE& state, uint16_t& addr)
+    {
+        uint8_t lo = peek8(state, addr);
+        uint8_t hi = peek8(state, addr);
+        uint16_t value = static_cast<uint16_t>(lo) | (static_cast<uint16_t>(hi) << 8);
+        return value;
+    }
+
+    uint16_t disassemble(CPU_STATE& state, uint16_t pc, char* dest, size_t size)
+    {
+        uint8_t insn = peek8(state, pc);
+        INSN_TYPE insn_type = static_cast<INSN_TYPE>(insn_table[insn]);
+        ADDR_MODE addr_mode = static_cast<ADDR_MODE>(addr_mode_table[insn]);
+        const char* opcode = insn_name[insn_type];
+        char temp[32];
+        switch (addr_mode)
+        {
+        case ADDR_IMPL: sprintf(temp, "%s", opcode); break;
+        case ADDR_IMM:  sprintf(temp, "%s     #$%02x", opcode, peek8(state, pc)); break;
+        //case ADDR_ACC:  sprintf(temp, "%s     a", opcode); break;
+        case ADDR_REL:  sprintf(temp, "%s     $%04x", opcode, static_cast<uint16_t>(static_cast<int8_t>(peek8(state, pc))) + pc); break;
+        case ADDR_ABS:  sprintf(temp, "%s     $%04x", opcode, peek16(state, pc)); break;
+        //case ADDR_ZPG:  sprintf(temp, "%s     $%02x", opcode, peek8(state, pc)); break;
+        //case ADDR_ABSX: sprintf(temp, "%s     $%04x, x", opcode, peek16(state, pc)); break;
+        //case ADDR_ABSY: sprintf(temp, "%s     $%04x, y", opcode, peek16(state, pc)); break;
+        //case ADDR_ZPGX: sprintf(temp, "%s     $%02x, x", opcode, peek8(state, pc)); break;
+        //case ADDR_ZPGY: sprintf(temp, "%s     $%02x, y", opcode, peek8(state, pc)); break;
+        //case ADDR_IND:  sprintf(temp, "%s     ($%04x)", opcode, peek16(state, pc)); break;
+        //case ADDR_INDX: sprintf(temp, "%s     ($%02x, x)", opcode, peek8(state, pc)); break;
+        //case ADDR_INDY: sprintf(temp, "%s     ($%02x), y", opcode, peek8(state, pc)); break;
+        default:
+            assert(0);
+        }
+        if (size-- > 0)
+            strncpy(dest, temp, size);
+        dest[size] = 0;
+        return pc;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -736,6 +865,12 @@ void cpu_execute(CPU_STATE& state, int32_t clock)
     state.clk += clock;
     while (state.clk > 0)
     {
+#if 1
+        char temp[32];
+        uint16_t pc = state.pc;
+        disassemble(state, pc, temp, sizeof(temp));
+        printf("$%04x:  %s\n", state.pc, temp);
+#endif
         uint8_t insn = fetch8(state);
         switch (insn)
         {
@@ -927,4 +1062,9 @@ void Cpu6502::reset()
 void Cpu6502::execute(int32_t cycles)
 {
     cpu_execute(mState, cycles);
+}
+
+uint16_t Cpu6502::disassemble(char* buffer, size_t size, uint16_t addr)
+{
+    return ::disassemble(mState, addr, buffer, size);
 }
