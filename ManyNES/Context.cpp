@@ -96,6 +96,7 @@ namespace
             cpu.reset();
 
             // TODO: REMOVE THIS ONCE THE CPU AND MEMORY ARE MORE RELIABLE
+            cpu.addTimedEvent(startVBlank, this, 80);
             cpu.execute(100);
 
             return true;
@@ -175,6 +176,16 @@ namespace
         static void ppuRegsWrite(void* context, uint32_t addr, uint8_t value)
         {
             static_cast<ContextImpl*>(context)->ppuRegsWrite(addr, value);
+        }
+
+        void startVBlank()
+        {
+            printf("[VBLANK]\n");
+        }
+
+        static void startVBlank(void* context, int32_t ticks)
+        {
+            static_cast<ContextImpl*>(context)->startVBlank();
         }
 
         struct PPU_STATE

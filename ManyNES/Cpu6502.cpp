@@ -192,7 +192,7 @@ namespace
         case ADDR_IMPL: sprintf(temp, "%s", opcode); break;
         case ADDR_IMM:  sprintf(temp, "%s     #$%02x", opcode, peek8(state, pc)); break;
         //case ADDR_ACC:  sprintf(temp, "%s     a", opcode); break;
-        case ADDR_REL:  sprintf(temp, "%s     $%04x", opcode, static_cast<uint16_t>(static_cast<int8_t>(peek8(state, pc))) + pc); break;
+        case ADDR_REL:  sprintf(temp, "%s     $%04x", opcode, static_cast<uint16_t>(static_cast<int8_t>(peek8(state, pc)) + pc)); break;
         case ADDR_ABS:  sprintf(temp, "%s     $%04x", opcode, peek16(state, pc)); break;
         //case ADDR_ZPG:  sprintf(temp, "%s     $%02x", opcode, peek8(state, pc)); break;
         //case ADDR_ABSX: sprintf(temp, "%s     $%04x, x", opcode, peek16(state, pc)); break;
@@ -1032,6 +1032,7 @@ void cpu_execute(CPU_STATE& state, int32_t clock)
 }
 
 Cpu6502::Cpu6502()
+    : mDesiredTicks(0)
 {
     cpu_initialize(mState);
 }
@@ -1061,10 +1062,59 @@ void Cpu6502::reset()
 
 void Cpu6502::execute(int32_t cycles)
 {
-    cpu_execute(mState, cycles);
+    mState.ticks = 0;
+
+    // Let a chance to first pending time event to execute
+    // before the desired number of cycles if necessary
+    int32_t startCycles = cycles;
+    if (!mTimers.empty())
+    {
+        int32_t firstTimerEventCycles = mTimers.begin()->first;
+        if (startCycles > firstTimerEventCycles)
+            startCycles = firstTimerEventCycles;
+    }
+
+    // Execute until the specified number of cycles is executed
+    mDesiredTicks = startCycles - mState.ticks;
+    do
+    {
+        // Let the CPU run until an event occurs or until
+        // the desired number of cycles has executed
+        cpu_execute(mState, mDesiredTicks);
+        mState.ticks += mDesiredTicks - mState.clk;
+
+        // If the execution returned earlier, check if there are some
+        // timer events that are ready to be signaled
+        while (!mTimers.empty() && (mTimers.begin()->first <= mState.ticks))
+        {
+            const auto& timerEvent = mTimers.begin()->second;
+            timerEvent.callback(timerEvent.context, mTimers.begin()->first);
+            mTimers.erase(mTimers.begin());
+        }
+
+        // Prepare the number of cycles to execute next
+        mDesiredTicks = cycles - mState.ticks;
+    } while (mState.ticks < cycles);
 }
 
 uint16_t Cpu6502::disassemble(char* buffer, size_t size, uint16_t addr)
 {
     return ::disassemble(mState, addr, buffer, size);
+}
+
+void Cpu6502::addTimedEvent(TimerCallback callback, void* context, int32_t ticks)
+{
+    TimerEvent timerEvent;
+    timerEvent.callback = callback;
+    timerEvent.context = context;
+    mTimers.insert(std::pair<int32_t, TimerEvent>(ticks, timerEvent));
+
+    int32_t expectedTicks = mState.ticks + mDesiredTicks;
+    int32_t ticksOverflow = expectedTicks - ticks;
+    int32_t executedTicks = expectedTicks - mState.clk;
+    if (ticksOverflow > 0)
+    {
+        mState.clk -= ticksOverflow;
+        mDesiredTicks -= mState.clk;
+    }
 }
