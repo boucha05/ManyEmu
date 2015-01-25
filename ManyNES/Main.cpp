@@ -23,6 +23,7 @@ private:
     void render();
 
     SDL_Window*             mWindow;
+    SDL_Renderer*           mRenderer;
     SDL_Surface*            mScreen;
     SDL_Surface*            mSurface;
     bool                    mValid;
@@ -32,6 +33,7 @@ private:
 
 Application::Application()
     : mWindow(nullptr)
+    , mRenderer(nullptr)
     , mScreen(nullptr)
     , mSurface(nullptr)
     , mValid(false)
@@ -62,9 +64,12 @@ void Application::terminate()
 
 bool Application::create()
 {
-    mWindow = SDL_CreateWindow("ManyNES", 100,
-        100, 512, 480, SDL_WINDOW_SHOWN);
+    mWindow = SDL_CreateWindow("ManyNES", 100, 100, 512, 480, SDL_WINDOW_SHOWN);
     if (!mWindow)
+        return false;
+
+    mRenderer = SDL_CreateRenderer(mWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (!mRenderer)
         return false;
 
     mScreen = SDL_GetWindowSurface(mWindow);
@@ -104,6 +109,12 @@ void Application::destroy()
     {
         mRom->dispose();
         mRom = nullptr;
+    }
+
+    if (mRenderer)
+    {
+        SDL_DestroyRenderer(mRenderer);
+        mRenderer = nullptr;
     }
 
     if (mWindow)
@@ -160,6 +171,8 @@ void Application::update()
 
 void Application::render()
 {
+    SDL_RenderPresent(mRenderer);
+
     SDL_Rect rect = { 0, 0, 256, 256 };
     SDL_BlitSurface(mSurface, nullptr, mScreen, &rect);
 
