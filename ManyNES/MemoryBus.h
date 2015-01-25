@@ -7,8 +7,8 @@
 struct MEM_PAGE_READ;
 struct MEM_PAGE_WRITE;
 
-typedef uint8_t (*Read8Func)(void* context, uint32_t addr);
-typedef void (*Write8Func)(void* context, uint32_t addr, uint8_t value);
+typedef uint8_t (*Read8Func)(void* context, int32_t ticks, uint32_t addr);
+typedef void (*Write8Func)(void* context, int32_t ticks, uint32_t addr, uint8_t value);
 
 struct MEM_ACCESS
 {
@@ -54,8 +54,8 @@ struct MEMORY_BUS
     MEM_PAGE**      page_table[PAGE_TABLE_COUNT];
 };
 
-uint8_t memory_bus_read8(const MEMORY_BUS& bus, uint16_t addr);
-void memory_bus_write8(const MEMORY_BUS& bus, uint16_t addr, uint8_t value);
+uint8_t memory_bus_read8(const MEMORY_BUS& bus, int32_t ticks, uint16_t addr);
+void memory_bus_write8(const MEMORY_BUS& bus, int32_t ticks, uint16_t addr, uint8_t value);
 
 class MemoryBus
 {

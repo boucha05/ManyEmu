@@ -19,7 +19,7 @@ namespace
     }
 }
 
-uint8_t memory_bus_read8(const MEMORY_BUS& bus, uint16_t addr)
+uint8_t memory_bus_read8(const MEMORY_BUS& bus, int32_t ticks, uint16_t addr)
 {
     ASSERT(addr <= bus.mem_limit);
     uint32_t pageIndex = addr >> bus.page_size_log2;
@@ -38,7 +38,7 @@ uint8_t memory_bus_read8(const MEMORY_BUS& bus, uint16_t addr)
             else
             {
                 ASSERT(access->io.read.func);
-                return access->io.read.func(access->context, addrFixed);
+                return access->io.read.func(access->context, ticks, addrFixed);
             }
         }
         page = page->next;
@@ -47,7 +47,7 @@ uint8_t memory_bus_read8(const MEMORY_BUS& bus, uint16_t addr)
     return 0;
 }
 
-void memory_bus_write8(const MEMORY_BUS& bus, uint16_t addr, uint8_t value)
+void memory_bus_write8(const MEMORY_BUS& bus, int32_t ticks, uint16_t addr, uint8_t value)
 {
     ASSERT(addr <= bus.mem_limit);
     uint32_t pageIndex = addr >> bus.page_size_log2;
@@ -67,7 +67,7 @@ void memory_bus_write8(const MEMORY_BUS& bus, uint16_t addr, uint8_t value)
             else
             {
                 ASSERT(access->io.write.func);
-                access->io.write.func(access->context, addrFixed, value);
+                access->io.write.func(access->context, ticks, addrFixed, value);
                 return;
             }
         }

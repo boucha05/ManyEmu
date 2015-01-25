@@ -14,8 +14,8 @@ namespace NES
         void destroy();
         void reset();
         void update(void* surface, uint32_t pitch);
-        uint8_t regRead(uint32_t addr);
-        void regWrite(uint32_t addr, uint8_t value);
+        uint8_t regRead(int32_t ticks, uint32_t addr);
+        void regWrite(int32_t ticks, uint32_t addr, uint8_t value);
         void startVBlank();
 
     private:

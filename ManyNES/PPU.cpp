@@ -4,10 +4,6 @@
 
 namespace
 {
-    static const uint32_t CPU_CLOCK_FREQUENCY_NTSC = 1789773;
-    static const uint32_t CPU_CLOCK_FREQUENCY_PAL = 1662607;
-    static const uint32_t CPU_CLOCK_DENDY = 1773448;
-
     static const uint32_t PPU_REG_PPUCTRL = 0x0;
     static const uint32_t PPU_REG_PPUMASK = 0x1;
     static const uint32_t PPU_REG_PPUSTATUS = 0x2;
@@ -54,7 +50,7 @@ namespace NES
 
     }
 
-    uint8_t PPU::regRead(uint32_t addr)
+    uint8_t PPU::regRead(int32_t ticks, uint32_t addr)
     {
         addr = (addr & 7);
         switch (addr)
@@ -74,7 +70,7 @@ namespace NES
         return 0;
     }
 
-    void PPU::regWrite(uint32_t addr, uint8_t value)
+    void PPU::regWrite(int32_t ticks, uint32_t addr, uint8_t value)
     {
         addr = (addr & 7);
         switch (addr)

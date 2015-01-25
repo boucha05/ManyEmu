@@ -14,9 +14,13 @@ namespace
     static const uint32_t MEM_PAGE_SIZE = 1 << MEM_PAGE_SIZE_LOG2;
     static const uint32_t MEM_PAGE_COUNT = 16 - MEM_PAGE_SIZE_LOG2;
 
-    static const uint32_t CPU_CLOCK_FREQUENCY_NTSC = 1789773;
-    static const uint32_t CPU_CLOCK_FREQUENCY_PAL = 1662607;
-    static const uint32_t CPU_CLOCK_DENDY = 1773448;
+    static const uint32_t MASTER_CLOCK_FREQUENCY_NTSC = 21477272;
+    static const uint32_t MASTER_CLOCK_FREQUENCY_PAL = 26601712;
+    static const uint32_t MASTER_CLOCK_DENDY = 26601712;
+
+    static const uint32_t MASTER_CLOCK_CPU_DIVIDER_NTSC = 12;
+    static const uint32_t MASTER_CLOCK_CPU_DIVIDER_PAL = 16;
+    static const uint32_t MASTER_CLOCK_CPU_DIVIDER_DENDY = 15;
 
     void NOT_IMPLEMENTED()
     {
@@ -47,7 +51,7 @@ namespace
 
             if (!cpuMemory.create(MEM_SIZE_LOG2, MEM_PAGE_SIZE_LOG2))
                 return false;
-            if (!cpu.create(cpuMemory.getState()))
+            if (!cpu.create(cpuMemory.getState(), MASTER_CLOCK_CPU_DIVIDER_NTSC))
                 return false;
 
             const auto& romDesc = rom->getDescription();
@@ -88,8 +92,8 @@ namespace
             reset();
 
             // TODO: REMOVE THIS ONCE THE CPU AND MEMORY ARE MORE RELIABLE
-            cpu.addTimedEvent(startVBlank, this, 80);
-            cpu.execute(100);
+            cpu.addTimedEvent(startVBlank, this, 80 * MASTER_CLOCK_CPU_DIVIDER_NTSC);
+            cpu.execute(100 * MASTER_CLOCK_CPU_DIVIDER_NTSC);
 
             return true;
         }
@@ -122,19 +126,19 @@ namespace
 
         virtual void update(void* surface, uint32_t pitch)
         {
-            //cpu.execute(CPU_CLOCK_FREQUENCY_NTSC);
+            //cpu.execute(MASTER_CLOCK_FREQUENCY_NTSC / 60);
             ppu.update(surface, pitch);
         }
 
     private:
-        static uint8_t ppuRegsRead(void* context, uint32_t addr)
+        static uint8_t ppuRegsRead(void* context, int32_t ticks, uint32_t addr)
         {
-            return static_cast<ContextImpl*>(context)->ppu.regRead(addr);
+            return static_cast<ContextImpl*>(context)->ppu.regRead(ticks, addr);
         }
 
-        static void ppuRegsWrite(void* context, uint32_t addr, uint8_t value)
+        static void ppuRegsWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value)
         {
-            static_cast<ContextImpl*>(context)->ppu.regWrite(addr, value);
+            static_cast<ContextImpl*>(context)->ppu.regWrite(ticks, addr, value);
         }
 
         void startVBlank()
