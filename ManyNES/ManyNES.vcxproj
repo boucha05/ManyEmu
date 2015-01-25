@@ -115,6 +115,7 @@
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Mapper0.cpp" />
     <ClCompile Include="Mappers.cpp" />
+    <ClCompile Include="PPU.cpp" />
     <ClCompile Include="Rom.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -123,6 +124,7 @@
     <ClInclude Include="Mappers.h" />
     <ClInclude Include="nes.h" />
     <ClInclude Include="Palette.h" />
+    <ClInclude Include="PPU.h" />
     <ClInclude Include="r6502.h" />
   </ItemGroup>
   <ItemGroup>

@@ -2,6 +2,7 @@
 #include "Cpu6502.h"
 #include "Mappers.h"
 #include "MemoryBus.h"
+#include "PPU.h"
 #include <assert.h>
 #include <vector>
 
@@ -16,15 +17,6 @@ namespace
     static const uint32_t CPU_CLOCK_FREQUENCY_NTSC = 1789773;
     static const uint32_t CPU_CLOCK_FREQUENCY_PAL = 1662607;
     static const uint32_t CPU_CLOCK_DENDY = 1773448;
-
-    static const uint32_t PPU_REG_PPUCTRL = 0x2000;
-    static const uint32_t PPU_REG_PPUMASK = 0x2001;
-    static const uint32_t PPU_REG_PPUSTATUS = 0x2002;
-    static const uint32_t PPU_REG_OAMADDR = 0x2003;
-    static const uint32_t PPU_REG_OAMDATA = 0x2004;
-    static const uint32_t PPU_REG_PPUSCROLL = 0x2005;
-    static const uint32_t PPU_REG_PPUADDR = 0x2006;
-    static const uint32_t PPU_REG_PPUDATA = 0x2007;
 
     void NOT_IMPLEMENTED()
     {
@@ -93,7 +85,7 @@ namespace
             if (!mapper->initialize(*rom, cpuMemory))
                 return false;
 
-            cpu.reset();
+            reset();
 
             // TODO: REMOVE THIS ONCE THE CPU AND MEMORY ARE MORE RELIABLE
             cpu.addTimedEvent(startVBlank, this, 80);
@@ -121,77 +113,39 @@ namespace
             delete this;
         }
 
+        virtual void reset()
+        {
+            cpu.reset();
+            ppu.reset();
+            mapper->reset();
+        }
+
         virtual void update(void* surface, uint32_t pitch)
         {
             //cpu.execute(CPU_CLOCK_FREQUENCY_NTSC);
+            ppu.update(surface, pitch);
         }
 
     private:
-        inline uint8_t ppuRegsRead(uint32_t addr)
-        {
-            addr = 0x2000 + (addr & 7);
-            switch (addr)
-            {
-            //case PPU_REG_PPUCTRL: break;
-            //case PPU_REG_PPUMASK: break;
-            case PPU_REG_PPUSTATUS:
-                return 0; // TODO: Implement status register and reset latches
-            //case PPU_REG_OAMADDR: break;
-            //case PPU_REG_OAMDATA: break;
-            //case PPU_REG_PPUSCROLL: break;
-            //case PPU_REG_PPUADDR: break;
-            //case PPU_REG_PPUDATA: break;
-            default:
-                NOT_IMPLEMENTED();
-            }
-            return 0;
-        }
-
-        inline void ppuRegsWrite(uint32_t addr, uint8_t value)
-        {
-            addr = 0x2000 + (addr & 7);
-            switch (addr)
-            {
-            case PPU_REG_PPUCTRL:
-                // TODO: Toggle rendering if sensitive state change are detected
-                ppu.ppu_ctrl = value;
-                break;
-            //case PPU_REG_PPUMASK: break;
-            //case PPU_REG_PPUSTATUS: break;
-            //case PPU_REG_OAMADDR: break;
-            //case PPU_REG_OAMDATA: break;
-            //case PPU_REG_PPUSCROLL: break;
-            //case PPU_REG_PPUADDR: break;
-            //case PPU_REG_PPUDATA: break;
-            default:
-                NOT_IMPLEMENTED();
-            }
-        }
-
         static uint8_t ppuRegsRead(void* context, uint32_t addr)
         {
-            return static_cast<ContextImpl*>(context)->ppuRegsRead(addr);
+            return static_cast<ContextImpl*>(context)->ppu.regRead(addr);
         }
 
         static void ppuRegsWrite(void* context, uint32_t addr, uint8_t value)
         {
-            static_cast<ContextImpl*>(context)->ppuRegsWrite(addr, value);
+            static_cast<ContextImpl*>(context)->ppu.regWrite(addr, value);
         }
 
         void startVBlank()
         {
-            printf("[VBLANK]\n");
+            ppu.startVBlank();
         }
 
         static void startVBlank(void* context, int32_t ticks)
         {
             static_cast<ContextImpl*>(context)->startVBlank();
         }
-
-        struct PPU_STATE
-        {
-            uint8_t             ppu_ctrl;
-        };
 
         const NES::Rom*         rom;
         MemoryBus               cpuMemory;
@@ -202,7 +156,7 @@ namespace
         MEM_ACCESS              accessCpuRamRead;
         MEM_ACCESS              accessCpuRamWrite;
         Cpu6502                 cpu;
-        PPU_STATE               ppu;
+        NES::PPU                ppu;
         std::vector<uint8_t>    cpuRam;
         NES::Mapper*            mapper;
     };

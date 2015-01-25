@@ -50,6 +50,7 @@ namespace NES
     class Context : public IDisposable
     {
     public:
+        virtual void reset() = 0;
         virtual void update(void* surface, uint32_t pitch) = 0;
 
         static Context* create(const Rom& rom);

@@ -12,6 +12,8 @@ namespace NES
     {
     public:
         virtual bool initialize(const Rom& rom, MemoryBus& cpuMemory) = 0;
+        virtual void reset() { }
+        virtual void update() { }
     };
 
     typedef Mapper* (*MapperCreateFunc)();
