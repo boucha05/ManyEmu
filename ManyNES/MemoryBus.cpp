@@ -112,81 +112,84 @@ void MEM_ACCESS::setWriteMethod(Write8Func _func, void* _context, uint32_t _base
 
 ///////////////////////////////////////////////////////////////////////////////
 
-MemoryBus::MemoryBus()
+namespace NES
 {
-    initialize();
-}
-
-MemoryBus::~MemoryBus()
-{
-    destroy();
-}
-
-void MemoryBus::initialize()
-{
-    memset(&mState, 0, sizeof(mState));
-}
-
-bool MemoryBus::create(uint32_t memSizeLog2, uint32_t pageSizeLog2)
-{
-    if (memSizeLog2 > 32 || pageSizeLog2 <= 0 || memSizeLog2 <= pageSizeLog2)
-        return false;
-
-    uint32_t numPages = 1 << pageSizeLog2;
-    mPageReadRef.resize(numPages, nullptr);
-    mPageWriteRef.resize(numPages, nullptr);
-    mState.mem_limit = (1 << memSizeLog2) - 1;
-    mState.page_size_log2 = pageSizeLog2;
-    mState.page_table[MEMORY_BUS::PAGE_TABLE_READ] = &mPageReadRef[0];
-    mState.page_table[MEMORY_BUS::PAGE_TABLE_WRITE] = &mPageWriteRef[0];
-
-    return true;
-}
-
-void MemoryBus::destroy()
-{
-    while (!mPageContainer.empty())
+    MemoryBus::MemoryBus()
     {
-        MEM_PAGE* instance = mPageContainer.back();
-        mPageContainer.pop_back();
-        delete instance;
+        initialize();
     }
-    mPageReadRef.clear();
-    mPageWriteRef.clear();
-    initialize();
-}
 
-MEM_PAGE* MemoryBus::allocatePage()
-{
-    MEM_PAGE* instance = new MEM_PAGE;
-    mPageContainer.push_back(instance);
-    return instance;
-}
-
-bool MemoryBus::addMemoryRange(uint32_t pageTableId, uint16_t start, uint16_t end, MEM_ACCESS& access)
-{
-    if (pageTableId >= MEMORY_BUS::PAGE_TABLE_COUNT)
-        return false;
-    if (start > end)
-        return false;
-    if (end > mState.mem_limit)
-        return false;
-
-    MEM_PAGE** page_table = mState.page_table[pageTableId];
-    uint32_t offset = start - access.base;
-    uint32_t pageIndexStart = start >> mState.page_size_log2;
-    uint32_t pageIndexEnd = end >> mState.page_size_log2;
-    for (uint32_t pageIndex = pageIndexStart; pageIndex <= pageIndexEnd; ++pageIndex)
+    MemoryBus::~MemoryBus()
     {
-        uint32_t pageStart = pageIndex << mState.page_size_log2;
-        uint32_t pageEnd = ((pageIndex + 1) << mState.page_size_log2) - 1;
-        MEM_PAGE* memPage = allocatePage();
-        memPage->next = page_table[pageIndex];
-        memPage->access = &access;
-        memPage->start = std::max(pageStart, static_cast<uint32_t>(start));
-        memPage->end = std::min(pageEnd, static_cast<uint32_t>(end));
-        memPage->offset = offset;
-        page_table[pageIndex] = memPage;
+        destroy();
     }
-    return false;
+
+    void MemoryBus::initialize()
+    {
+        memset(&mState, 0, sizeof(mState));
+    }
+
+    bool MemoryBus::create(uint32_t memSizeLog2, uint32_t pageSizeLog2)
+    {
+        if (memSizeLog2 > 32 || pageSizeLog2 <= 0 || memSizeLog2 <= pageSizeLog2)
+            return false;
+
+        uint32_t numPages = 1 << pageSizeLog2;
+        mPageReadRef.resize(numPages, nullptr);
+        mPageWriteRef.resize(numPages, nullptr);
+        mState.mem_limit = (1 << memSizeLog2) - 1;
+        mState.page_size_log2 = pageSizeLog2;
+        mState.page_table[MEMORY_BUS::PAGE_TABLE_READ] = &mPageReadRef[0];
+        mState.page_table[MEMORY_BUS::PAGE_TABLE_WRITE] = &mPageWriteRef[0];
+
+        return true;
+    }
+
+    void MemoryBus::destroy()
+    {
+        while (!mPageContainer.empty())
+        {
+            MEM_PAGE* instance = mPageContainer.back();
+            mPageContainer.pop_back();
+            delete instance;
+        }
+        mPageReadRef.clear();
+        mPageWriteRef.clear();
+        initialize();
+    }
+
+    MEM_PAGE* MemoryBus::allocatePage()
+    {
+        MEM_PAGE* instance = new MEM_PAGE;
+        mPageContainer.push_back(instance);
+        return instance;
+    }
+
+    bool MemoryBus::addMemoryRange(uint32_t pageTableId, uint16_t start, uint16_t end, MEM_ACCESS& access)
+    {
+        if (pageTableId >= MEMORY_BUS::PAGE_TABLE_COUNT)
+            return false;
+        if (start > end)
+            return false;
+        if (end > mState.mem_limit)
+            return false;
+
+        MEM_PAGE** page_table = mState.page_table[pageTableId];
+        uint32_t offset = start - access.base;
+        uint32_t pageIndexStart = start >> mState.page_size_log2;
+        uint32_t pageIndexEnd = end >> mState.page_size_log2;
+        for (uint32_t pageIndex = pageIndexStart; pageIndex <= pageIndexEnd; ++pageIndex)
+        {
+            uint32_t pageStart = pageIndex << mState.page_size_log2;
+            uint32_t pageEnd = ((pageIndex + 1) << mState.page_size_log2) - 1;
+            MEM_PAGE* memPage = allocatePage();
+            memPage->next = page_table[pageIndex];
+            memPage->access = &access;
+            memPage->start = std::max(pageStart, static_cast<uint32_t>(start));
+            memPage->end = std::min(pageEnd, static_cast<uint32_t>(end));
+            memPage->offset = offset;
+            page_table[pageIndex] = memPage;
+        }
+        return false;
+    }
 }

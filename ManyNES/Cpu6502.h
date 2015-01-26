@@ -1,6 +1,7 @@
 #ifndef __CPU_6502_H__
 #define __CPU_6502_H__
 
+#include "Clock.h"
 #include <stdint.h>
 #include <map>
 
@@ -30,39 +31,33 @@ void cpu_initialize(CPU_STATE& cpu);
 bool cpu_create(CPU_STATE& cpu, MEMORY_BUS& bus, uint32_t master_clock_divider);
 void cpu_destroy(CPU_STATE& cpu);
 void cpu_reset(CPU_STATE& cpu);
-void cpu_execute(CPU_STATE& cpu, int32_t num_ticks);
+void cpu_execute(CPU_STATE& cpu);
 
-class Cpu6502
+namespace NES
 {
-public:
-    typedef void(*TimerCallback)(void* context, int32_t ticks);
-
-    Cpu6502();
-    ~Cpu6502();
-    bool create(MEMORY_BUS& bus, uint32_t master_clock_divider);
-    void destroy();
-    void reset();
-    void execute(int32_t numTicks);
-    uint16_t disassemble(char* buffer, size_t size, uint16_t addr);
-    void addTimedEvent(TimerCallback callback, void* context, int32_t ticks);
-    
-    CPU_STATE& getState()
+    class Cpu6502 : public NES::Clock::IListener
     {
-        return mState;
-    }
+    public:
+        typedef void(*TimerCallback)(void* context, int32_t ticks);
 
-private:
-    CPU_STATE               mState;
+        Cpu6502();
+        ~Cpu6502();
+        bool create(MEMORY_BUS& bus, uint32_t master_clock_divider);
+        void destroy();
+        void reset();
+        void advanceClock(int32_t ticks);
+        void setDesiredTicks(int32_t ticks);
+        void execute();
+        uint16_t disassemble(char* buffer, size_t size, uint16_t addr);
 
-    struct TimerEvent
-    {
-        TimerCallback       callback;
-        void*               context;
+        CPU_STATE& getState()
+        {
+            return mState;
+        }
+
+    private:
+        CPU_STATE               mState;
     };
-    typedef std::multimap<int32_t, TimerEvent> TimerQueue;
-    TimerQueue              mTimers;
-    int32_t                 mDesiredTicks;
-    int32_t                 mExecutedTicks;
-};
+}
 
 #endif

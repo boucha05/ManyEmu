@@ -889,9 +889,8 @@ void cpu_reset(CPU_STATE& cpu)
     cpu.sr |= 0x04;
 }
 
-void cpu_execute(CPU_STATE& state, int32_t num_ticks)
+void cpu_execute(CPU_STATE& state)
 {
-    state.desired_ticks += num_ticks;
     while (state.executed_ticks < state.desired_ticks)
     {
 #if 1
@@ -1062,91 +1061,56 @@ void cpu_execute(CPU_STATE& state, int32_t num_ticks)
     }
 }
 
-Cpu6502::Cpu6502()
-    : mDesiredTicks(0)
-    , mExecutedTicks(0)
+namespace NES
 {
-    cpu_initialize(mState);
-}
-
-Cpu6502::~Cpu6502()
-{
-    destroy();
-}
-
-bool Cpu6502::create(MEMORY_BUS& bus, uint32_t master_clock_divider)
-{
-    if (!cpu_create(mState, bus, master_clock_divider))
-        return false;
-    return true;
-}
-
-void Cpu6502::destroy()
-{
-    cpu_destroy(mState);
-}
-
-void Cpu6502::reset()
-{
-    cpu_reset(mState);
-    mState.pc = read16(mState, ADDR_VECTOR_RESET);
-}
-
-void Cpu6502::execute(int32_t numTicks)
-{
-    // Register timer event for end of execution
-    addTimedEvent(executeDummyTimerEvent, nullptr, numTicks);
-
-    // Execute as long as the targer number of ticks is not reached
-    do
+    Cpu6502::Cpu6502()
     {
-        // Execute until the first timer event
-        int32_t nextDesiredTicks = mTimers.begin()->first;
-        int32_t executingTicks = nextDesiredTicks - mDesiredTicks;
-        mDesiredTicks = nextDesiredTicks;
-
-        // Let the CPU run until an event occurs or until
-        // the desired number of cycles has executed
-        cpu_execute(mState, executingTicks);
-        mExecutedTicks = mDesiredTicks;
-
-        // Signal events that are ready
-        while (!mTimers.empty() && (mTimers.begin()->first <= mDesiredTicks))
-        {
-            const auto& timerEvent = mTimers.begin()->second;
-            timerEvent.callback(timerEvent.context, mTimers.begin()->first);
-            mTimers.erase(mTimers.begin());
-        }
-    } while (mExecutedTicks < numTicks);
-
-    // Advance reference time for next execution
-    TimerQueue oldTimers = mTimers;
-    mTimers.clear();
-    for (auto timerEvent : oldTimers)
-    {
-        mTimers.insert(std::pair<int32_t, TimerEvent>(timerEvent.first, timerEvent.second));
+        cpu_initialize(mState);
     }
-    mExecutedTicks -= mDesiredTicks;
-    mDesiredTicks = 0;
-}
 
-uint16_t Cpu6502::disassemble(char* buffer, size_t size, uint16_t addr)
-{
-    return ::disassemble(mState, addr, buffer, size);
-}
-
-void Cpu6502::addTimedEvent(TimerCallback callback, void* context, int32_t ticks)
-{
-    // Add event to queue
-    TimerEvent timerEvent;
-    timerEvent.callback = callback;
-    timerEvent.context = context;
-    mTimers.insert(std::pair<int32_t, TimerEvent>(ticks, timerEvent));
-
-    // Adjust desired ticks
-    if (mDesiredTicks > ticks)
+    Cpu6502::~Cpu6502()
     {
-        mDesiredTicks = ticks;
-        mState.desired_ticks = mDesiredTicks;
+        destroy();
+    }
+
+    bool Cpu6502::create(MEMORY_BUS& bus, uint32_t master_clock_divider)
+    {
+        if (!cpu_create(mState, bus, master_clock_divider))
+            return false;
+        return true;
+    }
+
+    void Cpu6502::destroy()
+    {
+        cpu_destroy(mState);
+    }
+
+    void Cpu6502::reset()
+    {
+        cpu_reset(mState);
+        mState.pc = read16(mState, ADDR_VECTOR_RESET);
+        mState.executed_ticks = 0;
+        mState.desired_ticks = 0;
+    }
+
+    void Cpu6502::advanceClock(int32_t ticks)
+    {
+        mState.executed_ticks -= ticks;
+        mState.desired_ticks = 0;
+    }
+
+    void Cpu6502::setDesiredTicks(int32_t ticks)
+    {
+        mState.desired_ticks = ticks;
+    }
+
+    void Cpu6502::execute()
+    {
+        cpu_execute(mState);
+    }
+
+    uint16_t Cpu6502::disassemble(char* buffer, size_t size, uint16_t addr)
+    {
+        return ::disassemble(mState, addr, buffer, size);
     }
 }

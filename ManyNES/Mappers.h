@@ -4,10 +4,10 @@
 #include "nes.h"
 #include <stdint.h>
 
-class MemoryBus;
-
 namespace NES
 {
+    class MemoryBus;
+
     class Mapper : public IDisposable
     {
     public:

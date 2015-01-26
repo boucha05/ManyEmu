@@ -45,9 +45,12 @@ namespace NES
         mRegPPUCTRL = 0;
     }
 
+    void PPU::execute()
+    {
+    }
+
     void PPU::update(void* surface, uint32_t pitch)
     {
-
     }
 
     uint8_t PPU::regRead(int32_t ticks, uint32_t addr)

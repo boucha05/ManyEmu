@@ -13,6 +13,7 @@ namespace NES
         bool create();
         void destroy();
         void reset();
+        void execute();
         void update(void* surface, uint32_t pitch);
         uint8_t regRead(int32_t ticks, uint32_t addr);
         void regWrite(int32_t ticks, uint32_t addr, uint8_t value);

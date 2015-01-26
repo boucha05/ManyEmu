@@ -1,4 +1,5 @@
 #include "nes.h"
+#include "Clock.h"
 #include "Cpu6502.h"
 #include "Mappers.h"
 #include "MemoryBus.h"
@@ -21,6 +22,14 @@ namespace
     static const uint32_t MASTER_CLOCK_CPU_DIVIDER_NTSC = 12;
     static const uint32_t MASTER_CLOCK_CPU_DIVIDER_PAL = 16;
     static const uint32_t MASTER_CLOCK_CPU_DIVIDER_DENDY = 15;
+
+    static const uint32_t MASTER_CLOCK_PPU_DIVIDER_NTSC = 4;
+    static const uint32_t MASTER_CLOCK_PPU_DIVIDER_PAL = 5;
+    static const uint32_t MASTER_CLOCK_PPU_DIVIDER_DENDY = 5;
+
+    static const uint32_t MASTER_CLOCK_PER_FRAME_NTSC = static_cast<uint32_t>((341 * 261 + 340.5) * MASTER_CLOCK_PPU_DIVIDER_NTSC);
+    static const uint32_t MASTER_CLOCK_PER_FRAME_PAL = (341 * 312) * MASTER_CLOCK_PPU_DIVIDER_PAL;
+    static const uint32_t MASTER_CLOCK_PER_FRAME_DENDY = (341 * 312) * MASTER_CLOCK_PPU_DIVIDER_PAL;
 
     void NOT_IMPLEMENTED()
     {
@@ -49,10 +58,14 @@ namespace
         {
             rom = &_rom;
 
+            if (!clock.create())
+                return false;
+
             if (!cpuMemory.create(MEM_SIZE_LOG2, MEM_PAGE_SIZE_LOG2))
                 return false;
             if (!cpu.create(cpuMemory.getState(), MASTER_CLOCK_CPU_DIVIDER_NTSC))
                 return false;
+            clock.addListener(cpu);
 
             const auto& romDesc = rom->getDescription();
             const auto& romContent = rom->getContent();
@@ -92,8 +105,16 @@ namespace
             reset();
 
             // TODO: REMOVE THIS ONCE THE CPU AND MEMORY ARE MORE RELIABLE
-            cpu.addTimedEvent(startVBlank, this, 80 * MASTER_CLOCK_CPU_DIVIDER_NTSC);
-            cpu.execute(100 * MASTER_CLOCK_CPU_DIVIDER_NTSC);
+            clock.setTargetExecution(100 * MASTER_CLOCK_CPU_DIVIDER_NTSC);
+            clock.addEvent(startVBlank, this, 80 * MASTER_CLOCK_CPU_DIVIDER_NTSC);
+            while (clock.canExecute())
+            {
+                clock.beginExecute();
+                cpu.execute();
+                ppu.execute();
+                clock.endExecute();
+            }
+            reset();
 
             return true;
         }
@@ -108,6 +129,7 @@ namespace
 
             cpu.destroy();
             cpuMemory.destroy();
+            clock.destroy();
 
             rom = nullptr;
         }
@@ -119,6 +141,7 @@ namespace
 
         virtual void reset()
         {
+            clock.reset();
             cpu.reset();
             ppu.reset();
             mapper->reset();
@@ -126,7 +149,15 @@ namespace
 
         virtual void update(void* surface, uint32_t pitch)
         {
-            //cpu.execute(MASTER_CLOCK_FREQUENCY_NTSC / 60);
+            /*clock.setTargetExecution(MASTER_CLOCK_PER_FRAME_NTSC);
+            while (clock.canExecute())
+            {
+                clock.beginExecute();
+                cpu.execute();
+                ppu.execute();
+                clock.endExecute();
+            }*/
+
             ppu.update(surface, pitch);
         }
 
@@ -152,14 +183,15 @@ namespace
         }
 
         const NES::Rom*         rom;
-        MemoryBus               cpuMemory;
+        NES::Clock              clock;
+        NES::MemoryBus          cpuMemory;
         MEM_ACCESS              accessPrgRom1;
         MEM_ACCESS              accessPrgRom2;
         MEM_ACCESS              accessPpuRegsRead;
         MEM_ACCESS              accessPpuRegsWrite;
         MEM_ACCESS              accessCpuRamRead;
         MEM_ACCESS              accessCpuRamWrite;
-        Cpu6502                 cpu;
+        NES::Cpu6502            cpu;
         NES::PPU                ppu;
         std::vector<uint8_t>    cpuRam;
         NES::Mapper*            mapper;

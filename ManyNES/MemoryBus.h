@@ -57,29 +57,32 @@ struct MEMORY_BUS
 uint8_t memory_bus_read8(const MEMORY_BUS& bus, int32_t ticks, uint16_t addr);
 void memory_bus_write8(const MEMORY_BUS& bus, int32_t ticks, uint16_t addr, uint8_t value);
 
-class MemoryBus
+namespace NES
 {
-public:
-    MemoryBus();
-    ~MemoryBus();
-    bool create(uint32_t memSizeLog2, uint32_t pageSizeLog2);
-    void destroy();
-    
-    MEMORY_BUS& getState()
+    class MemoryBus
     {
-        return mState;
-    }
+    public:
+        MemoryBus();
+        ~MemoryBus();
+        bool create(uint32_t memSizeLog2, uint32_t pageSizeLog2);
+        void destroy();
 
-    bool addMemoryRange(uint32_t pageTableId, uint16_t start, uint16_t end, MEM_ACCESS& access);
+        MEMORY_BUS& getState()
+        {
+            return mState;
+        }
 
-private:
-    MEMORY_BUS                  mState;
-    std::vector<MEM_PAGE*>      mPageReadRef;
-    std::vector<MEM_PAGE*>      mPageWriteRef;
-    std::vector<MEM_PAGE*>      mPageContainer;
+        bool addMemoryRange(uint32_t pageTableId, uint16_t start, uint16_t end, MEM_ACCESS& access);
 
-    void initialize();
-    MEM_PAGE* allocatePage();
-};
+    private:
+        MEMORY_BUS                  mState;
+        std::vector<MEM_PAGE*>      mPageReadRef;
+        std::vector<MEM_PAGE*>      mPageWriteRef;
+        std::vector<MEM_PAGE*>      mPageContainer;
+
+        void initialize();
+        MEM_PAGE* allocatePage();
+    };
+}
 
 #endif
