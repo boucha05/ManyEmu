@@ -6,3 +6,5 @@
 *.suo
 *.opensdf
 /ManyNES/*.nes
+/ManyNES/Release
+/Release

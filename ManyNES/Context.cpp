@@ -58,9 +58,11 @@ namespace
         {
             rom = &_rom;
 
+            // Clock
             if (!clock.create())
                 return false;
 
+            // CPU
             if (!cpuMemory.create(MEM_SIZE_LOG2, MEM_PAGE_SIZE_LOG2))
                 return false;
             if (!cpu.create(cpuMemory.getState(), MASTER_CLOCK_CPU_DIVIDER_NTSC))
@@ -69,6 +71,10 @@ namespace
 
             const auto& romDesc = rom->getDescription();
             const auto& romContent = rom->getContent();
+
+            // PPU
+            if (!ppu.create(MASTER_CLOCK_PPU_DIVIDER_NTSC))
+                return false;
 
             // ROM
             const uint8_t* romPage1 = romContent.prgRom;
@@ -104,6 +110,7 @@ namespace
 
             reset();
 
+#if 0
             // TODO: REMOVE THIS ONCE THE CPU AND MEMORY ARE MORE RELIABLE
             clock.setTargetExecution(100 * MASTER_CLOCK_CPU_DIVIDER_NTSC);
             clock.addEvent(startVBlank, this, 80 * MASTER_CLOCK_CPU_DIVIDER_NTSC);
@@ -115,6 +122,7 @@ namespace
                 clock.endExecute();
             }
             reset();
+#endif
 
             return true;
         }
@@ -127,6 +135,7 @@ namespace
                 mapper = nullptr;
             }
 
+            ppu.destroy();
             cpu.destroy();
             cpuMemory.destroy();
             clock.destroy();
@@ -149,14 +158,14 @@ namespace
 
         virtual void update(void* surface, uint32_t pitch)
         {
-            /*clock.setTargetExecution(MASTER_CLOCK_PER_FRAME_NTSC);
+            clock.setTargetExecution(MASTER_CLOCK_PER_FRAME_NTSC);
             while (clock.canExecute())
             {
                 clock.beginExecute();
                 cpu.execute();
                 ppu.execute();
                 clock.endExecute();
-            }*/
+            }
 
             ppu.update(surface, pitch);
         }

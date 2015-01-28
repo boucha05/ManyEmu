@@ -13,6 +13,16 @@ namespace
     static const uint32_t PPU_REG_PPUADDR = 0x6;
     static const uint32_t PPU_REG_PPUDATA = 0x7;
 
+    static const uint8_t PPU_STATUS_VBLANK = 0x80;
+
+    static const uint32_t PPU_TICKS_PER_LINE = 341;
+    static const uint32_t PPU_VISIBLE_LINES = 240;
+    static const uint32_t PPU_VISIBLE_START_LINE = 1;
+    static const uint32_t PPU_VBLANK_START_LINE = PPU_VISIBLE_START_LINE + PPU_VISIBLE_LINES;
+    static const uint32_t PPU_VBLANK_END_LINE = 0;
+    static const uint32_t PPU_VBLANK_START_TICKS = PPU_VBLANK_START_LINE * PPU_TICKS_PER_LINE;
+    static const uint32_t PPU_VBLANK_END_TICKS = PPU_VBLANK_END_LINE * PPU_TICKS_PER_LINE;
+
     void NOT_IMPLEMENTED()
     {
         printf("Feature not implemented\n");
@@ -23,6 +33,11 @@ namespace
 namespace NES
 {
     PPU::PPU()
+        : mVBlankStartTicks(0)
+        , mVBlankEndTicks(0)
+        , mRegPPUCTRL(0)
+        , mRegPPUSTATUS(0)
+        , mVBlankStatusDirty(true)
     {
     }
 
@@ -31,8 +46,11 @@ namespace NES
         destroy();
     }
 
-    bool PPU::create()
+    bool PPU::create(uint32_t masterClockDivider)
     {
+        mMasterClockDivider = masterClockDivider;
+        mVBlankStartTicks = PPU_VBLANK_START_TICKS * masterClockDivider;
+        mVBlankEndTicks = PPU_VBLANK_END_TICKS * masterClockDivider;
         return true;
     }
 
@@ -43,6 +61,8 @@ namespace NES
     void PPU::reset()
     {
         mRegPPUCTRL = 0;
+        mRegPPUSTATUS = 0;
+        mVBlankStatusDirty = true;
     }
 
     void PPU::execute()
@@ -53,6 +73,16 @@ namespace NES
     {
     }
 
+    void PPU::advanceClock(int32_t ticks)
+    {
+        // New frame is being produced
+        mVBlankStatusDirty = true;
+    }
+
+    void PPU::setDesiredTicks(int32_t ticks)
+    {
+    }
+
     uint8_t PPU::regRead(int32_t ticks, uint32_t addr)
     {
         addr = (addr & 7);
@@ -60,8 +90,26 @@ namespace NES
         {
             //case PPU_REG_PPUCTRL: break;
             //case PPU_REG_PPUMASK: break;
+
         case PPU_REG_PPUSTATUS:
-            return 0; // TODO: Implement status register and reset latches
+        {
+            bool vblank = (ticks <= mVBlankEndTicks) || (ticks >= mVBlankStartTicks);
+            if (mVBlankStatusDirty)
+            {
+                mVBlankStatusDirty = false;
+                mRegPPUSTATUS |= vblank ? PPU_STATUS_VBLANK : 0;
+            }
+
+            uint8_t ppustatus = mRegPPUSTATUS;
+
+            // Clear after reading if outside the VBLANK
+            if (!vblank)
+            {
+                mRegPPUSTATUS &= ~PPU_STATUS_VBLANK;
+                mVBlankStatusDirty = true;
+            }
+            return ppustatus;
+        }
             //case PPU_REG_OAMADDR: break;
             //case PPU_REG_OAMDATA: break;
             //case PPU_REG_PPUSCROLL: break;

@@ -162,7 +162,7 @@ namespace
 
     inline void write8(CPU_STATE& state, uint16_t addr, uint8_t value)
     {
-        memory_bus_write8(*state.bus, addr, state.executed_ticks, value);
+        memory_bus_write8(*state.bus, state.executed_ticks, addr, value);
     }
 
     inline uint16_t read16(CPU_STATE& state, uint16_t addr)
@@ -215,14 +215,14 @@ namespace
         //case ADDR_ACC:  sprintf(temp, "%s     a", opcode); break;
         case ADDR_REL:  sprintf(temp, "%s     $%04x", opcode, static_cast<uint16_t>(static_cast<int8_t>(peek8(state, pc)) + pc)); break;
         case ADDR_ABS:  sprintf(temp, "%s     $%04x", opcode, peek16(state, pc)); break;
-        //case ADDR_ZPG:  sprintf(temp, "%s     $%02x", opcode, peek8(state, pc)); break;
-        //case ADDR_ABSX: sprintf(temp, "%s     $%04x, x", opcode, peek16(state, pc)); break;
+        case ADDR_ZPG:  sprintf(temp, "%s     $%02x", opcode, peek8(state, pc)); break;
+        case ADDR_ABSX: sprintf(temp, "%s     $%04x, x", opcode, peek16(state, pc)); break;
         //case ADDR_ABSY: sprintf(temp, "%s     $%04x, y", opcode, peek16(state, pc)); break;
         //case ADDR_ZPGX: sprintf(temp, "%s     $%02x, x", opcode, peek8(state, pc)); break;
         //case ADDR_ZPGY: sprintf(temp, "%s     $%02x, y", opcode, peek8(state, pc)); break;
         //case ADDR_IND:  sprintf(temp, "%s     ($%04x)", opcode, peek16(state, pc)); break;
         //case ADDR_INDX: sprintf(temp, "%s     ($%02x, x)", opcode, peek8(state, pc)); break;
-        //case ADDR_INDY: sprintf(temp, "%s     ($%02x), y", opcode, peek8(state, pc)); break;
+        case ADDR_INDY: sprintf(temp, "%s     ($%02x), y", opcode, peek8(state, pc)); break;
         default:
             assert(0);
         }
@@ -242,14 +242,12 @@ namespace
 
     inline uint16_t addr_zpg(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED_ADDR_MODE("zpg");
         uint16_t addr = static_cast<uint16_t>(fetch8(state));
         return addr;
     }
 
     inline uint16_t addr_absx(CPU_STATE& state, int32_t extra_ticks = 0)
     {
-        NOT_IMPLEMENTED_ADDR_MODE("absx");
         uint16_t base_addr = fetch16(state);
         uint16_t addr = base_addr + static_cast<uint16_t>(state.x);
         if ((base_addr & 0xff00) != (addr & 0xff00))
@@ -302,13 +300,12 @@ namespace
 
     inline uint16_t addr_indy(CPU_STATE& state, int32_t extra_ticks = 0)
     {
-        NOT_IMPLEMENTED_ADDR_MODE("indy");
-        uint16_t addr_lo = static_cast<uint16_t>(fetch8(state));
-        uint16_t addr_hi = static_cast<uint16_t>(fetch8(state) + 1);
+        uint8_t addr_lo = fetch8(state);
+        uint8_t addr_hi = (addr_lo + 1);
         uint8_t lo = read8(state, addr_lo);
         uint8_t hi = read8(state, addr_hi);
         uint16_t base_addr = (static_cast<uint16_t>(lo) | (static_cast<uint16_t>(hi) << 8));
-        uint16_t addr = base_addr + state.y;
+        uint16_t addr = base_addr + static_cast<uint16_t>(state.y);
         if ((base_addr & 0xff00) != (addr & 0xff00))
             state.executed_ticks += extra_ticks;
         return addr;
@@ -370,12 +367,31 @@ namespace
 
     inline void push8(CPU_STATE& state, uint8_t value)
     {
-        write8(state, state.sp-- + 0x100, value);
+        uint16_t addr = state.sp-- + 0x100;
+        write8(state, addr, value);
     }
-
+    
     inline uint8_t pop8(CPU_STATE& state)
     {
-        return read8(state, ++state.sp + 0x100);
+        uint16_t addr = ++state.sp + 0x100;
+        uint8_t value = read8(state, addr);
+        return value;
+    }
+
+    inline void push16(CPU_STATE& state, uint16_t value)
+    {
+        uint8_t lo = value & 0xff;
+        uint8_t hi = (value >> 8) & 0xff;
+        push8(state, lo);
+        push8(state, hi);
+    }
+
+    inline uint16_t pop16(CPU_STATE& state)
+    {
+        uint8_t hi = pop8(state);
+        uint8_t lo = pop8(state);
+        uint16_t value = (static_cast<uint16_t>(lo) | (static_cast<uint16_t>(hi) << 8));
+        return value;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -421,7 +437,7 @@ namespace
 
     inline void insn_bcs(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED("bcs");
+        insn_branch(state, state.flag_c != 0);
     }
 
     inline void insn_beq(CPU_STATE& state)
@@ -441,12 +457,12 @@ namespace
 
     inline void insn_bne(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED("bne");
+        insn_branch(state, state.flag_z != 0x00);
     }
 
     inline void insn_bpl(CPU_STATE& state)
     {
-        insn_branch(state, !state.flag_n);
+        insn_branch(state, (state.flag_n & 0x80) == 0x00);
     }
 
     inline void insn_brk(CPU_STATE& state)
@@ -484,19 +500,26 @@ namespace
         NOT_IMPLEMENTED("clv");
     }
 
+    inline void insn_compare(CPU_STATE& state, uint8_t val1, uint8_t val2)
+    {
+        uint8_t result = val1 - val2;
+        state.flag_c = result <= val1 ? 1 : 0;
+        state.flag_z = state.flag_n = result;
+    }
+
     inline void insn_cmp(CPU_STATE& state, uint8_t src)
     {
-        NOT_IMPLEMENTED("cmp");
+        insn_compare(state, state.a, src);
     }
 
     inline void insn_cpx(CPU_STATE& state, uint8_t src)
     {
-        NOT_IMPLEMENTED("cpx");
+        insn_compare(state, state.x, src);
     }
 
     inline void insn_cpy(CPU_STATE& state, uint8_t src)
     {
-        NOT_IMPLEMENTED("cpy");
+        insn_compare(state, state.y, src);
     }
 
     inline void insn_dec(CPU_STATE& state, uint16_t addr)
@@ -506,12 +529,12 @@ namespace
 
     inline void insn_dex(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED("dex");
+        state.flag_z = state.flag_n = --state.x;
     }
 
     inline void insn_dey(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED("dey");
+        state.flag_z = state.flag_n = --state.y;
     }
 
     inline void insn_eor(CPU_STATE& state, uint8_t src)
@@ -541,7 +564,9 @@ namespace
 
     inline void insn_jsr(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED("jsr");
+        uint16_t addr = fetch16(state);
+        push16(state, state.pc);
+        state.pc = addr;
     }
 
     inline void insn_lda(CPU_STATE& state, uint8_t src)
@@ -556,7 +581,7 @@ namespace
 
     inline void insn_ldy(CPU_STATE& state, uint8_t src)
     {
-        NOT_IMPLEMENTED("ldy");
+        state.flag_z = state.flag_n = state.y = src;
     }
 
     inline void insn_lsr(CPU_STATE& state)
@@ -631,7 +656,7 @@ namespace
 
     inline void insn_rts(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED("rts");
+        state.pc = pop16(state);
     }
 
     inline void insn_sbc(CPU_STATE& state, uint8_t src)
@@ -662,7 +687,7 @@ namespace
 
     inline void insn_stx(CPU_STATE& state, uint16_t addr)
     {
-        NOT_IMPLEMENTED("stx");
+        write8(state, addr, state.x);
     }
 
     inline void insn_sty(CPU_STATE& state, uint16_t addr)
@@ -728,7 +753,7 @@ namespace
     |  Zero Page     |   BIT Oper            |    24   |    2    |    3     |
     |  Absolute      |   BIT Oper            |    2C   |    3    |    4     |
     |  Relative      |   BMI Oper            |    30   |    2    |    2**   |
-    |  Relative      |   BMI Oper            |    D0   |    2    |    2**   |
+    |  Relative      |   BNE Oper            |    D0   |    2    |    2**   |
     |  Relative      |   BPL Oper            |    10   |    2    |    2**   |
     |  Implied       |   BRK                 |    00   |    1    |    7     |
     |  Relative      |   BVC Oper            |    50   |    2    |    2**   |
@@ -894,10 +919,16 @@ void cpu_execute(CPU_STATE& state)
     while (state.executed_ticks < state.desired_ticks)
     {
 #if 1
-        char temp[32];
-        uint16_t pc = state.pc;
-        disassemble(state, pc, temp, sizeof(temp));
-        printf("$%04x:  %s\n", state.pc, temp);
+        static uint32_t traceStart = 0x5000;
+        static uint32_t traceCount = 0;
+
+        if (traceCount++ >= traceStart)
+        {
+            char temp[32];
+            uint16_t pc = state.pc;
+            disassemble(state, pc, temp, sizeof(temp));
+            printf("$%04x:  %s\n", state.pc, temp);
+        }
 #endif
         uint8_t insn = fetch8(state);
         uint32_t insn_ticks = state.insn_ticks[insn];
@@ -926,12 +957,12 @@ void cpu_execute(CPU_STATE& state)
         //case 0x0E: insn_asl(state, addr_abs(state)); break;
         //case 0x1E: insn_asl(state, addr_absx(state)); break;
         //case 0x90: insn_bcc(state); break;
-        //case 0xB0: insn_bcs(state); break;
+        case 0xB0: insn_bcs(state); break;
         //case 0xF0: insn_beq(state); break;
         //case 0x24: insn_bit(state, read8_zpg(state)); break;
         //case 0x2C: insn_bit(state, read8_abs(state)); break;
         //case 0x30: insn_bmi(state); break;
-        //case 0xD0: insn_bmi(state); break;
+        case 0xD0: insn_bne(state); break;
         case 0x10: insn_bpl(state); break;
         //case 0x00: insn_brk(state); break;
         //case 0x50: insn_bvc(state); break;
@@ -940,7 +971,7 @@ void cpu_execute(CPU_STATE& state)
         case 0xD8: insn_cld(state); break;
         //case 0x58: insn_cli(state); break;
         //case 0xB8: insn_clv(state); break;
-        //case 0xC9: insn_cmp(state, read8_imm(state)); break;
+        case 0xC9: insn_cmp(state, read8_imm(state)); break;
         //case 0xC5: insn_cmp(state, read8_zpg(state)); break;
         //case 0xD5: insn_cmp(state, read8_zpgx(state)); break;
         //case 0xCD: insn_cmp(state, read8_abs(state)); break;
@@ -948,18 +979,18 @@ void cpu_execute(CPU_STATE& state)
         //case 0xD9: insn_cmp(state, read8_absy(state, state.master_clock_divider)); break;
         //case 0xC1: insn_cmp(state, read8_indx(state)); break;
         //case 0xD1: insn_cmp(state, read8_indy(state, state.master_clock_divider)); break;
-        //case 0xE0: insn_cpx(state, read8_imm(state)); break;
+        case 0xE0: insn_cpx(state, read8_imm(state)); break;
         //case 0xE4: insn_cpx(state, read8_zpg(state)); break;
         //case 0xEC: insn_cpx(state, read8_abs(state)); break;
-        //case 0xC0: insn_cpy(state, read8_imm(state)); break;
+        case 0xC0: insn_cpy(state, read8_imm(state)); break;
         //case 0xC4: insn_cpy(state, read8_zpg(state)); break;
         //case 0xCC: insn_cpy(state, read8_abs(state)); break;
         //case 0xC6: insn_dec(state, addr_zpg(state)); break;
         //case 0xD6: insn_dec(state, addr_zpgx(state)); break;
         //case 0xCE: insn_dec(state, addr_abs(state)); break;
         //case 0xDE: insn_dec(state, addr_absx(state)); break;
-        //case 0xCA: insn_dex(state); break;
-        //case 0x88: insn_dey(state); break;
+        case 0xCA: insn_dex(state); break;
+        case 0x88: insn_dey(state); break;
         //case 0x49: insn_eor(state, read8_imm(state)); break;
         //case 0x45: insn_eor(state, read8_zpg(state)); break;
         //case 0x55: insn_eor(state, read8_zpgx(state)); break;
@@ -976,12 +1007,12 @@ void cpu_execute(CPU_STATE& state)
         //case 0xC8: insn_iny(state); break;
         //case 0x4C: insn_jmp(state, addr_abs(state)); break;
         //case 0x6C: insn_jmp(state, addr_ind(state)); break;
-        //case 0x20: insn_jsr(state); break;
+        case 0x20: insn_jsr(state); break;
         case 0xA9: insn_lda(state, read8_imm(state)); break;
         //case 0xA5: insn_lda(state, read8_zpg(state)); break;
         //case 0xB5: insn_lda(state, read8_zpgx(state)); break;
         case 0xAD: insn_lda(state, read8_abs(state)); break;
-        //case 0xBD: insn_lda(state, read8_absx(state, state.master_clock_divider)); break;
+        case 0xBD: insn_lda(state, read8_absx(state, state.master_clock_divider)); break;
         //case 0xB9: insn_lda(state, read8_absy(state, state.master_clock_divider)); break;
         //case 0xA1: insn_lda(state, read8_indx(state)); break;
         //case 0xB1: insn_lda(state, read8_indy(state, state.master_clock_divider)); break;
@@ -990,7 +1021,7 @@ void cpu_execute(CPU_STATE& state)
         //case 0xB6: insn_ldx(state, read8_zpgy(state)); break;
         //case 0xAE: insn_ldx(state, read8_abs(state)); break;
         //case 0xBE: insn_ldx(state, read8_absx(state, state.master_clock_divider)); break;
-        //case 0xA0: insn_ldy(state, read8_imm(state)); break;
+        case 0xA0: insn_ldy(state, read8_imm(state)); break;
         //case 0xA4: insn_ldy(state, read8_zpg(state)); break;
         //case 0xB4: insn_ldy(state, read8_zpgx(state)); break;
         //case 0xAC: insn_ldy(state, read8_abs(state)); break;
@@ -1024,7 +1055,7 @@ void cpu_execute(CPU_STATE& state)
         //case 0x6E: insn_ror(state, read8_abs(state)); break;
         //case 0x7E: insn_ror(state, read8_absx(state)); break;
         //case 0x4D: insn_rti(state); break;
-        //case 0x60: insn_rts(state); break;
+        case 0x60: insn_rts(state); break;
         //case 0xE9: insn_sbc(state, read8_imm(state)); break;
         //case 0xE5: insn_sbc(state, read8_zpg(state)); break;
         //case 0xF5: insn_sbc(state, read8_zpgx(state)); break;
@@ -1036,14 +1067,14 @@ void cpu_execute(CPU_STATE& state)
         //case 0x38: insn_sec(state); break;
         //case 0xF8: insn_sed(state); break;
         case 0x78: insn_sei(state); break;
-        //case 0x85: insn_sta(state, addr_zpg(state)); break;
+        case 0x85: insn_sta(state, addr_zpg(state)); break;
         //case 0x95: insn_sta(state, addr_zpgx(state)); break;
         case 0x8D: insn_sta(state, addr_abs(state)); break;
         //case 0x9D: insn_sta(state, addr_absx(state)); break;
         //case 0x99: insn_sta(state, addr_absy(state)); break;
         //case 0x81: insn_sta(state, addr_indx(state)); break;
-        //case 0x91: insn_sta(state, addr_indy(state)); break;
-        //case 0x86: insn_stx(state, addr_zpg(state)); break;
+        case 0x91: insn_sta(state, addr_indy(state)); break;
+        case 0x86: insn_stx(state, addr_zpg(state)); break;
         //case 0x96: insn_stx(state, addr_zpgy(state)); break;
         //case 0x8E: insn_stx(state, addr_abs(state)); break;
         //case 0x84: insn_sty(state, addr_zpg(state)); break;
@@ -1056,7 +1087,11 @@ void cpu_execute(CPU_STATE& state)
         case 0x9A: insn_txs(state); break;
         //case 0x98: insn_tya(state); break;
         default:
-            NOT_IMPLEMENTED("???");
+        {
+            INSN_TYPE insn_type = static_cast<INSN_TYPE>(insn_table[insn]);
+            const char* opcode = insn_name[insn_type];
+            NOT_IMPLEMENTED(opcode);
+        }
         }
     }
 }
