@@ -10,6 +10,7 @@
     <ClCompile Include="MemoryBus.cpp" />
     <ClCompile Include="PPU.cpp" />
     <ClCompile Include="Clock.cpp" />
+    <ClCompile Include="APU.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Palette.h" />
@@ -20,6 +21,7 @@
     <ClInclude Include="MemoryBus.h" />
     <ClInclude Include="PPU.h" />
     <ClInclude Include="Clock.h" />
+    <ClInclude Include="APU.h" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="r6502.asm" />

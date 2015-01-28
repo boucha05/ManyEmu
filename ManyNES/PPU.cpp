@@ -26,7 +26,7 @@ namespace
     void NOT_IMPLEMENTED()
     {
         printf("Feature not implemented\n");
-        assert(false);
+        //assert(false);
     }
 }
 

@@ -1,4 +1,5 @@
 #include "nes.h"
+#include "APU.h"
 #include "Clock.h"
 #include "Cpu6502.h"
 #include "Mappers.h"
@@ -76,6 +77,10 @@ namespace
             if (!ppu.create(MASTER_CLOCK_PPU_DIVIDER_NTSC))
                 return false;
 
+            // APU
+            if (!apu.create())
+                return false;
+
             // ROM
             const uint8_t* romPage1 = romContent.prgRom;
             const uint8_t* romPage2 = romDesc.prgRomPages > 1 ? romPage1 + 0x4000 : romPage1;
@@ -89,6 +94,14 @@ namespace
             accessPpuRegsWrite.setWriteMethod(ppuRegsWrite, this, 0x2000);
             cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0x2000, 0x3fff, accessPpuRegsRead);
             cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, 0x2000, 0x3fff, accessPpuRegsWrite);
+
+            // APU registers
+            static const uint16_t APU_START_ADDR = 0x4000;
+            static const uint16_t APU_END_ADDR = APU_START_ADDR + NES::APU::APU_REGISTER_COUNT - 1;
+            accessApuRegsRead.setReadMethod(apuRegsRead, this, APU_START_ADDR);
+            accessApuRegsWrite.setWriteMethod(apuRegsWrite, this, APU_START_ADDR);
+            cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, APU_START_ADDR, APU_END_ADDR, accessApuRegsRead);
+            cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, APU_START_ADDR, APU_END_ADDR, accessApuRegsWrite);
 
             // CPU RAM
             cpuRam.resize(0x800, 0);
@@ -135,6 +148,7 @@ namespace
                 mapper = nullptr;
             }
 
+            apu.destroy();
             ppu.destroy();
             cpu.destroy();
             cpuMemory.destroy();
@@ -153,6 +167,7 @@ namespace
             clock.reset();
             cpu.reset();
             ppu.reset();
+            apu.reset();
             mapper->reset();
         }
 
@@ -164,6 +179,7 @@ namespace
                 clock.beginExecute();
                 cpu.execute();
                 ppu.execute();
+                apu.execute();
                 clock.endExecute();
             }
 
@@ -191,6 +207,16 @@ namespace
             static_cast<ContextImpl*>(context)->startVBlank();
         }
 
+        static uint8_t apuRegsRead(void* context, int32_t ticks, uint32_t addr)
+        {
+            return static_cast<ContextImpl*>(context)->apu.regRead(ticks, addr);
+        }
+
+        static void apuRegsWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value)
+        {
+            static_cast<ContextImpl*>(context)->apu.regWrite(ticks, addr, value);
+        }
+
         const NES::Rom*         rom;
         NES::Clock              clock;
         NES::MemoryBus          cpuMemory;
@@ -198,10 +224,13 @@ namespace
         MEM_ACCESS              accessPrgRom2;
         MEM_ACCESS              accessPpuRegsRead;
         MEM_ACCESS              accessPpuRegsWrite;
+        MEM_ACCESS              accessApuRegsRead;
+        MEM_ACCESS              accessApuRegsWrite;
         MEM_ACCESS              accessCpuRamRead;
         MEM_ACCESS              accessCpuRamWrite;
         NES::Cpu6502            cpu;
         NES::PPU                ppu;
+        NES::APU                apu;
         std::vector<uint8_t>    cpuRam;
         NES::Mapper*            mapper;
     };

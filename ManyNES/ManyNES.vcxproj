@@ -109,6 +109,7 @@
     </MASM>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="APU.cpp" />
     <ClCompile Include="Clock.cpp" />
     <ClCompile Include="MemoryBus.cpp" />
     <ClCompile Include="Context.cpp" />
@@ -120,6 +121,7 @@
     <ClCompile Include="Rom.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="APU.h" />
     <ClInclude Include="Clock.h" />
     <ClInclude Include="MemoryBus.h" />
     <ClInclude Include="Cpu6502.h" />
