@@ -139,7 +139,7 @@ namespace NES
 
     void PPU::startVBlank()
     {
-        printf("[VBLANK start]\n");
+        //printf("[VBLANK start]\n");
         uint8_t ppustatus = mRegister[PPU_REG_PPUSTATUS];
         uint8_t ppuctrl = mRegister[PPU_REG_PPUCTRL];
         if (!(ppustatus & PPU_STATUS_VBLANK))
@@ -153,8 +153,8 @@ namespace NES
     void PPU::endVBlank()
     {
         uint8_t ppustatus = mRegister[PPU_REG_PPUSTATUS];
-        if (ppustatus & PPU_STATUS_VBLANK)
-            printf("[VBLANK end]\n");
+        //if (ppustatus & PPU_STATUS_VBLANK)
+        //    printf("[VBLANK end]\n");
         mRegister[PPU_REG_PPUSTATUS] = ppustatus & ~PPU_STATUS_VBLANK;
     }
 
@@ -162,7 +162,7 @@ namespace NES
     {
         for (auto listener : mListeners)
             listener->onVBlankStart();
-        printf("[VBLANK interrupt]\n");
+        //printf("[VBLANK interrupt]\n");
     }
 
     void PPU::onVBlankStart()

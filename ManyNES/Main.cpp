@@ -86,7 +86,9 @@ bool Application::create()
     };
     SDL_SetPaletteColors(mSurface->format->palette, colors, 0, 64);
 
-    mRom = NES::Rom::load("mario.nes");
+    //mRom = NES::Rom::load("mario.nes");
+    //mRom = NES::Rom::load("ROMs\\rom_singles\\01-basics.nes");
+    mRom = NES::Rom::load("ROMs\\nestest.nes");
     if (!mRom)
         return false;
 
