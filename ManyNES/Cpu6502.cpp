@@ -212,7 +212,7 @@ namespace
         {
         case ADDR_IMPL: sprintf(temp, "%s", opcode); break;
         case ADDR_IMM:  sprintf(temp, "%s     #$%02x", opcode, peek8(state, pc)); break;
-        //case ADDR_ACC:  sprintf(temp, "%s     a", opcode); break;
+        case ADDR_ACC:  sprintf(temp, "%s     a", opcode); break;
         case ADDR_REL:  sprintf(temp, "%s     $%04x", opcode, static_cast<uint16_t>(static_cast<int8_t>(peek8(state, pc)) + pc)); break;
         case ADDR_ABS:  sprintf(temp, "%s     $%04x", opcode, peek16(state, pc)); break;
         case ADDR_ZPG:  sprintf(temp, "%s     $%02x", opcode, peek8(state, pc)); break;
@@ -220,7 +220,7 @@ namespace
         case ADDR_ABSY: sprintf(temp, "%s     $%04x, y", opcode, peek16(state, pc)); break;
         //case ADDR_ZPGX: sprintf(temp, "%s     $%02x, x", opcode, peek8(state, pc)); break;
         //case ADDR_ZPGY: sprintf(temp, "%s     $%02x, y", opcode, peek8(state, pc)); break;
-        //case ADDR_IND:  sprintf(temp, "%s     ($%04x)", opcode, peek16(state, pc)); break;
+        case ADDR_IND:  sprintf(temp, "%s     ($%04x)", opcode, peek16(state, pc)); break;
         //case ADDR_INDX: sprintf(temp, "%s     ($%02x, x)", opcode, peek8(state, pc)); break;
         case ADDR_INDY: sprintf(temp, "%s     ($%02x), y", opcode, peek8(state, pc)); break;
         default:
@@ -280,7 +280,6 @@ namespace
 
     inline uint16_t addr_ind(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED_ADDR_MODE("ind");
         uint16_t addr = fetch16(state);
         addr = read16(state, addr);
         return addr;
@@ -395,6 +394,25 @@ namespace
 
     ///////////////////////////////////////////////////////////////////////////
 
+    inline void import_flags(CPU_STATE& state)
+    {
+        uint8_t flags = state.sr & ~(STATUS_C | STATUS_Z | STATUS_V | STATUS_N);
+        state.flag_c = flags & STATUS_C ? 1 : 0;
+        state.flag_z = flags & STATUS_Z ? 0 : 1;
+        state.flag_v = flags & STATUS_V ? 1 : 0;
+        state.flag_n = flags & STATUS_N ? 0x80 : 0;
+    }
+
+    inline void export_flags(CPU_STATE& state)
+    {
+        uint8_t flags = state.sr & ~(STATUS_C | STATUS_Z | STATUS_V | STATUS_N);
+        flags |= state.flag_c ? STATUS_C : 0;
+        flags |= !state.flag_z ? STATUS_Z : 0;
+        flags |= state.flag_v ? STATUS_V : 0;
+        flags |= (state.flag_n & 0x80) ? STATUS_N : 0;
+        state.sr = flags;
+    }
+
     inline void insn_branch(CPU_STATE& state, bool branch)
     {
         int16_t offset = static_cast<int16_t>(static_cast<int8_t>(fetch8(state)));
@@ -422,7 +440,10 @@ namespace
 
     inline void insn_asl(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED("asl a");
+        uint8_t value = state.a;
+        state.flag_c = (value & 0x80) ? 1 : 0;
+        state.flag_z = value = value << 1;
+        state.a = value;
     }
 
     inline void insn_asl(CPU_STATE& state, uint16_t addr)
@@ -432,7 +453,7 @@ namespace
 
     inline void insn_bcc(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED("bcc");
+        insn_branch(state, state.flag_c == 0);
     }
 
     inline void insn_bcs(CPU_STATE& state)
@@ -442,7 +463,7 @@ namespace
 
     inline void insn_beq(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED("beq");
+        insn_branch(state, state.flag_z == 0);
     }
 
     inline void insn_bit(CPU_STATE& state, uint8_t src)
@@ -469,7 +490,12 @@ namespace
 
     inline void insn_brk(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED("brk");
+        export_flags(state);
+        state.sr |= STATUS_RESERVED0;
+        push16(state, state.pc);
+        push8(state, state.sr);
+        state.pc = read16(state, ADDR_VECTOR_IRQ);
+        state.sr |= STATUS_I;
     }
 
     inline void insn_bvc(CPU_STATE& state)
@@ -484,7 +510,7 @@ namespace
 
     inline void insn_clc(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED("cld");
+        state.flag_c = 0;
     }
 
     inline void insn_cld(CPU_STATE& state)
@@ -526,7 +552,9 @@ namespace
 
     inline void insn_dec(CPU_STATE& state, uint16_t addr)
     {
-        NOT_IMPLEMENTED("dec");
+        uint8_t value = read8(state, addr);
+        state.flag_z = state.flag_n = --value;
+        write8(state, addr, value);
     }
 
     inline void insn_dex(CPU_STATE& state)
@@ -541,7 +569,8 @@ namespace
 
     inline void insn_eor(CPU_STATE& state, uint8_t src)
     {
-        NOT_IMPLEMENTED("eor");
+        state.a ^= src;
+        state.flag_z = state.flag_n = state.a;
     }
 
     inline void insn_inc(CPU_STATE& state, uint16_t addr)
@@ -553,7 +582,7 @@ namespace
 
     inline void insn_inx(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED("inx");
+        state.flag_z = state.flag_n = ++state.x;
     }
 
     inline void insn_iny(CPU_STATE& state)
@@ -590,7 +619,10 @@ namespace
 
     inline void insn_lsr(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED("lsr a");
+        uint8_t value = state.a;
+        state.flag_c = value & 1;
+        state.flag_z = value = value >> 1;
+        state.a = value;
     }
 
     inline void insn_lsr(CPU_STATE& state, uint8_t src)
@@ -611,7 +643,7 @@ namespace
 
     inline void insn_pha(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED("pha");
+        push8(state, state.a);
     }
 
     inline void insn_php(CPU_STATE& state)
@@ -621,7 +653,7 @@ namespace
 
     inline void insn_pla(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED("pla");
+        state.flag_z = state.flag_n = state.a = pop8(state);
     }
 
     inline void insn_plp(CPU_STATE& state)
@@ -631,12 +663,16 @@ namespace
 
     inline void insn_rol(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED("rol a");
+        uint8_t value = state.a;
+        uint8_t next_flag_c = (value & 0x80) ? 1 : 0;
+        state.flag_z = state.flag_n = value = (value << 1) | state.flag_c;
+        state.flag_c = next_flag_c;
+        state.a = value;
     }
 
     inline void insn_rol(CPU_STATE& state, uint8_t src)
     {
-        NOT_IMPLEMENTED("rol");
+        NOT_IMPLEMENTED("rol a");
     }
 
     inline void insn_ror(CPU_STATE& state)
@@ -644,9 +680,13 @@ namespace
         NOT_IMPLEMENTED("ror a");
     }
 
-    inline void insn_ror(CPU_STATE& state, uint8_t src)
+    inline void insn_ror(CPU_STATE& state, uint16_t addr)
     {
-        NOT_IMPLEMENTED("ror");
+        uint8_t value = read8(state, addr);
+        uint8_t next_flag_c = value & 1;
+        state.flag_z = state.flag_n = value = (value >> 1) | (state.flag_c ? 0x80 : 0x00);
+        state.flag_c = next_flag_c;
+        write8(state, addr, value);
     }
 
     inline void insn_rti(CPU_STATE& state)
@@ -661,12 +701,18 @@ namespace
 
     inline void insn_sbc(CPU_STATE& state, uint8_t src)
     {
-        NOT_IMPLEMENTED("sbc");
+        if (state.sr & STATUS_D)
+        {
+            NOT_IMPLEMENTED("sbc (D=1)");
+        }
+        uint8_t result = state.a - src - (1 - state.flag_c);
+        state.flag_c = result <= state.a ? 1 : 0;
+        state.flag_z = state.flag_n = state.a = result;
     }
 
     inline void insn_sec(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED("sec");
+        state.flag_c = 1;
     }
 
     inline void insn_sed(CPU_STATE& state)
@@ -697,12 +743,12 @@ namespace
 
     inline void insn_tax(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED("tax");
+        state.flag_z = state.flag_n = state.x = state.a;
     }
 
     inline void insn_tay(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED("tay");
+        state.flag_z = state.flag_n = state.y = state.a;
     }
 
     inline void insn_tsx(CPU_STATE& state)
@@ -908,10 +954,33 @@ void cpu_destroy(CPU_STATE& cpu)
 {
 }
 
-void cpu_reset(CPU_STATE& cpu)
+void cpu_reset(CPU_STATE& state)
 {
-    cpu.sp -= 3;
-    cpu.sr |= 0x04;
+    state.sp -= 3;
+    state.sr |= 0x04;
+    state.pc = read16(state, ADDR_VECTOR_RESET);
+}
+
+void cpu_irq(CPU_STATE& state)
+{
+    export_flags(state);
+    state.sr &= ~STATUS_RESERVED0;
+    push16(state, state.pc);
+    push8(state, state.sr);
+    state.pc = read16(state, ADDR_VECTOR_IRQ);
+    state.sr |= STATUS_I;
+    state.executed_ticks += 7;
+}
+
+void cpu_nmi(CPU_STATE& state)
+{
+    export_flags(state);
+    state.sr &= ~STATUS_RESERVED0;
+    push16(state, state.pc);
+    push8(state, state.sr);
+    state.pc = read16(state, ADDR_VECTOR_NMI);
+    state.sr |= STATUS_I;
+    state.executed_ticks += 7;
 }
 
 void cpu_execute(CPU_STATE& state)
@@ -919,7 +988,7 @@ void cpu_execute(CPU_STATE& state)
     while (state.executed_ticks < state.desired_ticks)
     {
 #if 1
-        static uint32_t traceStart = 0x69c0;
+        static uint32_t traceStart = 0x00009000;
         static uint32_t traceCount = 0;
 
         if (traceCount++ >= traceStart)
@@ -947,27 +1016,27 @@ void cpu_execute(CPU_STATE& state)
         //case 0x25: insn_and(state, read8_zpg(state)); break;
         //case 0x35: insn_and(state, read8_zpgx(state)); break;
         //case 0x2D: insn_and(state, read8_abs(state)); break;
-        //case 0x3D: insn_and(state, read8_absx(state, state.master_clock_divider)); break;
+        case 0x3D: insn_and(state, read8_absx(state, state.master_clock_divider)); break;
         //case 0x39: insn_and(state, read8_absy(state, state.master_clock_divider)); break;
         //case 0x21: insn_and(state, read8_indx(state)); break;
         //case 0x31: insn_and(state, read8_indy(state)); break;
-        //case 0x0A: insn_asl(state); break;
+        case 0x0A: insn_asl(state); break;
         //case 0x06: insn_asl(state, addr_zpg(state)); break;
         //case 0x16: insn_asl(state, addr_zpgx(state)); break;
         //case 0x0E: insn_asl(state, addr_abs(state)); break;
         //case 0x1E: insn_asl(state, addr_absx(state)); break;
-        //case 0x90: insn_bcc(state); break;
+        case 0x90: insn_bcc(state); break;
         case 0xB0: insn_bcs(state); break;
-        //case 0xF0: insn_beq(state); break;
+        case 0xF0: insn_beq(state); break;
         //case 0x24: insn_bit(state, read8_zpg(state)); break;
         case 0x2C: insn_bit(state, read8_abs(state)); break;
         //case 0x30: insn_bmi(state); break;
         case 0xD0: insn_bne(state); break;
         case 0x10: insn_bpl(state); break;
-        //case 0x00: insn_brk(state); break;
+        case 0x00: insn_brk(state); break;
         //case 0x50: insn_bvc(state); break;
         //case 0x70: insn_bvs(state); break;
-        //case 0x18: insn_clc(state); break;
+        case 0x18: insn_clc(state); break;
         case 0xD8: insn_cld(state); break;
         //case 0x58: insn_cli(state); break;
         //case 0xB8: insn_clv(state); break;
@@ -987,26 +1056,26 @@ void cpu_execute(CPU_STATE& state)
         //case 0xCC: insn_cpy(state, read8_abs(state)); break;
         //case 0xC6: insn_dec(state, addr_zpg(state)); break;
         //case 0xD6: insn_dec(state, addr_zpgx(state)); break;
-        //case 0xCE: insn_dec(state, addr_abs(state)); break;
+        case 0xCE: insn_dec(state, addr_abs(state)); break;
         //case 0xDE: insn_dec(state, addr_absx(state)); break;
         case 0xCA: insn_dex(state); break;
         case 0x88: insn_dey(state); break;
         //case 0x49: insn_eor(state, read8_imm(state)); break;
-        //case 0x45: insn_eor(state, read8_zpg(state)); break;
+        case 0x45: insn_eor(state, read8_zpg(state)); break;
         //case 0x55: insn_eor(state, read8_zpgx(state)); break;
         //case 0x40: insn_eor(state, read8_abs(state)); break;
         //case 0x5D: insn_eor(state, read8_absx(state, state.master_clock_divider)); break;
         //case 0x59: insn_eor(state, read8_absy(state, state.master_clock_divider)); break;
         //case 0x41: insn_eor(state, read8_indx(state)); break;
         //case 0x51: insn_eor(state, read8_indy(state, state.master_clock_divider)); break;
-        //case 0xE6: insn_inc(state, addr_zpg(state)); break;
+        case 0xE6: insn_inc(state, addr_zpg(state)); break;
         //case 0xF6: insn_inc(state, addr_zpgx(state)); break;
         case 0xEE: insn_inc(state, addr_abs(state)); break;
         //case 0xFE: insn_inc(state, addr_absx(state)); break;
-        //case 0xE8: insn_inx(state); break;
+        case 0xE8: insn_inx(state); break;
         case 0xC8: insn_iny(state); break;
         case 0x4C: insn_jmp(state, addr_abs(state)); break;
-        //case 0x6C: insn_jmp(state, addr_ind(state)); break;
+        case 0x6C: insn_jmp(state, addr_ind(state)); break;
         case 0x20: insn_jsr(state); break;
         case 0xA9: insn_lda(state, read8_imm(state)); break;
         //case 0xA5: insn_lda(state, read8_zpg(state)); break;
@@ -1015,45 +1084,45 @@ void cpu_execute(CPU_STATE& state)
         case 0xBD: insn_lda(state, read8_absx(state, state.master_clock_divider)); break;
         //case 0xB9: insn_lda(state, read8_absy(state, state.master_clock_divider)); break;
         //case 0xA1: insn_lda(state, read8_indx(state)); break;
-        //case 0xB1: insn_lda(state, read8_indy(state, state.master_clock_divider)); break;
+        case 0xB1: insn_lda(state, read8_indy(state, state.master_clock_divider)); break;
         case 0xA2: insn_ldx(state, read8_imm(state)); break;
         //case 0xA6: insn_ldx(state, read8_zpg(state)); break;
         //case 0xB6: insn_ldx(state, read8_zpgy(state)); break;
-        //case 0xAE: insn_ldx(state, read8_abs(state)); break;
-        //case 0xBE: insn_ldx(state, read8_absx(state, state.master_clock_divider)); break;
+        case 0xAE: insn_ldx(state, read8_abs(state)); break;
+        case 0xBE: insn_ldx(state, read8_absx(state, state.master_clock_divider)); break;
         case 0xA0: insn_ldy(state, read8_imm(state)); break;
         //case 0xA4: insn_ldy(state, read8_zpg(state)); break;
         //case 0xB4: insn_ldy(state, read8_zpgx(state)); break;
-        //case 0xAC: insn_ldy(state, read8_abs(state)); break;
+        case 0xAC: insn_ldy(state, read8_abs(state)); break;
         //case 0xBC: insn_ldy(state, read8_absx(state, state.master_clock_divider)); break;
-        //case 0x4A: insn_lsr(state); break;
+        case 0x4A: insn_lsr(state); break;
         //case 0x46: insn_lsr(state, read8_zpg(state)); break;
         //case 0x56: insn_lsr(state, read8_zpgx(state)); break;
         //case 0x4E: insn_lsr(state, read8_abs(state)); break;
         //case 0x5E: insn_lsr(state, read8_absx(state)); break;
         //case 0xEA: insn_nop(state); break;
         case 0x09: insn_ora(state, read8_imm(state)); break;
-        //case 0x05: insn_ora(state, read8_zpg(state)); break;
+        case 0x05: insn_ora(state, read8_zpg(state)); break;
         //case 0x15: insn_ora(state, read8_zpgx(state)); break;
         //case 0x0D: insn_ora(state, read8_abs(state)); break;
         //case 0x1D: insn_ora(state, read8_absx(state, state.master_clock_divider)); break;
         //case 0x19: insn_ora(state, read8_absy(state, state.master_clock_divider)); break;
         //case 0x01: insn_ora(state, read8_indx(state)); break;
         //case 0x11: insn_ora(state, read8_indy(state)); break;
-        //case 0x48: insn_pha(state); break;
+        case 0x48: insn_pha(state); break;
         //case 0x08: insn_php(state); break;
-        //case 0x68: insn_pla(state); break;
+        case 0x68: insn_pla(state); break;
         //case 0x28: insn_plp(state); break;
-        //case 0x2A: insn_rol(state); break;
-        //case 0x26: insn_rol(state, read8_zpg(state)); break;
-        //case 0x36: insn_rol(state, read8_zpgx(state)); break;
-        //case 0x2E: insn_rol(state, read8_abs(state)); break;
-        //case 0x3E: insn_rol(state, read8_absx(state)); break;
+        case 0x2A: insn_rol(state); break;
+        //case 0x26: insn_rol(state, addr_zpg(state)); break;
+        //case 0x36: insn_rol(state, addr_zpgx(state)); break;
+        //case 0x2E: insn_rol(state, addr_abs(state)); break;
+        //case 0x3E: insn_rol(state, addr_absx(state)); break;
         //case 0x6A: insn_ror(state); break;
-        //case 0x66: insn_ror(state, read8_zpg(state)); break;
-        //case 0x76: insn_ror(state, read8_zpgx(state)); break;
-        //case 0x6E: insn_ror(state, read8_abs(state)); break;
-        //case 0x7E: insn_ror(state, read8_absx(state)); break;
+        //case 0x66: insn_ror(state, addr_zpg(state)); break;
+        //case 0x76: insn_ror(state, addr_zpgx(state)); break;
+        //case 0x6E: insn_ror(state, addr_abs(state)); break;
+        case 0x7E: insn_ror(state, addr_absx(state)); break;
         //case 0x4D: insn_rti(state); break;
         case 0x60: insn_rts(state); break;
         //case 0xE9: insn_sbc(state, read8_imm(state)); break;
@@ -1061,16 +1130,16 @@ void cpu_execute(CPU_STATE& state)
         //case 0xF5: insn_sbc(state, read8_zpgx(state)); break;
         //case 0xED: insn_sbc(state, read8_abs(state)); break;
         //case 0xFD: insn_sbc(state, read8_absx(state, state.master_clock_divider)); break;
-        //case 0xF9: insn_sbc(state, read8_absy(state, state.master_clock_divider)); break;
+        case 0xF9: insn_sbc(state, read8_absy(state, state.master_clock_divider)); break;
         //case 0xE1: insn_sbc(state, read8_indx(state)); break;
         //case 0xF1: insn_sbc(state, read8_indy(state)); break;
-        //case 0x38: insn_sec(state); break;
+        case 0x38: insn_sec(state); break;
         //case 0xF8: insn_sed(state); break;
         case 0x78: insn_sei(state); break;
         case 0x85: insn_sta(state, addr_zpg(state)); break;
         //case 0x95: insn_sta(state, addr_zpgx(state)); break;
         case 0x8D: insn_sta(state, addr_abs(state)); break;
-        //case 0x9D: insn_sta(state, addr_absx(state)); break;
+        case 0x9D: insn_sta(state, addr_absx(state)); break;
         case 0x99: insn_sta(state, addr_absy(state)); break;
         //case 0x81: insn_sta(state, addr_indx(state)); break;
         case 0x91: insn_sta(state, addr_indy(state)); break;
@@ -1080,8 +1149,8 @@ void cpu_execute(CPU_STATE& state)
         //case 0x84: insn_sty(state, addr_zpg(state)); break;
         //case 0x94: insn_sty(state, addr_zpgx(state)); break;
         //case 0x8C: insn_sty(state, addr_abs(state)); break;
-        //case 0xAA: insn_tax(state); break;
-        //case 0xA8: insn_tay(state); break;
+        case 0xAA: insn_tax(state); break;
+        case 0xA8: insn_tay(state); break;
         //case 0xBA: insn_tsx(state); break;
         case 0x8A: insn_txa(state); break;
         case 0x9A: insn_txs(state); break;
@@ -1099,6 +1168,7 @@ void cpu_execute(CPU_STATE& state)
 namespace NES
 {
     Cpu6502::Cpu6502()
+        : mClock(nullptr)
     {
         cpu_initialize(mState);
     }
@@ -1108,24 +1178,40 @@ namespace NES
         destroy();
     }
 
-    bool Cpu6502::create(MEMORY_BUS& bus, uint32_t master_clock_divider)
+    bool Cpu6502::create(Clock& clock, MEMORY_BUS& bus, uint32_t master_clock_divider)
     {
         if (!cpu_create(mState, bus, master_clock_divider))
             return false;
+        mClock = &clock;
+        mClock->addListener(*this);
         return true;
     }
 
     void Cpu6502::destroy()
     {
+        if (mClock)
+        {
+            mClock->removeListener(*this);
+            mClock = nullptr;
+        }
         cpu_destroy(mState);
     }
 
     void Cpu6502::reset()
     {
         cpu_reset(mState);
-        mState.pc = read16(mState, ADDR_VECTOR_RESET);
         mState.executed_ticks = 0;
         mState.desired_ticks = 0;
+    }
+
+    void Cpu6502::irq()
+    {
+        cpu_irq(mState);
+    }
+
+    void Cpu6502::nmi()
+    {
+        cpu_nmi(mState);
     }
 
     void Cpu6502::advanceClock(int32_t ticks)

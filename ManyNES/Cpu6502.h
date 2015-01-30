@@ -42,9 +42,11 @@ namespace NES
 
         Cpu6502();
         ~Cpu6502();
-        bool create(MEMORY_BUS& bus, uint32_t master_clock_divider);
+        bool create(Clock& clock, MEMORY_BUS& bus, uint32_t master_clock_divider);
         void destroy();
         void reset();
+        void irq();
+        void nmi();
         void advanceClock(int32_t ticks);
         void setDesiredTicks(int32_t ticks);
         void execute();
@@ -57,6 +59,7 @@ namespace NES
 
     private:
         CPU_STATE               mState;
+        Clock*                  mClock;
     };
 }
 

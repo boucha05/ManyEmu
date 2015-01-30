@@ -69,12 +69,6 @@ namespace NES
             timerEvent.callback(timerEvent.context, mTimers.begin()->first);
             mTimers.erase(mTimers.begin());
         }
-
-        // Advance to next target execution if completed
-        if (!canExecute())
-        {
-            advance();
-        }
     }
 
     void Clock::advance()
@@ -87,14 +81,15 @@ namespace NES
             mTimers.insert(std::pair<int32_t, TimerEvent>(timerEvent.first - mTargetTicks, timerEvent.second));
         }
 
+        int32_t targetTicks = mTargetTicks;
+        mDesiredTicks -= targetTicks;
+        mTargetTicks = 0;
+
         // Advance reference time on listeners
         for (auto listener : mListeners)
         {
-            listener->advanceClock(mTargetTicks);
+            listener->advanceClock(targetTicks);
         }
-
-        mDesiredTicks -= mTargetTicks;
-        mTargetTicks = 0;
     }
 
     void Clock::setDesiredTicks(int32_t ticks)

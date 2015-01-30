@@ -66,15 +66,14 @@ namespace
             // CPU
             if (!cpuMemory.create(MEM_SIZE_LOG2, MEM_PAGE_SIZE_LOG2))
                 return false;
-            if (!cpu.create(cpuMemory.getState(), MASTER_CLOCK_CPU_DIVIDER_NTSC))
+            if (!cpu.create(clock, cpuMemory.getState(), MASTER_CLOCK_CPU_DIVIDER_NTSC))
                 return false;
-            clock.addListener(cpu);
 
             const auto& romDesc = rom->getDescription();
             const auto& romContent = rom->getContent();
 
             // PPU
-            if (!ppu.create(MASTER_CLOCK_PPU_DIVIDER_NTSC))
+            if (!ppu.create(clock, MASTER_CLOCK_PPU_DIVIDER_NTSC))
                 return false;
 
             // APU
@@ -94,6 +93,10 @@ namespace
             accessPpuRegsWrite.setWriteMethod(ppuRegsWrite, this, 0x2000);
             cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0x2000, 0x3fff, accessPpuRegsRead);
             cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, 0x2000, 0x3fff, accessPpuRegsWrite);
+
+            if (!ppuListener.create(*this))
+                return false;
+            ppu.addListener(ppuListener);
 
             // APU registers
             static const uint16_t APU_START_ADDR = 0x4000;
@@ -149,6 +152,7 @@ namespace
             }
 
             apu.destroy();
+            ppuListener.destroy();
             ppu.destroy();
             cpu.destroy();
             cpuMemory.destroy();
@@ -182,6 +186,7 @@ namespace
                 apu.execute();
                 clock.endExecute();
             }
+            clock.advance();
 
             ppu.update(surface, pitch);
         }
@@ -197,16 +202,6 @@ namespace
             static_cast<ContextImpl*>(context)->ppu.regWrite(ticks, addr, value);
         }
 
-        void startVBlank()
-        {
-            ppu.startVBlank();
-        }
-
-        static void startVBlank(void* context, int32_t ticks)
-        {
-            static_cast<ContextImpl*>(context)->startVBlank();
-        }
-
         static uint8_t apuRegsRead(void* context, int32_t ticks, uint32_t addr)
         {
             return static_cast<ContextImpl*>(context)->apu.regRead(ticks, addr);
@@ -216,6 +211,43 @@ namespace
         {
             static_cast<ContextImpl*>(context)->apu.regWrite(ticks, addr, value);
         }
+
+        void onVBlankStart()
+        {
+            cpu.nmi();
+        }
+
+        class PPUListener : public NES::PPU::IListener
+        {
+        public:
+            PPUListener()
+                : mContext(nullptr)
+            {
+            }
+
+            ~PPUListener()
+            {
+                destroy();
+            }
+
+            bool create(ContextImpl& context)
+            {
+                mContext = &context;
+                return true;
+            }
+
+            void destroy()
+            {
+            }
+
+            virtual void onVBlankStart()
+            {
+                mContext->onVBlankStart();
+            }
+
+        private:
+            ContextImpl*    mContext;
+        };
 
         const NES::Rom*         rom;
         NES::Clock              clock;
@@ -230,6 +262,7 @@ namespace
         MEM_ACCESS              accessCpuRamWrite;
         NES::Cpu6502            cpu;
         NES::PPU                ppu;
+        PPUListener             ppuListener;
         NES::APU                apu;
         std::vector<uint8_t>    cpuRam;
         NES::Mapper*            mapper;

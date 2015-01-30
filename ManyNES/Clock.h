@@ -28,6 +28,7 @@ namespace NES
         bool canExecute() const;
         void beginExecute();
         void endExecute();
+        void advance();
         void addEvent(TimerCallback callback, void* context, int32_t ticks);
         void addListener(IListener& listener);
         void removeListener(IListener& listener);
@@ -46,7 +47,6 @@ namespace NES
         typedef std::multimap<int32_t, TimerEvent> TimerQueue;
         typedef std::vector<IListener*> ListenerQueue;
 
-        void advance();
         void setDesiredTicks(int32_t ticks);
 
         TimerQueue              mTimers;
