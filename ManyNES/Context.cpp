@@ -118,6 +118,16 @@ namespace
                 cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, addr_start, addr_end, accessCpuRamWrite);
             }
 
+            // Save RAM
+            static const uint16_t SAVE_RAM_SIZE = 0x2000;
+            static const uint16_t SAVE_RAM_START_ADDR = 0x6000;
+            static const uint16_t SAVE_RAM_END_ADDR = SAVE_RAM_START_ADDR + SAVE_RAM_SIZE - 1;
+            saveRam.resize(SAVE_RAM_SIZE, 0);
+            accessSaveRamRead.setReadMemory(&saveRam[0]);
+            accessSaveRamWrite.setWriteMemory(&saveRam[0]);
+            cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, SAVE_RAM_START_ADDR, SAVE_RAM_END_ADDR, accessSaveRamRead);
+            cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, SAVE_RAM_START_ADDR, SAVE_RAM_END_ADDR, accessSaveRamWrite);
+
             mapper = NES::MapperRegistry::getInstance().create(romDesc.mapper);
             if (!mapper)
                 return false;
@@ -191,6 +201,17 @@ namespace
             ppu.update(surface, pitch);
         }
 
+        virtual uint8_t read8(uint16_t addr)
+        {
+            uint8_t value = memory_bus_read8(cpuMemory.getState(), clock.getDesiredTicks(), addr);
+            return value;
+        }
+
+        virtual void write8(uint16_t addr, uint8_t value)
+        {
+            memory_bus_write8(cpuMemory.getState(), clock.getDesiredTicks(), addr, value);
+        }
+
     private:
         static uint8_t ppuRegsRead(void* context, int32_t ticks, uint32_t addr)
         {
@@ -260,11 +281,14 @@ namespace
         MEM_ACCESS              accessApuRegsWrite;
         MEM_ACCESS              accessCpuRamRead;
         MEM_ACCESS              accessCpuRamWrite;
+        MEM_ACCESS              accessSaveRamRead;
+        MEM_ACCESS              accessSaveRamWrite;
         NES::Cpu6502            cpu;
         NES::PPU                ppu;
         PPUListener             ppuListener;
         NES::APU                apu;
         std::vector<uint8_t>    cpuRam;
+        std::vector<uint8_t>    saveRam;
         NES::Mapper*            mapper;
     };
 }

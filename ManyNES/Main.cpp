@@ -4,7 +4,9 @@
 #include <SDL.h>
 #include <gl/glew.h>
 #include <assert.h>
+#include <string>
 #include <vector>
+#include "Tests.h"
 #include "nes.h"
 
 class Application
@@ -86,9 +88,13 @@ bool Application::create()
     };
     SDL_SetPaletteColors(mSurface->format->palette, colors, 0, 64);
 
-    //mRom = NES::Rom::load("mario.nes");
-    //mRom = NES::Rom::load("ROMs\\rom_singles\\01-basics.nes");
-    mRom = NES::Rom::load("ROMs\\nestest.nes");
+#if 0
+    if (!runTestRoms())
+        return false;
+#endif
+
+    mRom = NES::Rom::load("ROMs\\mario.nes");
+    //mRom = NES::Rom::load("ROMs\\nestest.nes");
     if (!mRom)
         return false;
 

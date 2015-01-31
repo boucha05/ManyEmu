@@ -8,3 +8,5 @@
 /ManyNES/*.nes
 /ManyNES/Release
 /Release
+/ManyNES/ROMs/my-nestest.log
+/ManyNES/ROMs/mario.nes

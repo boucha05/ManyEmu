@@ -6,7 +6,7 @@ namespace
 {
     void NOT_IMPLEMENTED(const char* feature)
     {
-        printf("APU: feature not implemented: %s\n", feature);
+        //printf("APU: feature not implemented: %s\n", feature);
         //assert(false);
     }
 }

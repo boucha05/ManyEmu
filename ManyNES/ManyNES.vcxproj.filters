@@ -11,6 +11,7 @@
     <ClCompile Include="PPU.cpp" />
     <ClCompile Include="Clock.cpp" />
     <ClCompile Include="APU.cpp" />
+    <ClCompile Include="Tests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Palette.h" />
@@ -22,6 +23,7 @@
     <ClInclude Include="PPU.h" />
     <ClInclude Include="Clock.h" />
     <ClInclude Include="APU.h" />
+    <ClInclude Include="Tests.h" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="r6502.asm" />

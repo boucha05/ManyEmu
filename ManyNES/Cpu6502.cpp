@@ -511,7 +511,6 @@ namespace
         push16(state, state.pc - 1);
         push8(state, state.sr);
         state.pc = read16(state, ADDR_VECTOR_IRQ);
-        state.sr |= STATUS_I;
     }
 
     inline void insn_bvc(CPU_STATE& state)
@@ -994,7 +993,7 @@ void cpu_reset(CPU_STATE& state)
     state.sr |= 0x04;
     state.pc = read16(state, ADDR_VECTOR_RESET);
 
-#if 1
+#if 0
     // For debugging purpose only
     state.sp = 0xfd;
     state.sr = 0x24;
@@ -1030,7 +1029,7 @@ void cpu_execute(CPU_STATE& state)
 {
     while (state.executed_ticks < state.desired_ticks)
     {
-#if 1
+#if 0
         static FILE* log = fopen("ROMs\\my-nestest.log", "w");
         static uint32_t traceStart = 0;
         static uint32_t traceCount = 0;
@@ -1058,7 +1057,7 @@ void cpu_execute(CPU_STATE& state)
                 (state.sr & STATUS_D) ? "D" : "-",
                 (state.sr & STATUS_V) ? "V" : "-"*/);
         }
-        static uint32_t traceBreak = 0x138c;// 8991;
+        static uint32_t traceBreak = 8991;
         if (traceCount == traceBreak)
         {
             fflush(log);
@@ -1223,9 +1222,9 @@ void cpu_execute(CPU_STATE& state)
         case 0x98: insn_tya(state); break;
         default:
         {
-            INSN_TYPE insn_type = static_cast<INSN_TYPE>(insn_table[insn]);
-            const char* opcode = insn_name[insn_type];
-            NOT_IMPLEMENTED(opcode);
+            //INSN_TYPE insn_type = static_cast<INSN_TYPE>(insn_table[insn]);
+            //const char* opcode = insn_name[insn_type];
+            //NOT_IMPLEMENTED(opcode);
         }
         }
     }
