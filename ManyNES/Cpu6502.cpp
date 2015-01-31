@@ -129,7 +129,7 @@ namespace
         2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0, // 10
         6, 6, 0, 0, 3, 3, 5, 0, 4, 2, 2, 0, 4, 4, 6, 0, // 20
         2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0, // 30
-        4, 6, 0, 0, 0, 3, 5, 0, 3, 2, 2, 0, 3, 6, 6, 0, // 40
+        6, 6, 0, 0, 0, 3, 5, 0, 3, 2, 2, 0, 3, 4, 6, 0, // 40
         2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0, // 50
         6, 6, 0, 0, 0, 3, 5, 0, 4, 2, 2, 0, 5, 4, 6, 0, // 60
         2, 5, 0, 0, 0, 4, 6, 0, 2, 4, 0, 0, 0, 4, 7, 0, // 70
@@ -266,26 +266,29 @@ namespace
 
     inline uint16_t addr_zpgx(CPU_STATE& state)
     {
-        uint16_t addr = static_cast<uint16_t>(fetch8(state) + state.x);
+        uint16_t addr = static_cast<uint16_t>((fetch8(state) + state.x) & 0xff);
         return addr;
     }
 
     inline uint16_t addr_zpgy(CPU_STATE& state)
     {
-        uint16_t addr = static_cast<uint16_t>(fetch8(state) + state.y);
+        uint16_t addr = static_cast<uint16_t>((fetch8(state) + state.y) & 0xff);
         return addr;
     }
 
     inline uint16_t addr_ind(CPU_STATE& state)
     {
+        // 6502 bug: can't use read16, second byte wraps around on the same page
         uint16_t addr = fetch16(state);
-        addr = read16(state, addr);
+        //addr = read16(state, addr);
+        uint8_t lo = read8(state, addr);
+        uint8_t hi = read8(state, (addr & 0xff00) | ((addr + 1) & 0x00ff));
+        addr = static_cast<uint16_t>(lo) | (static_cast<uint16_t>(hi) << 8);
         return addr;
     }
 
     inline uint16_t addr_indx(CPU_STATE& state)
     {
-        NOT_IMPLEMENTED_ADDR_MODE("indx");
         uint8_t addr_lo = fetch8(state) + state.x;
         uint8_t addr_hi = (addr_lo + 1);
         uint8_t lo = read8(state, addr_lo);
@@ -378,14 +381,14 @@ namespace
     {
         uint8_t lo = value & 0xff;
         uint8_t hi = (value >> 8) & 0xff;
-        push8(state, lo);
         push8(state, hi);
+        push8(state, lo);
     }
 
     inline uint16_t pop16(CPU_STATE& state)
     {
-        uint8_t hi = pop8(state);
         uint8_t lo = pop8(state);
+        uint8_t hi = pop8(state);
         uint16_t value = (static_cast<uint16_t>(lo) | (static_cast<uint16_t>(hi) << 8));
         return value;
     }
@@ -435,8 +438,10 @@ namespace
         {
             //NOT_IMPLEMENTED("adc (D=1)");
         }
-        uint8_t result = state.a + src + state.flag_c;
-        state.flag_c = state.flag_v = result <= state.a ? 1 : 0;
+        uint16_t value = state.a;
+        uint8_t result = value + src + state.flag_c;
+        state.flag_v = (value ^ result) & (src ^ result) & 0x80;
+        state.flag_c = result <= state.a ? 1 : 0;
         state.flag_z = state.flag_n = state.a = result;
     }
 
@@ -450,7 +455,7 @@ namespace
     {
         uint8_t value = state.a;
         state.flag_c = (value & 0x80) ? 1 : 0;
-        state.flag_z = value = value << 1;
+        state.flag_z = state.flag_n = value = value << 1;
         state.a = value;
     }
 
@@ -458,7 +463,7 @@ namespace
     {
         uint8_t value = read8(state, addr);
         state.flag_c = (value & 0x80) ? 1 : 0;
-        state.flag_z = value = value << 1;
+        state.flag_z = state.flag_n = value = value << 1;
         write8(state, addr, value);
     }
 
@@ -503,7 +508,7 @@ namespace
     {
         export_flags(state);
         state.sr |= STATUS_RESERVED0;
-        push16(state, state.pc);
+        push16(state, state.pc - 1);
         push8(state, state.sr);
         state.pc = read16(state, ADDR_VECTOR_IRQ);
         state.sr |= STATUS_I;
@@ -609,7 +614,7 @@ namespace
     inline void insn_jsr(CPU_STATE& state)
     {
         uint16_t addr = fetch16(state);
-        push16(state, state.pc);
+        push16(state, state.pc - 1);
         state.pc = addr;
     }
 
@@ -632,7 +637,7 @@ namespace
     {
         uint8_t value = state.a;
         state.flag_c = value & 1;
-        state.flag_z = value = value >> 1;
+        state.flag_z = state.flag_n = value = value >> 1;
         state.a = value;
     }
 
@@ -640,7 +645,7 @@ namespace
     {
         uint8_t value = read8(state, addr);
         state.flag_c = value & 1;
-        state.flag_z = value = value >> 1;
+        state.flag_z = state.flag_n = value = value >> 1;
         write8(state, addr, value);
     }
 
@@ -723,7 +728,7 @@ namespace
 
     inline void insn_rts(CPU_STATE& state)
     {
-        state.pc = pop16(state);
+        state.pc = pop16(state) + 1;
     }
 
     inline void insn_sbc(CPU_STATE& state, uint8_t src)
@@ -732,7 +737,10 @@ namespace
         {
             //NOT_IMPLEMENTED("sbc (D=1)");
         }
-        uint8_t result = state.a - src - (1 - state.flag_c);
+        src = 255 - src;    // Subtraction is addition of one's complement
+        uint16_t value = state.a;
+        uint8_t result = value + src + state.flag_c;
+        state.flag_v = (value ^ result) & (src ^ result) & 0x80;
         state.flag_c = result <= state.a ? 1 : 0;
         state.flag_z = state.flag_n = state.a = result;
     }
@@ -764,7 +772,7 @@ namespace
 
     inline void insn_sty(CPU_STATE& state, uint16_t addr)
     {
-        write8(state, addr, state.x);
+        write8(state, addr, state.y);
     }
 
     inline void insn_tax(CPU_STATE& state)
@@ -779,7 +787,7 @@ namespace
 
     inline void insn_tsx(CPU_STATE& state)
     {
-        push8(state, state.x);
+        state.flag_z = state.flag_n = state.x = state.sp;
     }
 
     inline void insn_txa(CPU_STATE& state)
@@ -789,7 +797,7 @@ namespace
 
     inline void insn_txs(CPU_STATE& state)
     {
-        push8(state, state.x);
+        state.sp = state.x;
     }
 
     inline void insn_tya(CPU_STATE& state)
@@ -857,7 +865,7 @@ namespace
     |  Immediate     |   EOR #Oper           |    49   |    2    |    2     |
     |  Zero Page     |   EOR Oper            |    45   |    2    |    3     |
     |  Zero Page,X   |   EOR Oper,X          |    55   |    2    |    4     |
-    |  Absolute      |   EOR Oper            |    40   |    3    |    4     |
+    |  Absolute      |   EOR Oper            |    4D   |    3    |    4     |
     |  Absolute,X    |   EOR Oper,X          |    5D   |    3    |    4*    |
     |  Absolute,Y    |   EOR Oper,Y          |    59   |    3    |    4*    |
     |  (Indirect,X)  |   EOR (Oper,X)        |    41   |    2    |    6     |
@@ -917,7 +925,7 @@ namespace
     |  Zero Page,X   |   ROR Oper,X          |    76   |    2    |    6     |
     |  Absolute      |   ROR Oper            |    6E   |    3    |    6     |
     |  Absolute,X    |   ROR Oper,X          |    7E   |    3    |    7     |
-    |  Implied       |   RTI                 |    4D   |    1    |    6     |
+    |  Implied       |   RTI                 |    40   |    1    |    6     |
     |  Implied       |   RTS                 |    60   |    1    |    6     |
     |  Immediate     |   SBC #Oper           |    E9   |    2    |    2     |
     |  Zero Page     |   SBC Oper            |    E5   |    2    |    3     |
@@ -1050,7 +1058,7 @@ void cpu_execute(CPU_STATE& state)
                 (state.sr & STATUS_D) ? "D" : "-",
                 (state.sr & STATUS_V) ? "V" : "-"*/);
         }
-        static uint32_t traceBreak = 8991;
+        static uint32_t traceBreak = 0x138c;// 8991;
         if (traceCount == traceBreak)
         {
             fflush(log);
@@ -1121,7 +1129,7 @@ void cpu_execute(CPU_STATE& state)
         case 0x49: insn_eor(state, read8_imm(state)); break;
         case 0x45: insn_eor(state, read8_zpg(state)); break;
         case 0x55: insn_eor(state, read8_zpgx(state)); break;
-        case 0x40: insn_eor(state, read8_abs(state)); break;
+        case 0x4D: insn_eor(state, read8_abs(state)); break;
         case 0x5D: insn_eor(state, read8_absx(state, state.master_clock_divider)); break;
         case 0x59: insn_eor(state, read8_absy(state, state.master_clock_divider)); break;
         case 0x41: insn_eor(state, read8_indx(state)); break;
@@ -1147,7 +1155,7 @@ void cpu_execute(CPU_STATE& state)
         case 0xA6: insn_ldx(state, read8_zpg(state)); break;
         case 0xB6: insn_ldx(state, read8_zpgy(state)); break;
         case 0xAE: insn_ldx(state, read8_abs(state)); break;
-        case 0xBE: insn_ldx(state, read8_absx(state, state.master_clock_divider)); break;
+        case 0xBE: insn_ldx(state, read8_absy(state, state.master_clock_divider)); break;
         case 0xA0: insn_ldy(state, read8_imm(state)); break;
         case 0xA4: insn_ldy(state, read8_zpg(state)); break;
         case 0xB4: insn_ldy(state, read8_zpgx(state)); break;
@@ -1181,7 +1189,7 @@ void cpu_execute(CPU_STATE& state)
         case 0x76: insn_ror(state, addr_zpgx(state)); break;
         case 0x6E: insn_ror(state, addr_abs(state)); break;
         case 0x7E: insn_ror(state, addr_absx(state)); break;
-        case 0x4D: insn_rti(state); break;
+        case 0x40: insn_rti(state); break;
         case 0x60: insn_rts(state); break;
         case 0xE9: insn_sbc(state, read8_imm(state)); break;
         case 0xE5: insn_sbc(state, read8_zpg(state)); break;

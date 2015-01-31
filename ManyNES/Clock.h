@@ -53,7 +53,6 @@ namespace NES
         ListenerQueue           mListeners;
         int32_t                 mTargetTicks;
         int32_t                 mDesiredTicks;
-        int32_t                 mExecutedTicks;
     };
 }
 
