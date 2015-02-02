@@ -162,16 +162,8 @@ void Application::update()
 {
     if (SDL_LockSurface(mSurface) == 0)
     {
-        uint8_t* buffer = static_cast<uint8_t*>(mSurface->pixels);
-        for (uint32_t y = 0; y < 256; ++y)
-        {
-            for (uint32_t x = 0; x < 256; ++x)
-            {
-                *buffer++ = static_cast<uint8_t>(x * y) & 63;
-            }
-        }
-
-        mContext->update(mSurface->pixels, mSurface->pitch);
+        mContext->setRenderSurface(mSurface->pixels, mSurface->pitch);
+        mContext->update();
 
         SDL_UnlockSurface(mSurface);
     }

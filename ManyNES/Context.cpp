@@ -73,7 +73,16 @@ namespace
             const auto& romContent = rom->getContent();
 
             // PPU
-            if (!ppu.create(clock, MASTER_CLOCK_PPU_DIVIDER_NTSC))
+            uint32_t ppuCreateFlags = 0;
+            if (romDesc.mirroring == NES::Rom::Mirroring_Horizontal)
+                ppuCreateFlags |= NES::PPU::CREATE_VRAM_HORIZONTAL_MIRROR;
+            else if (romDesc.mirroring == NES::Rom::Mirroring_Vertical)
+                ppuCreateFlags |= NES::PPU::CREATE_VRAM_VERTICAL_MIRROR;
+            else if (romDesc.mirroring == NES::Rom::Mirroring_FourScreen)
+                ppuCreateFlags |= NES::PPU::CREATE_VRAM_FOUR_SCREEN;
+            else
+                ppuCreateFlags |= NES::PPU::CREATE_VRAM_ONE_SCREEN;
+            if (!ppu.create(clock, MASTER_CLOCK_PPU_DIVIDER_NTSC, ppuCreateFlags))
                 return false;
 
             // APU
@@ -185,7 +194,12 @@ namespace
             mapper->reset();
         }
 
-        virtual void update(void* surface, uint32_t pitch)
+        virtual void setRenderSurface(void* surface, uint32_t pitch)
+        {
+            ppu.setRenderSurface(surface, pitch);
+        }
+
+        virtual void update()
         {
             clock.setTargetExecution(MASTER_CLOCK_PER_FRAME_NTSC);
             while (clock.canExecute())
@@ -197,8 +211,6 @@ namespace
                 clock.endExecute();
             }
             clock.advance();
-
-            ppu.update(surface, pitch);
         }
 
         virtual uint8_t read8(uint16_t addr)

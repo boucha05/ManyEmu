@@ -51,7 +51,8 @@ namespace NES
     {
     public:
         virtual void reset() = 0;
-        virtual void update(void* surface, uint32_t pitch) = 0;
+        virtual void setRenderSurface(void* surface, size_t pitch) = 0;
+        virtual void update() = 0;
         virtual uint8_t read8(uint16_t addr) = 0;
         virtual void write8(uint16_t addr, uint8_t value) = 0;
 
