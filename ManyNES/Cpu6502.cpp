@@ -439,10 +439,10 @@ namespace
             //NOT_IMPLEMENTED("adc (D=1)");
         }
         uint16_t value = state.a;
-        uint8_t result = value + src + state.flag_c;
+        uint16_t result = value + src + state.flag_c;
         state.flag_v = (value ^ result) & (src ^ result) & 0x80;
-        state.flag_c = result <= state.a ? 1 : 0;
-        state.flag_z = state.flag_n = state.a = result;
+        state.flag_c = (result & 0x100) ? 1 : 0;
+        state.flag_z = state.flag_n = state.a = result & 0xff;
     }
 
     inline void insn_and(CPU_STATE& state, uint8_t src)
@@ -738,10 +738,10 @@ namespace
         }
         src = 255 - src;    // Subtraction is addition of one's complement
         uint16_t value = state.a;
-        uint8_t result = value + src + state.flag_c;
+        uint16_t result = value + src + state.flag_c;
         state.flag_v = (value ^ result) & (src ^ result) & 0x80;
-        state.flag_c = result <= state.a ? 1 : 0;
-        state.flag_z = state.flag_n = state.a = result;
+        state.flag_c = (result & 0x100) ? 1 : 0;
+        state.flag_z = state.flag_n = state.a = result & 0xff;
     }
 
     inline void insn_sec(CPU_STATE& state)
