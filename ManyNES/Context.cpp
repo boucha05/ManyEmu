@@ -86,7 +86,7 @@ namespace
                 return false;
 
             // APU
-            if (!apu.create())
+            if (!apu.create(cpuMemory))
                 return false;
 
             // ROM
@@ -96,6 +96,12 @@ namespace
             accessPrgRom2.setReadMemory(romPage2);
             cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0x8000, 0xbfff, accessPrgRom1);
             cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0xc000, 0xffff, accessPrgRom2);
+
+            // CHR-ROM
+            const uint8_t* chrRomPage1 = romContent.chrRom;
+            const uint8_t* chrRomPage2 = chrRomPage1 + 0x1000;
+            ppu.getPatternTableRead(0)->setReadMemory(chrRomPage1);
+            ppu.getPatternTableRead(1)->setReadMemory(chrRomPage2);
 
             // PPU registers
             accessPpuRegsRead.setReadMethod(ppuRegsRead, this, 0x2000);
@@ -140,7 +146,13 @@ namespace
             mapper = NES::MapperRegistry::getInstance().create(romDesc.mapper);
             if (!mapper)
                 return false;
-            if (!mapper->initialize(*rom, cpuMemory))
+            NES::Mapper::Components components;
+            components.rom = rom;
+            components.memory = &cpuMemory;
+            components.cpu = &cpu;
+            components.ppu = &ppu;
+            components.apu = &apu;
+            if (!mapper->initialize(components))
                 return false;
 
             reset();

@@ -1,4 +1,5 @@
 #include "APU.h"
+#include "MemoryBus.h"
 #include <assert.h>
 #include <vector>
 
@@ -14,6 +15,7 @@ namespace
 namespace NES
 {
     APU::APU()
+        : mMemory(nullptr)
     {
         memset(mRegister, 0, sizeof(mRegister));
     }
@@ -23,13 +25,15 @@ namespace NES
         destroy();
     }
 
-    bool APU::create()
+    bool APU::create(MemoryBus& memory)
     {
+        mMemory = &memory;
         return true;
     }
 
     void APU::destroy()
     {
+        mMemory = nullptr;
     }
 
     void APU::reset()
@@ -74,8 +78,8 @@ namespace NES
         //case APU_REG_DMC_LEN: break;
         //case APU_REG_OAM_DMA: break;
         //case APU_REG_SND_CHN: break;
-        //case APU_REG_JOY1: break;
-        //case APU_REG_JOY2: break;
+        case APU_REG_JOY1: break;
+        case APU_REG_JOY2: break;
         default:
             NOT_IMPLEMENTED("Register write");
         }
@@ -104,12 +108,22 @@ namespace NES
             //case APU_REG_NOISE_LO: break;
             //case APU_REG_NOISE_HI: break;
             //case APU_REG_DMC_FREQ: break;
-            //case APU_REG_DMC_RAW: break;
+            case APU_REG_DMC_RAW: break;
             //case APU_REG_DMC_START: break;
             //case APU_REG_DMC_LEN: break;
-            //case APU_REG_OAM_DMA: break;
-            //case APU_REG_SND_CHN: break;
-            //case APU_REG_JOY1: break;
+            case APU_REG_OAM_DMA:
+            {
+                MEMORY_BUS& memory = mMemory->getState();
+                uint16_t base = value << 8;
+                for (uint16_t offset = 0; offset < 256; ++offset)
+                {
+                    uint16_t addr = base + offset;
+                    uint8_t value = memory_bus_read8(memory, ticks, addr);
+                    memory_bus_write8(memory, ticks, 0x2004, value);
+                }
+            }
+            case APU_REG_SND_CHN: break;
+            case APU_REG_JOY1: break;
             //case APU_REG_JOY2: break;
         default:
             NOT_IMPLEMENTED("Register write");

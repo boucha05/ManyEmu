@@ -6,12 +6,14 @@
 
 namespace NES
 {
+    class MemoryBus;
+
     class APU : public Clock::IListener
     {
     public:
         APU();
         ~APU();
-        bool create();
+        bool create(MemoryBus& memoryBus);
         void destroy();
         void reset();
         void execute();
@@ -46,6 +48,7 @@ namespace NES
         static const uint32_t APU_REG_JOY2 = 0x17;
 
     private:
+        MemoryBus*  mMemory;
         uint8_t     mRegister[APU_REGISTER_COUNT];
     };
 }

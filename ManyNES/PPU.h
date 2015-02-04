@@ -60,11 +60,21 @@ namespace NES
     private:
         typedef std::vector<IListener*> ListenerQueue;
 
+        uint8_t paletteRead(int32_t ticks, uint32_t addr);
+        void paletteWrite(int32_t ticks, uint32_t addr, uint8_t value);
+        static uint8_t paletteRead(void* context, int32_t ticks, uint32_t addr);
+        static void paletteWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value);
         void signalVBlankStart();
         void onVBlankStart();
         void onVBlankEnd();
         static void onVBlankStart(void* context, int32_t ticks);
         static void onVBlankEnd(void* context, int32_t ticks);
+        void getRasterPosition(int32_t tick, int32_t& x, int32_t& y);
+        void fetchPalette(uint8_t* dest);
+        void fetchAttributes(uint8_t* dest1, uint8_t* dest2, uint16_t base, uint16_t size);
+        void fetchNames(uint8_t* dest, uint16_t base, uint16_t size);
+        void fetchBackground(uint8_t* dest, const uint8_t* names, const uint8_t* attributes, uint16_t base, uint16_t size);
+        void renderLine(uint8_t* dest, const uint8_t* names, const uint8_t* attributes, const uint8_t* palette, uint16_t patternBase, uint32_t count);
         void render(int32_t lastTick);
 
         NES::Clock*             mClock;
@@ -73,15 +83,20 @@ namespace NES
         int32_t                 mVBlankEndTicks;
         int32_t                 mTicksPerLine;
         uint8_t                 mRegister[PPU_REGISTER_COUNT];
+        uint8_t                 mScroll[2];
         uint16_t                mAddress;
         bool                    mAddessLow;
+        uint32_t                mScrollIndex;
         ListenerQueue           mListeners;
         NES::MemoryBus          mMemory;
         MEM_ACCESS              mPatternTableRead[PATTERN_TABLE_COUNT];
         MEM_ACCESS              mPatternTableWrite[PATTERN_TABLE_COUNT];
         MEM_ACCESS              mNameTableRead[NAME_TABLE_COUNT];
         MEM_ACCESS              mNameTableWrite[NAME_TABLE_COUNT];
+        MEM_ACCESS              mPaletteRead;
+        MEM_ACCESS              mPaletteWrite;
         std::vector<uint8_t>    mNameTableRAM;
+        std::vector<uint8_t>    mPaletteRAM;
         std::vector<uint8_t>    mOAM;
         uint8_t*                mSurface;
         size_t                  mPitch;

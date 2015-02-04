@@ -6,12 +6,23 @@
 
 namespace NES
 {
+    class APU;
+    class Cpu6502;
     class MemoryBus;
+    class PPU;
 
     class Mapper : public IDisposable
     {
     public:
-        virtual bool initialize(const Rom& rom, MemoryBus& cpuMemory) = 0;
+        struct Components
+        {
+            const Rom*  rom;
+            MemoryBus*  memory;
+            Cpu6502*    cpu;
+            PPU*        ppu;
+            APU*        apu;
+        };
+        virtual bool initialize(const Components& components) = 0;
         virtual void reset() { }
         virtual void update() { }
     };
