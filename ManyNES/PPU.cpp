@@ -187,14 +187,14 @@ namespace NES
         {
             uint16_t addrStart = VRAM_NAMETABLE_BASE_ADDRESS + mirror * 0x1000;
             uint16_t addrEnd = addrStart + 0x03ff;
-            if (addrEnd >= PALETTE_RAM_BASE_ADDRESS)
-                addrEnd = PALETTE_RAM_BASE_ADDRESS - 1;
             for (uint16_t page = 0; page < 4; ++page)
             {
                 mMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, addrStart, addrEnd, mNameTableRead[page]);
                 mMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, addrStart, addrEnd, mNameTableWrite[page]);
                 addrStart += 0x0400;
                 addrEnd += 0x0400;
+                if (addrEnd >= PALETTE_RAM_BASE_ADDRESS)
+                    addrEnd = PALETTE_RAM_BASE_ADDRESS - 1;
             }
         }
 

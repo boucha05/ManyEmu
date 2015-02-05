@@ -21,7 +21,7 @@ namespace
 
     // http://nesdev.com/6502.txt
     /*  00        01         02        03        04        05        06        07        08        09        0a        0b        0c        0d        0e        0f
-    00  BRK_impl, ORA_indx,  NOP_impl, NOP_impl, NOP_impl, ORA_zpg,  ASL_zpg,  NOP_impl, PHP_impl, ORA_imm,  ASL_acc,  NOP_impl, NOP_impl, ORA_abs,  ASL_abs,  NOP_impl,
+    00  BRK_imm,  ORA_indx,  NOP_impl, NOP_impl, NOP_impl, ORA_zpg,  ASL_zpg,  NOP_impl, PHP_impl, ORA_imm,  ASL_acc,  NOP_impl, NOP_impl, ORA_abs,  ASL_abs,  NOP_impl,
     10  BPL_rel,  ORA_indy,  NOP_impl, NOP_impl, NOP_impl, ORA_zpgx, ASL_zpgx, NOP_impl, CLC_impl, ORA_absy, NOP_impl, NOP_impl, NOP_impl, ORA_absx, ASL_absx, NOP_impl,
     20  JSR_abs,  AND_indx,  NOP_impl, NOP_impl, BIT_zpg,  AND_zpg,  ROL_zpg,  NOP_impl, PLP_impl, AND_imm,  ROL_acc,  NOP_impl, BIT_abs,  AND_abs,  ROL_abs,  NOP_impl,
     30  BMI_rel,  AND_indy,  NOP_impl, NOP_impl, NOP_impl, AND_zpgx, ROL_zpgx, NOP_impl, SEC_impl, AND_absy, NOP_impl, NOP_impl, NOP_impl, AND_absx, ROL_absx, NOP_impl,
@@ -83,7 +83,7 @@ namespace
     const uint8_t addr_mode_table[] =
     {
         //   00         01          02         03         04         05         06         07         08         09         0a         0b         0c         0d         0e         0f
-        ADDR_IMPL, ADDR_INDX,  ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ZPG,  ADDR_ZPG,  ADDR_IMPL, ADDR_IMPL, ADDR_IMM,  ADDR_ACC,  ADDR_IMPL, ADDR_IMPL, ADDR_ABS,  ADDR_ABS,  ADDR_IMPL, // 00
+        ADDR_IMM,  ADDR_INDX,  ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ZPG,  ADDR_ZPG,  ADDR_IMPL, ADDR_IMPL, ADDR_IMM,  ADDR_ACC,  ADDR_IMPL, ADDR_IMPL, ADDR_ABS,  ADDR_ABS,  ADDR_IMPL, // 00
         ADDR_REL,  ADDR_INDY,  ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ZPGX, ADDR_ZPGX, ADDR_IMPL, ADDR_IMPL, ADDR_ABSY, ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ABSX, ADDR_ABSX, ADDR_IMPL, // 10
         ADDR_ABS,  ADDR_INDX,  ADDR_IMPL, ADDR_IMPL, ADDR_ZPG,  ADDR_ZPG,  ADDR_ZPG,  ADDR_IMPL, ADDR_IMPL, ADDR_IMM,  ADDR_ACC,  ADDR_IMPL, ADDR_ABS,  ADDR_ABS,  ADDR_ABS,  ADDR_IMPL, // 20
         ADDR_REL,  ADDR_INDY,  ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ZPGX, ADDR_ZPGX, ADDR_IMPL, ADDR_IMPL, ADDR_ABSY, ADDR_IMPL, ADDR_IMPL, ADDR_IMPL, ADDR_ABSX, ADDR_ABSX, ADDR_IMPL, // 30
@@ -506,10 +506,12 @@ namespace
 
     inline void insn_brk(CPU_STATE& state)
     {
+        uint8_t dummy = fetch8(state);
+        uint8_t state_sr = state.sr | STATUS_RESERVED1 | STATUS_RESERVED0;
         export_flags(state);
-        state.sr |= STATUS_RESERVED0;
-        push16(state, state.pc - 1);
-        push8(state, state.sr);
+        state.sr |= STATUS_I;
+        push16(state, state.pc);
+        push8(state, state_sr);
         state.pc = read16(state, ADDR_VECTOR_IRQ);
     }
 
@@ -1031,10 +1033,11 @@ void cpu_execute(CPU_STATE& state)
     {
 #if 0
         static FILE* log = fopen("ROMs\\my-nestest.log", "w");
+        //static FILE* log = nullptr;
         static uint32_t traceStart = 0;
         static uint32_t traceCount = 0;
 
-        if (traceCount++ >= traceStart)
+        if ((traceCount++ >= traceStart) && log)
         {
             char temp[32];
             uint16_t pc = state.pc;
@@ -1049,7 +1052,7 @@ void cpu_execute(CPU_STATE& state)
             export_flags(state);
             fprintf(log, "%04X  %-9s %-30s  A:%02X X:%02X Y:%02X P:%02X SP:%02X\n", // P=%s%s%s%s%s%s\n",
                 state.pc, temp2, temp,
-                state.a, state.x, state.y, state.sr, state.sp/*,
+                state.a, state.x, state.y, state.sr & ~0x10, state.sp/*,
                 (state.sr & STATUS_N) ? "N" : "-",
                 (state.sr & STATUS_Z) ? "Z" : "-",
                 (state.sr & STATUS_C) ? "C" : "-",
@@ -1060,7 +1063,8 @@ void cpu_execute(CPU_STATE& state)
         static uint32_t traceBreak = 8991;
         if (traceCount == traceBreak)
         {
-            fflush(log);
+            if (log)
+                fflush(log);
             traceBreak = traceBreak;
         }
 #endif

@@ -42,22 +42,22 @@ bool runTestRoms()
 {
     static const char* testFiles[] =
     {
-        "01-basics.nes",
-        "02-implied.nes",
+        "01-basics.nes",    // OK
+        "02-implied.nes",   // OK
         "03-immediate.nes",
         "04-zero_page.nes",
         "05-zp_xy.nes",
-        "06-absolute.nes",
+        "06-absolute.nes",  // VERIFIED
         "07-abs_xy.nes",
         "08-ind_x.nes",
         "09-ind_y.nes",
-        "10-branches.nes",
-        "11-stack.nes",
-        "12-jmp_jsr.nes",
-        "13-rts.nes",
-        "14-rti.nes",
-        "15-brk.nes",
-        "16-special.nes",
+        "10-branches.nes",  // OK
+        "11-stack.nes",     // OK
+        "12-jmp_jsr.nes",   // OK
+        "13-rts.nes",       // OK
+        "14-rti.nes",       // OK
+        "15-brk.nes",       // OK
+        "16-special.nes",   // OK
     };
 
     uint32_t executed = 0;
