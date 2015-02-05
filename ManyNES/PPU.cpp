@@ -557,8 +557,8 @@ namespace NES
         if (lastTick <= mLastTickRendered)
             return;
 
-        int32_t firstTick = mLastTickRendered + 1;
-        mLastTickRendered = firstTick;
+        int32_t firstTick = mLastTickRendered;
+        mLastTickRendered = lastTick;
 
         int32_t x0, y0;
         int32_t x1, y1;
@@ -573,7 +573,7 @@ namespace NES
         }
 
         // Adjust ending position
-        if (y1 >= mVisibleLines)
+        if (y1 >= static_cast<int32_t>(mVisibleLines))
         {
             y1 = mVisibleLines - 1;
             x1 = PPU_VISIBLE_COLUMNS - 1;

@@ -161,8 +161,23 @@ void Application::handleEvents()
 
 void Application::update()
 {
+    static uint32_t frameCount = 0;
+    static uint32_t frameTrigger = 640;
+    static uint32_t frameSkip = 640;
+
+    // Allow frames to be skipped if desired
+    mContext->setRenderSurface(nullptr, 0);
+    while (frameSkip)
+    {
+        --frameSkip;
+        mContext->update();
+    }
+
     if (SDL_LockSurface(mSurface) == 0)
     {
+        if (++frameCount == frameTrigger)
+            frameTrigger = frameTrigger;
+
         mContext->setRenderSurface(mSurface->pixels, mSurface->pitch);
         mContext->update();
 
