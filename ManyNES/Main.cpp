@@ -93,7 +93,8 @@ bool Application::create()
         return false;
 #endif
 
-    mRom = NES::Rom::load("ROMs\\mario.nes");
+    mRom = NES::Rom::load("ROMs\\exitbike.nes");
+    //mRom = NES::Rom::load("ROMs\\mario.nes");
     //mRom = NES::Rom::load("ROMs\\nestest.nes");
     if (!mRom)
         return false;

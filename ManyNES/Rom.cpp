@@ -129,12 +129,17 @@ namespace
             if ((size < HEADER_SIZE) || (data[0] != 'N') || (data[1] != 'E') || (data[2] != 'S') || (data[3] != 0x1a))
                 return false;
 
-            description.prgRomPages = data[4];
-            description.chrRomPages = data[5];
-            description.prgRamPages = data[8];
+            uint8_t header[HEADER_SIZE];
+            memcpy(header, data, size);
+            if (memcmp(&header[7], "DiskDude!", 9) == 0)
+                memset(&header[7], 0, 9);
 
-            uint8_t flags6 = data[6];
-            uint8_t flags7 = data[7];
+            description.prgRomPages = header[4];
+            description.chrRomPages = header[5];
+            description.prgRamPages = header[8];
+
+            uint8_t flags6 = header[6];
+            uint8_t flags7 = header[7];
             description.battery = (flags6 & FLAGS6_BATTERY) != 0;
             description.trainer = (flags6 & FLAGS6_TRAINER) != 0;
             description.mirroring = (flags6 & FLAGS6_FOUR_SCREEN_VRAM) ? Mirroring_FourScreen :

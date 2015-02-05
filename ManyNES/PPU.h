@@ -18,7 +18,7 @@ namespace NES
 
         PPU();
         ~PPU();
-        bool create(NES::Clock& clock, uint32_t masterClockDivider, uint32_t createFlags);
+        bool create(NES::Clock& clock, uint32_t masterClockDivider, uint32_t createFlags, uint32_t visibleLines);
         void destroy();
         void reset();
         void execute();
@@ -82,6 +82,7 @@ namespace NES
         int32_t                 mVBlankStartTicks;
         int32_t                 mVBlankEndTicks;
         int32_t                 mTicksPerLine;
+        uint32_t                mVisibleLines;
         uint8_t                 mRegister[PPU_REGISTER_COUNT];
         uint8_t                 mScroll[2];
         uint16_t                mAddress;

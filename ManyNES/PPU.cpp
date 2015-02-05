@@ -95,6 +95,7 @@ namespace NES
         , mVBlankStartTicks(0)
         , mVBlankEndTicks(0)
         , mTicksPerLine(0)
+        , mVisibleLines(0)
         , mAddessLow(false)
         , mScrollIndex(0)
         , mAddress(0)
@@ -110,7 +111,7 @@ namespace NES
         destroy();
     }
 
-    bool PPU::create(Clock& clock, uint32_t masterClockDivider, uint32_t createFlags)
+    bool PPU::create(Clock& clock, uint32_t masterClockDivider, uint32_t createFlags, uint32_t visibleLines)
     {
         mClock = &clock;
         mClock->addListener(*this);
@@ -118,6 +119,7 @@ namespace NES
         mVBlankStartTicks = PPU_VBLANK_START_TICKS * masterClockDivider;
         mVBlankEndTicks = PPU_VBLANK_END_TICKS * masterClockDivider;
         mTicksPerLine = PPU_TICKS_PER_LINE * masterClockDivider;
+        mVisibleLines = visibleLines;
 
         if (!mMemory.create(MEM_SIZE_LOG2, MEM_PAGE_SIZE_LOG2))
             return false;
@@ -289,7 +291,7 @@ namespace NES
         case PPU_REG_PPUDATA:
         {
             uint8_t value = memory_bus_read8(mMemory.getState(), 0, mAddress & MEM_MASK);
-            uint16_t increment = mRegister[PPU_REG_PPUCTRL] & PPU_CONTROL_VERTICAL_INCREMENT ? 32 : 1;
+            uint16_t increment = (mRegister[PPU_REG_PPUCTRL] & PPU_CONTROL_VERTICAL_INCREMENT) ? 32 : 1;
             mAddress += increment;
             return value;
         }
@@ -305,6 +307,7 @@ namespace NES
     {
         addr = (addr & (PPU_REGISTER_COUNT - 1));
         mRegister[addr] = value;
+        mRegister[PPU_REG_PPUSTATUS] = (mRegister[PPU_REG_PPUSTATUS] & ~0x1f) | (value & 0x1f);
         switch (addr)
         {
         case PPU_REG_PPUCTRL:
@@ -340,9 +343,9 @@ namespace NES
         case PPU_REG_PPUADDR:
         {
             if (mAddessLow)
-                mAddress = ((mAddress & 0xff00) | (value | 0xff));
+                mAddress = ((mAddress & 0xff00) | (value & 0x00ff));
             else
-                mAddress = ((mAddress & 0x00ff) | ((value << 8) | 0xff));
+                mAddress = ((mAddress & 0x00ff) | (value << 8));
             mAddessLow = !mAddessLow;
             break;
         }
@@ -350,7 +353,7 @@ namespace NES
         case PPU_REG_PPUDATA:
         {
             memory_bus_write8(mMemory.getState(), 0, mAddress & MEM_MASK, value);
-            uint16_t increment = mRegister[PPU_REG_PPUCTRL] & PPU_CONTROL_VERTICAL_INCREMENT ? 32 : 1;
+            uint16_t increment = (mRegister[PPU_REG_PPUCTRL] & PPU_CONTROL_VERTICAL_INCREMENT) ? 32 : 1;
             mAddress += increment;
             break;
         }
@@ -362,12 +365,18 @@ namespace NES
 
     uint8_t PPU::paletteRead(int32_t ticks, uint32_t addr)
     {
-        return mPaletteRAM[addr & PALETTE_RAM_MASK];
+        addr &= PALETTE_RAM_MASK;
+        if ((addr & 3) == 0)
+            addr &= 0xf;
+        return mPaletteRAM[addr];
     }
 
     void PPU::paletteWrite(int32_t ticks, uint32_t addr, uint8_t value)
     {
-        mPaletteRAM[addr & PALETTE_RAM_MASK] = value;
+        addr &= PALETTE_RAM_MASK;
+        if ((addr & 3) == 0)
+            addr &= 0xf;
+        mPaletteRAM[addr] = value;
     }
 
     uint8_t PPU::paletteRead(void* context, int32_t ticks, uint32_t addr)
@@ -462,8 +471,8 @@ namespace NES
     {
         for (uint32_t index = 0; index < PALETTE_RAM_SIZE; ++index)
         {
-            uint8_t value = paletteIndex++;
-            //uint8_t value = mPaletteRAM[index];
+            //uint8_t value = paletteIndex++;
+            uint8_t value = mPaletteRAM[index];
             if (value && !(value & 3))
                 value = 0;  // Force background color if transparent
             value &= 63; // The last 2 bits should be zero
@@ -563,6 +572,13 @@ namespace NES
             ++y0;
         }
 
+        // Adjust ending position
+        if (y1 >= mVisibleLines)
+        {
+            y1 = mVisibleLines - 1;
+            x1 = PPU_VISIBLE_COLUMNS - 1;
+        }
+
         /*static const uint32_t nametableStartXTable[4] = { 0, 256, 0, 256 };
         static const uint32_t nametableStartYTable[4] = { 0, 0, 240, 240 };
 
@@ -601,14 +617,14 @@ namespace NES
 
         uint32_t attributesOffset1 = 0;
         uint32_t attributesOffset2 = 32;
-        uint16_t attributesAddr1 = 0x27c0;
-        uint16_t attributesAddr2 = 0x23c0;
+        uint16_t attributesAddr1 = 0x23c0;
+        uint16_t attributesAddr2 = 0x27c0;
         uint16_t attributesCount1 = 8;
         uint16_t attributesCount2 = 1;
         uint32_t namesOffset1 = 0;
         uint32_t namesOffset2 = 32;
-        uint16_t namesAddr1 = 0x2400;
-        uint16_t namesAddr2 = 0x2000;
+        uint16_t namesAddr1 = 0x2000;
+        uint16_t namesAddr2 = 0x2400;
         uint16_t namesCount1 = 32;
         uint16_t namesCount2 = 4;
         uint16_t patternTableBase = (mRegister[PPU_REG_PPUCTRL] & PPU_BACKGROUND_PATTERN_TABLE) ? 0x1000 : 0x0000;

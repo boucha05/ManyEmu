@@ -970,7 +970,7 @@ void cpu_initialize(CPU_STATE& cpu)
     memset(&cpu, 0, sizeof(cpu));
     cpu.sr = 0x34;
     cpu.a = cpu.x = cpu.y = 0;
-    cpu.sp = 0xff;
+    cpu.sp = 0;
 }
 
 bool cpu_create(CPU_STATE& cpu, MEMORY_BUS& bus, uint32_t master_clock_divider)
@@ -1008,22 +1008,24 @@ void cpu_reset(CPU_STATE& state)
 void cpu_irq(CPU_STATE& state)
 {
     export_flags(state);
-    state.sr &= ~STATUS_RESERVED0;
-    push16(state, state.pc);
-    push8(state, state.sr);
-    state.pc = read16(state, ADDR_VECTOR_IRQ);
+    uint8_t state_sr = state.sr | STATUS_RESERVED1;
+    state_sr &= ~STATUS_RESERVED0;
     state.sr |= STATUS_I;
+    push16(state, state.pc);
+    push8(state, state_sr);
+    state.pc = read16(state, ADDR_VECTOR_IRQ);
     state.executed_ticks += 7;
 }
 
 void cpu_nmi(CPU_STATE& state)
 {
     export_flags(state);
-    state.sr &= ~STATUS_RESERVED0;
-    push16(state, state.pc);
-    push8(state, state.sr);
-    state.pc = read16(state, ADDR_VECTOR_NMI);
+    uint8_t state_sr = state.sr | STATUS_RESERVED1;
+    state_sr &= ~STATUS_RESERVED0;
     state.sr |= STATUS_I;
+    push16(state, state.pc);
+    push8(state, state_sr);
+    state.pc = read16(state, ADDR_VECTOR_NMI);
     state.executed_ticks += 7;
 }
 
@@ -1060,7 +1062,7 @@ void cpu_execute(CPU_STATE& state)
                 (state.sr & STATUS_D) ? "D" : "-",
                 (state.sr & STATUS_V) ? "V" : "-"*/);
         }
-        static uint32_t traceBreak = 8991;
+        static uint32_t traceBreak = 273199;
         if (traceCount == traceBreak)
         {
             if (log)

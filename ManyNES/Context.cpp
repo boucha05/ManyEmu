@@ -32,6 +32,10 @@ namespace
     static const uint32_t MASTER_CLOCK_PER_FRAME_PAL = (341 * 312) * MASTER_CLOCK_PPU_DIVIDER_PAL;
     static const uint32_t MASTER_CLOCK_PER_FRAME_DENDY = (341 * 312) * MASTER_CLOCK_PPU_DIVIDER_PAL;
 
+    static const uint32_t VISIBLE_LINES_NTSC = 224;
+    static const uint32_t VISIBLE_LINES_PAL = 240;
+    static const uint32_t VISIBLE_LINES_DENDY = 240;
+
     void NOT_IMPLEMENTED()
     {
         printf("Feature not implemented\n");
@@ -82,7 +86,7 @@ namespace
                 ppuCreateFlags |= NES::PPU::CREATE_VRAM_FOUR_SCREEN;
             else
                 ppuCreateFlags |= NES::PPU::CREATE_VRAM_ONE_SCREEN;
-            if (!ppu.create(clock, MASTER_CLOCK_PPU_DIVIDER_NTSC, ppuCreateFlags))
+            if (!ppu.create(clock, MASTER_CLOCK_PPU_DIVIDER_NTSC, ppuCreateFlags, VISIBLE_LINES_NTSC))
                 return false;
 
             // APU

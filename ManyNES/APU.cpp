@@ -78,8 +78,16 @@ namespace NES
         //case APU_REG_DMC_LEN: break;
         //case APU_REG_OAM_DMA: break;
         //case APU_REG_SND_CHN: break;
-        case APU_REG_JOY1: break;
-        case APU_REG_JOY2: break;
+        case APU_REG_JOY1:
+        {
+            mRegister[APU_REG_JOY1] = 0x40;
+            break;
+        }
+        case APU_REG_JOY2:
+        {
+            mRegister[APU_REG_JOY2] = 0x40;
+            break;
+        }
         default:
             NOT_IMPLEMENTED("Register write");
         }
