@@ -99,6 +99,7 @@ namespace NES
         , mAddessLow(false)
         , mScrollIndex(0)
         , mAddress(0)
+        , mDataReadBuffer(0)
         , mSurface(nullptr)
         , mPitch(0)
         , mLastTickRendered(0)
@@ -230,6 +231,7 @@ namespace NES
         mAddessLow = false;
         mScrollIndex = 0;
         mAddress = 0;
+        mDataReadBuffer = 0;
         mLastTickRendered = 0;
     }
 
@@ -290,7 +292,14 @@ namespace NES
             //case PPU_REG_PPUADDR: break;
         case PPU_REG_PPUDATA:
         {
-            uint8_t value = memory_bus_read8(mMemory.getState(), 0, mAddress & MEM_MASK);
+            uint16_t address = mAddress & MEM_MASK;
+            uint8_t data = memory_bus_read8(mMemory.getState(), 0, mAddress & MEM_MASK);
+            uint8_t value = data;
+            if (address < PALETTE_RAM_BASE_ADDRESS)
+            {
+                value = mDataReadBuffer;
+                mDataReadBuffer = data;
+            }
             uint16_t increment = (mRegister[PPU_REG_PPUCTRL] & PPU_CONTROL_VERTICAL_INCREMENT) ? 32 : 1;
             mAddress += increment;
             return value;

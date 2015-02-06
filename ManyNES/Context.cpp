@@ -32,7 +32,7 @@ namespace
     static const uint32_t MASTER_CLOCK_PER_FRAME_PAL = (341 * 312) * MASTER_CLOCK_PPU_DIVIDER_PAL;
     static const uint32_t MASTER_CLOCK_PER_FRAME_DENDY = (341 * 312) * MASTER_CLOCK_PPU_DIVIDER_PAL;
 
-    static const uint32_t VISIBLE_LINES_NTSC = 224;
+    static const uint32_t VISIBLE_LINES_NTSC = 240; //Real value is 224
     static const uint32_t VISIBLE_LINES_PAL = 240;
     static const uint32_t VISIBLE_LINES_DENDY = 240;
 

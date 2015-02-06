@@ -93,8 +93,8 @@ bool Application::create()
         return false;
 #endif
 
-    mRom = NES::Rom::load("ROMs\\exitbike.nes");
-    //mRom = NES::Rom::load("ROMs\\mario.nes");
+    //mRom = NES::Rom::load("ROMs\\exitbike.nes");
+    mRom = NES::Rom::load("ROMs\\mario.nes");
     //mRom = NES::Rom::load("ROMs\\nestest.nes");
     if (!mRom)
         return false;
@@ -163,7 +163,7 @@ void Application::update()
 {
     static uint32_t frameCount = 0;
     static uint32_t frameTrigger = 640;
-    static uint32_t frameSkip = 640;
+    static uint32_t frameSkip = 0;//640;
 
     // Allow frames to be skipped if desired
     mContext->setRenderSurface(nullptr, 0);

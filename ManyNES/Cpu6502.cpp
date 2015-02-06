@@ -1062,7 +1062,7 @@ void cpu_execute(CPU_STATE& state)
                 (state.sr & STATUS_D) ? "D" : "-",
                 (state.sr & STATUS_V) ? "V" : "-"*/);
         }
-        static uint32_t traceBreak = 273199;
+        static uint32_t traceBreak = 342355;
         if (traceCount == traceBreak)
         {
             if (log)

@@ -86,6 +86,7 @@ namespace NES
         uint8_t                 mRegister[PPU_REGISTER_COUNT];
         uint8_t                 mScroll[2];
         uint16_t                mAddress;
+        uint8_t                 mDataReadBuffer;
         bool                    mAddessLow;
         uint32_t                mScrollIndex;
         ListenerQueue           mListeners;
