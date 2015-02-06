@@ -33,6 +33,7 @@ namespace
     static const uint8_t PPU_CONTROL_VERTICAL_INCREMENT = 0x04;
     static const uint8_t PPU_CONTROL_BACKGROUND_PATTERN_TABLE = 0x10;
     static const uint8_t PPU_CONTROL_SPRITE_SIZE = 0x20;
+    static const uint8_t PPU_CONTROL_MASTER_SLAVE = 0x40;
     static const uint8_t PPU_CONTROL_VBLANK_OUTPUT = 0x80;
 
     static const uint8_t PPU_STATUS_VBLANK = 0x80;
@@ -232,6 +233,7 @@ namespace NES
     {
         mSprite0StartTick = 0;
         mSprite0EndTick = 0;
+        memset(&mOAM[0], 0, mOAM.size());
         memset(mRegister, 0, sizeof(mRegister));
         mRegister[PPU_REG_PPUSTATUS] |= PPU_STATUS_VBLANK;
         mClock->addEvent(onVBlankEnd, this, mVBlankEndTicks);
@@ -325,23 +327,27 @@ namespace NES
     void PPU::regWrite(int32_t ticks, uint32_t addr, uint8_t value)
     {
         addr = (addr & (PPU_REGISTER_COUNT - 1));
+        uint8_t before = mRegister[addr];
+        uint8_t modified = before ^ value;
         mRegister[addr] = value;
         mRegister[PPU_REG_PPUSTATUS] = (mRegister[PPU_REG_PPUSTATUS] & ~0x1f) | (value & 0x1f);
         switch (addr)
         {
         case PPU_REG_PPUCTRL:
         {
-            uint8_t ppuctrl = mRegister[PPU_REG_PPUCTRL];
-            mRegister[PPU_REG_PPUCTRL] = value;
-            if (!(ppuctrl & PPU_CONTROL_VBLANK_OUTPUT) &&
+            if (!(before & PPU_CONTROL_VBLANK_OUTPUT) &&
                 (value & PPU_CONTROL_VBLANK_OUTPUT) &&
                 (mRegister[PPU_REG_PPUSTATUS] & PPU_STATUS_VBLANK))
             {
                 signalVBlankStart();
             }
 
+            // Change in master/slave mode forces a change in the rendering
+            if (modified & PPU_CONTROL_MASTER_SLAVE)
+                render(ticks);
+
             // If sprite height changes, update hit test conditions
-            if ((ppuctrl ^ value) & PPU_CONTROL_SPRITE_SIZE)
+            if (modified & (PPU_CONTROL_SPRITE_SIZE | PPU_CONTROL_MASTER_SLAVE))
                 updateSpriteHitTestConditions();
             break;
         }
@@ -754,10 +760,11 @@ namespace NES
     {
         mSprite0StartTick = 0;
         mSprite0EndTick = 0;
-        uint32_t y0 = mOAM[0] + 1;
+        uint32_t y0 = mOAM[0];
         if (y0 < 240)
         {
-            uint32_t y1 = y0 + ((mRegister[PPU_REG_PPUCTRL] & PPU_CONTROL_SPRITE_SIZE) ? 15 : 7);
+            uint8_t ppuctrl = mRegister[PPU_REG_PPUCTRL];
+            uint32_t y1 = y0 + ((ppuctrl & PPU_CONTROL_SPRITE_SIZE) ? 15 : 7) + 1;
             uint32_t x0 = mOAM[3];
             uint32_t x1 = x0 + 8;
             if (x1 > 256)
@@ -777,8 +784,11 @@ namespace NES
         {
             // TODO: Accurate hit test
             mCheckHitTest = false;
-            mRegister[PPU_REG_PPUSTATUS] |= PPU_STATUS_HIT_TEST;
-            render(tick);
+            if (mSprite0StartTick >= mTicksPerLine)
+            {
+                mRegister[PPU_REG_PPUSTATUS] |= PPU_STATUS_HIT_TEST;
+                render(tick);
+            }
         }
     }
 }
