@@ -66,7 +66,7 @@ void Application::terminate()
 
 bool Application::create()
 {
-    mWindow = SDL_CreateWindow("ManyNES", 100, 100, 512, 480, SDL_WINDOW_SHOWN);
+    mWindow = SDL_CreateWindow("ManyNES", 100, 100, 256, 240, SDL_WINDOW_SHOWN);
     if (!mWindow)
         return false;
 
@@ -78,7 +78,7 @@ bool Application::create()
     if (!mScreen)
         return false;
 
-    mSurface = SDL_CreateRGBSurface(0, 256, 256, 8, 0, 0, 0, 0);
+    mSurface = SDL_CreateRGBSurface(0, 256, 240, 8, 0, 0, 0, 0);
     if (!mSurface)
         return false;
 
@@ -189,7 +189,7 @@ void Application::render()
 {
     SDL_RenderPresent(mRenderer);
 
-    SDL_Rect rect = { 0, 0, 256, 256 };
+    SDL_Rect rect = { 0, 0, 256, 240 };
     SDL_BlitSurface(mSurface, nullptr, mScreen, &rect);
 
     SDL_UpdateWindowSurface(mWindow);

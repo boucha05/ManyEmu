@@ -28,8 +28,8 @@ namespace
 
     static const uint32_t OAM_SIZE = 0x100;
 
-    static const uint8_t PPU_CONTROL_NAMETABLE_MASK = 0x03;
-    static const uint8_t PPU_CONTROL_NAMETABLE_SHIFT = 0;
+    static const uint8_t PPU_CONTROL_NAMETABLE_PAGE_X = 0x01;
+    static const uint8_t PPU_CONTROL_NAMETABLE_PAGE_Y = 0x02;
     static const uint8_t PPU_CONTROL_VERTICAL_INCREMENT = 0x04;
     static const uint8_t PPU_BACKGROUND_PATTERN_TABLE = 0x10;
     static const uint8_t PPU_CONTROL_VBLANK_OUTPUT = 0x80;
@@ -579,29 +579,52 @@ namespace NES
             x1 = PPU_VISIBLE_COLUMNS - 1;
         }
 
-        /*static const uint32_t nametableStartXTable[4] = { 0, 256, 0, 256 };
-        static const uint32_t nametableStartYTable[4] = { 0, 0, 240, 240 };
-
-        uint32_t nametableIndex = (mRegister[PPU_REG_PPUCTRL] & PPU_CONTROL_NAMETABLE_MASK) >> PPU_CONTROL_NAMETABLE_SHIFT;
-        uint32_t coarseStartX = static_cast<uint32_t>(mScroll[0] >> 3) + nametableStartXTable[nametableIndex];
-
-        int32_t scrollX = mScroll[0] + nametableStartXTable[nametableIndex];
-        int32_t scrollY = mScroll[1] + nametableStartYTable[nametableIndex] + y0;
+        // Get scrolling position
+        uint8_t ppuctrl = mRegister[PPU_REG_PPUCTRL];
+        uint32_t scrollX = mScroll[0];
+        uint32_t scrollY = mScroll[1];
+        scrollX += ((ppuctrl & PPU_CONTROL_NAMETABLE_PAGE_X) ? 256 : 0);
+        scrollY += ((ppuctrl & PPU_CONTROL_NAMETABLE_PAGE_Y) ? 240 : 0);
+        scrollY += y0;
         if (scrollY >= 480)
             scrollY -= 480;
-        int32_t nametableY = 0;
+
+        // Find location of starting position
+        uint32_t page1 = 0;
+        uint32_t page2 = 1;
         if (scrollY >= 240)
         {
             scrollY -= 240;
-            nametableY = 1;
+            page1 ^= 2;
+            page2 ^= 2;
         }
-        int32_t nameX = scrollX / 8;
-        int32_t nameY = scrollY / 8;
-        int32_t attributeX = scrollX / 32;
-        int32_t attributeY = scrollY / 32;
-        uint8_t scanlinePixel[SCANLINE_PIXEL_CAPACITY];
-        uint8_t scanlineName[SCANLINE_NAME_COUNT];
-        uint8_t scanlineAttribute[SCANLINE_ATTRIBUTE_COUNT];*/
+        if (scrollX >= 256)
+        {
+            scrollX -= 256;
+            page1 ^= 1;
+            page2 ^= 1;
+        }
+        uint32_t baseAttributeX = scrollX >> 5;
+        uint32_t baseAttributeY = scrollY >> 5;
+        uint32_t baseNameX = baseAttributeX << 2;
+        uint32_t baseNameY = baseAttributeY << 2;
+        uint32_t fineX = scrollX - baseNameX;
+
+        // Assign left and right regions
+        static const uint32_t addrAttribute[] = { 0x23c0, 0x27c0, 0x2bc0, 0x2fc0 };
+        static const uint32_t addrName[] = { 0x2000, 0x2400, 0x2800, 0x2c00 };
+        uint32_t addrAttribute1 = addrAttribute[page1] + baseAttributeY * 8 + baseAttributeX;
+        uint32_t addrAttribute2 = addrAttribute[page2] + baseAttributeY * 8;
+        uint32_t addrAttribute3 = addrAttribute[page1 ^ 2] + baseAttributeY * 8 + baseAttributeX;
+        uint32_t addrAttribute4 = addrAttribute[page2 ^ 2] + baseAttributeY * 8;
+        uint32_t sizeAttribute1 = 8 - baseAttributeX;
+        uint32_t sizeAttribute2 = baseAttributeX + 1;
+        uint32_t addrName1 = addrName[page1] + baseNameY * 32 + baseNameX;
+        uint32_t addrName2 = addrName[page2] + baseNameY * 32;
+        uint32_t addrName3 = addrName[page1 ^ 2] + baseNameY * 32 + baseNameX;
+        uint32_t addrName4 = addrName[page2 ^ 2] + baseNameY * 32;
+        uint32_t sizeName1 = 32 - baseNameX;
+        uint32_t sizeName2 = baseNameX + 4;
 
         paletteIndex = 0;
         attributeIndex = 0;
@@ -615,18 +638,6 @@ namespace NES
         uint8_t* surface = mSurface;
         uint8_t* attributes = attributes1;
 
-        uint32_t attributesOffset1 = 0;
-        uint32_t attributesOffset2 = 32;
-        uint16_t attributesAddr1 = 0x23c0;
-        uint16_t attributesAddr2 = 0x27c0;
-        uint16_t attributesCount1 = 8;
-        uint16_t attributesCount2 = 1;
-        uint32_t namesOffset1 = 0;
-        uint32_t namesOffset2 = 32;
-        uint16_t namesAddr1 = 0x2000;
-        uint16_t namesAddr2 = 0x2400;
-        uint16_t namesCount1 = 32;
-        uint16_t namesCount2 = 4;
         uint16_t patternTableBase = (mRegister[PPU_REG_PPUCTRL] & PPU_BACKGROUND_PATTERN_TABLE) ? 0x1000 : 0x0000;
         uint16_t patternTable = patternTableBase;
 
@@ -637,43 +648,58 @@ namespace NES
         memset(work, 0xff, sizeof(work));
 
         fetchPalette(palette);
-        fetchAttributes(attributes1 + attributesOffset1, attributes2 + attributesOffset1, attributesAddr1, attributesCount1);
-        fetchAttributes(attributes1 + attributesOffset2, attributes2 + attributesOffset2, attributesAddr2, attributesCount2);
-        fetchNames(names + namesOffset1, namesAddr1, namesCount1);
-        fetchNames(names + namesOffset2, namesAddr2, namesCount2);
+        fetchAttributes(attributes1 + 0, attributes2 + 0, addrAttribute1, sizeAttribute1);
+        fetchAttributes(attributes1 + sizeName1, attributes2 + sizeName1, addrAttribute2, sizeAttribute2);
+        fetchNames(names + 0, addrName1, sizeName1);
+        fetchNames(names + sizeName1, addrName2, sizeName2);
 
         int32_t y = y0;
+        uint32_t copySize = PPU_VISIBLE_COLUMNS - x0;
+        if (y == y1)
+            copySize = x1 - x0;
         while (y <= y1)
         {
             renderLine(work, names, attributes, palette, patternTable, 36);
-            memcpy(surface, work, PPU_VISIBLE_COLUMNS);
+            memcpy(surface, work + fineX + x0, copySize);
 
             surface += mPitch;
 
             ++patternTable;
-            if (++y == 240)
+            ++y;
+            x0 = 0;
+            copySize = PPU_VISIBLE_COLUMNS;
+            if (y == y1)
+                copySize = x1;
+            if (++scrollY == 240)
             {
-                // TODO: Change in name table
+                // Change in name table
+                addrAttribute1 = addrAttribute3;
+                addrAttribute2 = addrAttribute4;
+                addrName1 = addrName3;
+                addrName2 = addrName4;
             }
-            if ((y & 7) == 0)
+            else
             {
-                patternTable = patternTableBase;
-                namesAddr1 += 32;
-                namesAddr2 += 32;
-                fetchNames(names + namesOffset1, namesAddr1, namesCount1);
-                fetchNames(names + namesOffset2, namesAddr2, namesCount2);
-            }
-            if ((y & 15) == 0)
-            {
-                attributes = attributes2;
-            }
-            if ((y & 31) == 0)
-            {
-                attributesAddr1 += 8;
-                attributesAddr2 += 8;
-                fetchAttributes(attributes1 + attributesOffset1, attributes2 + attributesOffset1, attributesAddr1, attributesCount1);
-                fetchAttributes(attributes1 + attributesOffset2, attributes2 + attributesOffset2, attributesAddr2, attributesCount2);
-                attributes = attributes1;
+                if ((scrollY & 7) == 0)
+                {
+                    patternTable = patternTableBase;
+                    addrName1 += 32;
+                    addrName2 += 32;
+                    fetchNames(names + 0, addrName1, sizeName1);
+                    fetchNames(names + sizeName1, addrName2, sizeName2);
+                }
+                if ((scrollY & 15) == 0)
+                {
+                    attributes = attributes2;
+                }
+                if ((scrollY & 31) == 0)
+                {
+                    addrAttribute1 += 8;
+                    addrAttribute2 += 8;
+                    fetchAttributes(attributes1 + 0, attributes2 + 0, addrAttribute1, sizeAttribute1);
+                    fetchAttributes(attributes1 + sizeName1, attributes2 + sizeName1, addrAttribute2, sizeAttribute2);
+                    attributes = attributes1;
+                }
             }
         }
     }
