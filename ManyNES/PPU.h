@@ -35,6 +35,8 @@ namespace NES
         void addListener(IListener& listener);
         void removeListener(IListener& listener);
         void setRenderSurface(void* surface, size_t pitch);
+        void updateSpriteHitTestConditions();
+        void checkHitTest(int32_t tick);
 
         static const uint32_t CREATE_VRAM_ONE_SCREEN = 0x00000001;
         static const uint32_t CREATE_VRAM_HORIZONTAL_MIRROR = 0x00000002;
@@ -65,7 +67,7 @@ namespace NES
         static uint8_t paletteRead(void* context, int32_t ticks, uint32_t addr);
         static void paletteWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value);
         void signalVBlankStart();
-        void onVBlankStart();
+        void onVBlankStart(int32_t ticks);
         void onVBlankEnd();
         static void onVBlankStart(void* context, int32_t ticks);
         static void onVBlankEnd(void* context, int32_t ticks);
@@ -82,12 +84,16 @@ namespace NES
         int32_t                 mVBlankStartTicks;
         int32_t                 mVBlankEndTicks;
         int32_t                 mTicksPerLine;
+        int32_t                 mSprite0StartTick;
+        int32_t                 mSprite0EndTick;
         uint32_t                mVisibleLines;
         uint8_t                 mRegister[PPU_REGISTER_COUNT];
         uint8_t                 mScroll[2];
         uint16_t                mAddress;
         uint8_t                 mDataReadBuffer;
-        bool                    mAddessLow;
+        bool                    mAddressLow;
+        bool                    mVisibleArea;
+        bool                    mCheckHitTest;
         uint32_t                mScrollIndex;
         ListenerQueue           mListeners;
         NES::MemoryBus          mMemory;

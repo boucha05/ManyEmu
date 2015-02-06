@@ -31,10 +31,12 @@ namespace
     static const uint8_t PPU_CONTROL_NAMETABLE_PAGE_X = 0x01;
     static const uint8_t PPU_CONTROL_NAMETABLE_PAGE_Y = 0x02;
     static const uint8_t PPU_CONTROL_VERTICAL_INCREMENT = 0x04;
-    static const uint8_t PPU_BACKGROUND_PATTERN_TABLE = 0x10;
+    static const uint8_t PPU_CONTROL_BACKGROUND_PATTERN_TABLE = 0x10;
+    static const uint8_t PPU_CONTROL_SPRITE_SIZE = 0x20;
     static const uint8_t PPU_CONTROL_VBLANK_OUTPUT = 0x80;
 
     static const uint8_t PPU_STATUS_VBLANK = 0x80;
+    static const uint8_t PPU_STATUS_HIT_TEST = 0x40;
 
     static const uint32_t PPU_TICKS_PER_LINE = 341;
     static const uint32_t PPU_VISIBLE_LINES = 240;
@@ -95,8 +97,12 @@ namespace NES
         , mVBlankStartTicks(0)
         , mVBlankEndTicks(0)
         , mTicksPerLine(0)
+        , mSprite0StartTick(0)
+        , mSprite0EndTick(0)
         , mVisibleLines(0)
-        , mAddessLow(false)
+        , mAddressLow(false)
+        , mVisibleArea(false)
+        , mCheckHitTest(false)
         , mScrollIndex(0)
         , mAddress(0)
         , mDataReadBuffer(0)
@@ -224,11 +230,15 @@ namespace NES
 
     void PPU::reset()
     {
+        mSprite0StartTick = 0;
+        mSprite0EndTick = 0;
         memset(mRegister, 0, sizeof(mRegister));
         mRegister[PPU_REG_PPUSTATUS] |= PPU_STATUS_VBLANK;
         mClock->addEvent(onVBlankEnd, this, mVBlankEndTicks);
         mClock->addEvent(onVBlankStart, this, mVBlankStartTicks);
-        mAddessLow = false;
+        mAddressLow = false;
+        mVisibleArea = false;
+        mCheckHitTest = false;
         mScrollIndex = 0;
         mAddress = 0;
         mDataReadBuffer = 0;
@@ -267,7 +277,6 @@ namespace NES
 
     void PPU::setDesiredTicks(int32_t ticks)
     {
-        render(ticks);
     }
 
     uint8_t PPU::regRead(int32_t ticks, uint32_t addr)
@@ -281,9 +290,10 @@ namespace NES
         case PPU_REG_PPUSTATUS:
         {
             uint8_t ppustatus = mRegister[PPU_REG_PPUSTATUS];
-            mAddessLow = false;
+            mAddressLow = false;
             mScrollIndex = 0;
             endVBlank();
+            checkHitTest(ticks);
             return ppustatus;
         }
             //case PPU_REG_OAMADDR: break;
@@ -329,6 +339,10 @@ namespace NES
             {
                 signalVBlankStart();
             }
+
+            // If sprite height changes, update hit test conditions
+            if ((ppuctrl ^ value) & PPU_CONTROL_SPRITE_SIZE)
+                updateSpriteHitTestConditions();
             break;
         }
         case PPU_REG_PPUMASK: break;
@@ -338,7 +352,12 @@ namespace NES
 
         case PPU_REG_OAMDATA:
         {
-            mOAM[mRegister[PPU_REG_OAMADDR]++] = value;
+            uint8_t addr = mRegister[PPU_REG_OAMADDR]++;
+            mOAM[addr] = value;
+
+            // If updating sprite 0, update hit test conditions
+            if (addr < 4)
+                updateSpriteHitTestConditions();
             break;
         }
 
@@ -351,11 +370,11 @@ namespace NES
 
         case PPU_REG_PPUADDR:
         {
-            if (mAddessLow)
+            if (mAddressLow)
                 mAddress = ((mAddress & 0xff00) | (value & 0x00ff));
             else
                 mAddress = ((mAddress & 0x00ff) | (value << 8));
-            mAddessLow = !mAddessLow;
+            mAddressLow = !mAddressLow;
             break;
         }
 
@@ -417,7 +436,6 @@ namespace NES
         //if (ppustatus & PPU_STATUS_VBLANK)
         //    printf("[VBLANK end]\n");
         mRegister[PPU_REG_PPUSTATUS] = ppustatus & ~PPU_STATUS_VBLANK;
-        mLastTickRendered = 0;
     }
 
     void PPU::signalVBlankStart()
@@ -427,24 +445,34 @@ namespace NES
         //printf("[VBLANK interrupt]\n");
     }
 
-    void PPU::onVBlankStart()
+    void PPU::onVBlankStart(int32_t ticks)
     {
+        mVisibleArea = false;
+        mCheckHitTest = false;
         startVBlank();
+        render(ticks);
     }
 
     void PPU::onVBlankEnd()
     {
         endVBlank();
+        mLastTickRendered = 0;
+        mRegister[PPU_REG_PPUSTATUS] &= ~PPU_STATUS_HIT_TEST;
+        mVisibleArea = true;
+
+        // Refresh hit test conditions for this frame
+        mCheckHitTest = true;
+        updateSpriteHitTestConditions();
     }
 
     void PPU::onVBlankStart(void* context, int32_t ticks)
     {
-        static_cast<PPU*>(context)->startVBlank();
+        static_cast<PPU*>(context)->onVBlankStart(ticks);
     }
 
     void PPU::onVBlankEnd(void* context, int32_t ticks)
     {
-        static_cast<PPU*>(context)->endVBlank();
+        static_cast<PPU*>(context)->onVBlankEnd();
     }
 
     void PPU::addListener(IListener& listener)
@@ -575,6 +603,15 @@ namespace NES
         getRasterPosition(lastTick, x1, y1);
 
         // Adjust starting position
+        if (x0 < 0)
+            x0 = 0;
+        if (y0 < 0)
+            y0 = 0;
+        if (x1 < 0)
+        {
+            x1 = PPU_VISIBLE_COLUMNS - 1;
+            --y1;
+        }
         if (x0 > PPU_VISIBLE_COLUMNS)
         {
             x0 = 0;
@@ -615,9 +652,9 @@ namespace NES
         }
         uint32_t baseAttributeX = scrollX >> 5;
         uint32_t baseAttributeY = scrollY >> 5;
-        uint32_t baseNameX = baseAttributeX << 2;
-        uint32_t baseNameY = baseAttributeY << 2;
-        uint32_t fineX = scrollX - baseNameX;
+        uint32_t baseNameX = baseAttributeX << 2; // Must snap to attribute
+        uint32_t baseNameY = scrollY >> 3;
+        uint32_t fineX = scrollX - (baseNameX << 3);
 
         // Assign left and right regions
         static const uint32_t addrAttribute[] = { 0x23c0, 0x27c0, 0x2bc0, 0x2fc0 };
@@ -644,11 +681,11 @@ namespace NES
         uint8_t attributes2[36];
         uint8_t names[36];
         uint8_t work[SCANLINE_PIXEL_CAPACITY];
-        uint8_t* surface = mSurface;
+        uint8_t* surface = mSurface + y0 * mPitch;
         uint8_t* attributes = attributes1;
 
-        uint16_t patternTableBase = (mRegister[PPU_REG_PPUCTRL] & PPU_BACKGROUND_PATTERN_TABLE) ? 0x1000 : 0x0000;
-        uint16_t patternTable = patternTableBase;
+        uint16_t patternTableBase = (mRegister[PPU_REG_PPUCTRL] & PPU_CONTROL_BACKGROUND_PATTERN_TABLE) ? 0x1000 : 0x0000;
+        uint16_t patternTable = patternTableBase + (scrollY & 7);
 
         memset(palette, 0xff, sizeof(palette));
         memset(attributes1, 0xff, sizeof(attributes1));
@@ -669,7 +706,7 @@ namespace NES
         while (y <= y1)
         {
             renderLine(work, names, attributes, palette, patternTable, 36);
-            memcpy(surface, work + fineX + x0, copySize);
+            memcpy(surface + x0, work + fineX + x0, copySize);
 
             surface += mPitch;
 
@@ -710,6 +747,38 @@ namespace NES
                     attributes = attributes1;
                 }
             }
+        }
+    }
+
+    void PPU::updateSpriteHitTestConditions()
+    {
+        mSprite0StartTick = 0;
+        mSprite0EndTick = 0;
+        uint32_t y0 = mOAM[0] + 1;
+        if (y0 < 240)
+        {
+            uint32_t y1 = y0 + ((mRegister[PPU_REG_PPUCTRL] & PPU_CONTROL_SPRITE_SIZE) ? 15 : 7);
+            uint32_t x0 = mOAM[3];
+            uint32_t x1 = x0 + 8;
+            if (x1 > 256)
+                x1 = 256;
+            mSprite0StartTick = y0 * mTicksPerLine + x0;
+            mSprite0EndTick = y1 * mTicksPerLine + x1;
+        }
+    }
+
+    void PPU::checkHitTest(int32_t tick)
+    {
+        if (!mCheckHitTest)
+            return;
+
+        //if (tick >= mSprite0StartTick)
+        if (tick >= mSprite0EndTick) // Better for smb1
+        {
+            // TODO: Accurate hit test
+            mCheckHitTest = false;
+            mRegister[PPU_REG_PPUSTATUS] |= PPU_STATUS_HIT_TEST;
+            render(tick);
         }
     }
 }
