@@ -515,9 +515,10 @@ namespace NES
         for (uint32_t index = 0; index < PALETTE_RAM_SIZE; ++index)
         {
             //uint8_t value = paletteIndex++;
-            uint8_t value = mPaletteRAM[index];
-            if (value && !(value & 3))
-                value = 0;  // Force background color if transparent
+            uint32_t realIndex = index;
+            if (realIndex && !(realIndex & 3))
+                realIndex = 0;  // Force background color if transparent
+            uint8_t value = mPaletteRAM[realIndex];
             value &= 63; // The last 2 bits should be zero
             dest[index] = value;
         }
