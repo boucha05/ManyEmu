@@ -15,6 +15,7 @@ namespace
     static const uint32_t VRAM_PATTERN_TABLE_ADDRESS1 = 0x1000;
 
     static const uint32_t VRAM_NAMETABLE_BASE_ADDRESS = 0x2000;
+    static const uint32_t VRAM_NAMETABLE_MASK = 0x0fff;
     static const uint32_t VRAM_NAMETABLE_SIZE = 0x400;
     static const uint32_t VRAM_NAMETABLE_OFFSET0 = 0x000;
     static const uint32_t VRAM_NAMETABLE_OFFSET1 = 0x400;
@@ -56,6 +57,12 @@ namespace
     static const uint32_t SCANLINE_NAME_COUNT = SCANLINE_PIXEL_CAPACITY / SCANLINE_NAME_ALIGNMENT;
     static const uint32_t SCANLINE_ATTRIBUTE_COUNT = SCANLINE_PIXEL_CAPACITY / SCANLINE_ATTRIBUTE_ALIGNMENT;
 
+    static const uint32_t SCANLINE_ACTION_INCR_HORIZONTAL = 0;
+    static const uint32_t SCANLINE_ACTION_INCR_VERTICAL = 1;
+    static const uint32_t SCANLINE_ACTION_FETCH_HORIZONTAL = 2;
+    static const uint32_t SCANLINE_ACTION_FETCH_VERTICAL = 3;
+    static const uint32_t SCANLINE_ACTION_NEXT_LINE = 4;
+
     static uint8_t patternMask[256][8];
 
     bool initializePatternTable()
@@ -89,6 +96,47 @@ namespace
     {
         //NOT_IMPLEMENTED();
     }
+
+    uint32_t incrementX(uint32_t v)
+    {
+        if ((v & 0x001f) == 0x001f)
+        {
+            v = (v & ~0x001f) ^ 0x0400;
+        }
+        else
+        {
+            v += 1;
+        }
+        return v;
+    }
+
+    uint32_t incrementY(uint32_t v)
+    {
+        if ((v & 0x7000) != 0x7000)
+        {
+            v += 0x1000;
+        }
+        else
+        {
+            v &= ~0x7000;
+            uint32_t y = (v & 0x03e0) >> 5;
+            if (y == 0x001d)
+            {
+                y = 0;
+                v ^= 0x0800;
+            }
+            else if (y == 0x001f)
+            {
+                y = 0;
+            }
+            else
+            {
+                y += 1;
+            }
+            v = (v & ~0x03e0) | (y << 5);
+        }
+        return v;
+    }
 }
 
 namespace NES
@@ -98,25 +146,40 @@ namespace NES
         , mVBlankStartTicks(0)
         , mVBlankEndTicks(0)
         , mTicksPerLine(0)
-        , mSprite0StartTick(0)
-        , mSprite0EndTick(0)
         , mVisibleLines(0)
-        , mAddressLow(false)
-        , mVisibleArea(false)
-        , mCheckHitTest(false)
-        , mScrollIndex(0)
-        , mAddress(0)
-        , mDataReadBuffer(0)
         , mSurface(nullptr)
         , mPitch(0)
-        , mLastTickRendered(0)
     {
-        memset(mRegister, 0, sizeof(mRegister));
     }
 
     PPU::~PPU()
     {
         destroy();
+    }
+
+    void PPU::initialize()
+    {
+        memset(mRegister, 0, sizeof(mRegister));
+        mSprite0StartTick = 0;
+        mSprite0EndTick = 0;
+        memset(&mOAM[0], 0, mOAM.size());
+        memset(mRegister, 0, sizeof(mRegister));
+        mRegister[PPU_REG_PPUSTATUS] |= PPU_STATUS_VBLANK;
+        mClock->addEvent(onVBlankEnd, this, mVBlankEndTicks);
+        mClock->addEvent(onVBlankStart, this, mVBlankStartTicks);
+        mVisibleArea = false;
+        mCheckHitTest = false;
+        mInternalAddress = 0;
+        mScanlineAddress = 0;
+        mFineX = 0;
+        mWriteToggle = false;
+        mDataReadBuffer = 0;
+        mLastTickRendered = 0;
+        mLastTickUpdated = 0;
+        mScanlineNumber = 0;
+        mScanlineBaseTick = 0;
+        mScanlineOffsetTick = 0;
+        mScanlineEvent = nullptr;
     }
 
     bool PPU::create(Clock& clock, uint32_t masterClockDivider, uint32_t createFlags, uint32_t visibleLines)
@@ -218,6 +281,19 @@ namespace NES
         // Initialize OAM
         mOAM.resize(OAM_SIZE, 0);
 
+        // Create scanline actions
+        mScanlineEventsPrescan.push_back(ScanlineEvent::make(256 * masterClockDivider, SCANLINE_ACTION_INCR_VERTICAL));
+        mScanlineEventsPrescan.push_back(ScanlineEvent::make(257 * masterClockDivider, SCANLINE_ACTION_FETCH_HORIZONTAL));
+        for (uint32_t cycle = 280; cycle < 305; ++cycle)
+            mScanlineEventsPrescan.push_back(ScanlineEvent::make(280 * masterClockDivider, SCANLINE_ACTION_FETCH_VERTICAL));
+        mScanlineEventsPrescan.push_back(ScanlineEvent::make(341 * masterClockDivider, SCANLINE_ACTION_NEXT_LINE));
+
+        mScanlineEventsVisible.push_back(ScanlineEvent::make(256 * masterClockDivider, SCANLINE_ACTION_INCR_VERTICAL));
+        mScanlineEventsVisible.push_back(ScanlineEvent::make(257 * masterClockDivider, SCANLINE_ACTION_FETCH_HORIZONTAL));
+        mScanlineEventsVisible.push_back(ScanlineEvent::make(341 * masterClockDivider, SCANLINE_ACTION_NEXT_LINE));
+
+        mScanlineEventsVBlank.push_back(ScanlineEvent::make(341 * masterClockDivider, SCANLINE_ACTION_NEXT_LINE));
+
         return true;
     }
 
@@ -231,20 +307,7 @@ namespace NES
 
     void PPU::reset()
     {
-        mSprite0StartTick = 0;
-        mSprite0EndTick = 0;
-        memset(&mOAM[0], 0, mOAM.size());
-        memset(mRegister, 0, sizeof(mRegister));
-        mRegister[PPU_REG_PPUSTATUS] |= PPU_STATUS_VBLANK;
-        mClock->addEvent(onVBlankEnd, this, mVBlankEndTicks);
-        mClock->addEvent(onVBlankStart, this, mVBlankStartTicks);
-        mAddressLow = false;
-        mVisibleArea = false;
-        mCheckHitTest = false;
-        mScrollIndex = 0;
-        mAddress = 0;
-        mDataReadBuffer = 0;
-        mLastTickRendered = 0;
+        initialize();
     }
 
     void PPU::execute()
@@ -292,8 +355,7 @@ namespace NES
         case PPU_REG_PPUSTATUS:
         {
             uint8_t ppustatus = mRegister[PPU_REG_PPUSTATUS];
-            mAddressLow = false;
-            mScrollIndex = 0;
+            mWriteToggle = false;
             endVBlank();
             checkHitTest(ticks);
             return ppustatus;
@@ -304,16 +366,20 @@ namespace NES
             //case PPU_REG_PPUADDR: break;
         case PPU_REG_PPUDATA:
         {
-            uint16_t address = mAddress & MEM_MASK;
-            uint8_t data = memory_bus_read8(mMemory.getState(), 0, mAddress & MEM_MASK);
+            advanceFrame(ticks);
+            uint16_t address = mScanlineAddress & MEM_MASK;
+            uint8_t data = memory_bus_read8(mMemory.getState(), 0, address);
             uint8_t value = data;
             if (address < PALETTE_RAM_BASE_ADDRESS)
             {
                 value = mDataReadBuffer;
                 mDataReadBuffer = data;
             }
-            uint16_t increment = (mRegister[PPU_REG_PPUCTRL] & PPU_CONTROL_VERTICAL_INCREMENT) ? 32 : 1;
-            mAddress += increment;
+            if (mRegister[PPU_REG_PPUCTRL] & PPU_CONTROL_VERTICAL_INCREMENT)
+                mScanlineAddress = (mScanlineAddress + 32) & 0x7fff;
+            else
+                mScanlineAddress = (mScanlineAddress + 1) & 0x7fff;
+            addressDirty();
             return value;
         }
 
@@ -342,9 +408,10 @@ namespace NES
                 signalVBlankStart();
             }
 
-            // Change in master/slave mode forces a change in the rendering
-            if (modified & PPU_CONTROL_MASTER_SLAVE)
-                render(ticks);
+            // Change in master/slave mode or background nametable forces a change in the rendering
+            advanceFrame(ticks);
+            mInternalAddress = (mInternalAddress & ~0x0c00) | ((value & 0x03) << 10);
+            addressDirty();
 
             // If sprite height changes, update hit test conditions
             if (modified & (PPU_CONTROL_SPRITE_SIZE | PPU_CONTROL_MASTER_SLAVE))
@@ -369,26 +436,48 @@ namespace NES
 
         case PPU_REG_PPUSCROLL:
         {
-            mScroll[mScrollIndex] = value;
-            mScrollIndex = 1 - mScrollIndex;
+            advanceFrame(ticks);
+            if (!mWriteToggle)
+            {
+                mInternalAddress = (mInternalAddress & ~0x001f) | ((value >> 3) & 0x001f);
+                mFineX = value & 0x07;
+            }
+            else
+            {
+                mInternalAddress = (mInternalAddress & 0x0c1f) | ((value & 0x07) << 12) | ((value & 0xf8) << 2);
+            }
+            mWriteToggle = !mWriteToggle;
+            addressDirty();
             break;
         }
 
         case PPU_REG_PPUADDR:
         {
-            if (mAddressLow)
-                mAddress = ((mAddress & 0xff00) | (value & 0x00ff));
+            advanceFrame(ticks);
+            if (!mWriteToggle)
+            {
+                mInternalAddress = (mInternalAddress & 0x00ff) | ((value & 0x3f) << 8);
+            }
             else
-                mAddress = ((mAddress & 0x00ff) | (value << 8));
-            mAddressLow = !mAddressLow;
+            {
+                mInternalAddress = (mInternalAddress & 0x7f00) | (value & 0xff);
+                mScanlineAddress = mInternalAddress;
+            }
+            mWriteToggle = !mWriteToggle;
+            addressDirty();
             break;
         }
 
         case PPU_REG_PPUDATA:
         {
-            memory_bus_write8(mMemory.getState(), 0, mAddress & MEM_MASK, value);
-            uint16_t increment = (mRegister[PPU_REG_PPUCTRL] & PPU_CONTROL_VERTICAL_INCREMENT) ? 32 : 1;
-            mAddress += increment;
+            advanceFrame(ticks);
+            uint16_t address = mScanlineAddress & MEM_MASK;
+            memory_bus_write8(mMemory.getState(), 0, address, value);
+            if (mRegister[PPU_REG_PPUCTRL] & PPU_CONTROL_VERTICAL_INCREMENT)
+                mScanlineAddress = (mScanlineAddress + 32) & 0x7fff;
+            else
+                mScanlineAddress = (mScanlineAddress + 1) & 0x7fff;
+            addressDirty();
             break;
         }
 
@@ -456,13 +545,12 @@ namespace NES
         mVisibleArea = false;
         mCheckHitTest = false;
         startVBlank();
-        render(ticks);
     }
 
     void PPU::onVBlankEnd()
     {
         endVBlank();
-        mLastTickRendered = 0;
+        beginFrame();
         mRegister[PPU_REG_PPUSTATUS] &= ~PPU_STATUS_HIT_TEST;
         mVisibleArea = true;
 
@@ -514,11 +602,11 @@ namespace NES
     {
         for (uint32_t index = 0; index < PALETTE_RAM_SIZE; ++index)
         {
-            //uint8_t value = paletteIndex++;
             uint32_t realIndex = index;
             if (realIndex && !(realIndex & 3))
                 realIndex = 0;  // Force background color if transparent
             uint8_t value = mPaletteRAM[realIndex];
+            //uint8_t value = paletteIndex++;
             value &= 63; // The last 2 bits should be zero
             dest[index] = value;
         }
@@ -633,12 +721,12 @@ namespace NES
         }
 
         // Get scrolling position
-        uint8_t ppuctrl = mRegister[PPU_REG_PPUCTRL];
-        uint32_t scrollX = mScroll[0];
-        uint32_t scrollY = mScroll[1];
-        scrollX += ((ppuctrl & PPU_CONTROL_NAMETABLE_PAGE_X) ? 256 : 0);
-        scrollY += ((ppuctrl & PPU_CONTROL_NAMETABLE_PAGE_Y) ? 240 : 0);
-        scrollY += y0;
+        uint32_t scrollX = ((mScanlineAddress & 0x001f) << 3) | mFineX;
+        uint32_t scrollY = ((mScanlineAddress & 0x03e0) >> 2) | ((mScanlineAddress & 0x7000) >> 12);
+        scrollX += ((mScanlineAddress & 0x0400) ? 256 : 0);
+        scrollY += ((mScanlineAddress & 0x0800) ? 240 : 0);
+        assert(scrollX < 512);
+        assert(scrollY < 240 + 256);
         if (scrollY >= 480)
             scrollY -= 480;
 
@@ -701,8 +789,16 @@ namespace NES
         memset(work, 0xff, sizeof(work));
 
         fetchPalette(palette);
-        fetchAttributes(attributes1 + 0, attributes2 + 0, addrAttribute1, sizeAttribute1);
-        fetchAttributes(attributes1 + sizeName1, attributes2 + sizeName1, addrAttribute2, sizeAttribute2);
+        if (scrollY & 0x10)
+        {
+            fetchAttributes(attributes2 + 0, attributes1 + 0, addrAttribute1, sizeAttribute1);
+            fetchAttributes(attributes2 + sizeName1, attributes1 + sizeName1, addrAttribute2, sizeAttribute2);
+        }
+        else
+        {
+            fetchAttributes(attributes1 + 0, attributes2 + 0, addrAttribute1, sizeAttribute1);
+            fetchAttributes(attributes1 + sizeName1, attributes2 + sizeName1, addrAttribute2, sizeAttribute2);
+        }
         fetchNames(names + 0, addrName1, sizeName1);
         fetchNames(names + sizeName1, addrName2, sizeName2);
 
@@ -710,14 +806,19 @@ namespace NES
         uint32_t copySize = PPU_VISIBLE_COLUMNS - x0;
         if (y == y1)
             copySize = x1 - x0;
-        while (y <= y1)
+        if (static_cast<int32_t>(copySize) < 0)
+            return;
+        //if (y != y1)
+        //    return;
+        //while (y <= y1)
+        if (y <= y1)
         {
             renderLine(work, names, attributes, palette, patternTable, 36);
             memcpy(surface + x0, work + fineX + x0, copySize);
 
             surface += mPitch;
 
-            ++patternTable;
+            /*++patternTable;
             ++y;
             x0 = 0;
             copySize = PPU_VISIBLE_COLUMNS;
@@ -753,7 +854,7 @@ namespace NES
                     fetchAttributes(attributes1 + sizeName1, attributes2 + sizeName1, addrAttribute2, sizeAttribute2);
                     attributes = attributes1;
                 }
-            }
+            }*/
         }
     }
 
@@ -765,7 +866,7 @@ namespace NES
         if (y0 < 240)
         {
             uint8_t ppuctrl = mRegister[PPU_REG_PPUCTRL];
-            uint32_t y1 = y0 + ((ppuctrl & PPU_CONTROL_SPRITE_SIZE) ? 15 : 7) + 1;
+            uint32_t y1 = y0 + ((ppuctrl & PPU_CONTROL_SPRITE_SIZE) ? 15 : 7);
             uint32_t x0 = mOAM[3];
             uint32_t x1 = x0 + 8;
             if (x1 > 256)
@@ -788,8 +889,77 @@ namespace NES
             if (mSprite0StartTick >= mTicksPerLine)
             {
                 mRegister[PPU_REG_PPUSTATUS] |= PPU_STATUS_HIT_TEST;
-                render(tick);
             }
         }
+    }
+
+    void PPU::beginFrame()
+    {
+        mLastTickRendered = 0;
+        mLastTickUpdated = 0;
+        mScanlineNumber = 0;
+        mScanlineBaseTick = 0;
+        mScanlineOffsetTick = 0;
+        mScanlineEvent = &mScanlineEventsPrescan[0];
+    }
+
+    void PPU::advanceFrame(int32_t tick)
+    {
+        // Get the number of ticks to add to our timeline
+        int32_t newTicks = tick - mLastTickUpdated;
+        if (newTicks <= 0)
+            return;
+        mScanlineOffsetTick += newTicks;
+
+        // Execute scanline events as long as we fail to catch up
+        while (mScanlineOffsetTick >= mScanlineEvent->offsetTick)
+        {
+            int32_t tick = mScanlineBaseTick + mScanlineEvent->offsetTick;
+
+            uint32_t action = mScanlineEvent->action;
+            ++mScanlineEvent;
+            switch (action)
+            {
+            case SCANLINE_ACTION_INCR_HORIZONTAL:
+                if (mRegister[PPU_REG_PPUMASK] & 0x18)
+                    mScanlineAddress = incrementX(mScanlineAddress);
+                break;
+
+            case SCANLINE_ACTION_INCR_VERTICAL:
+                render(mScanlineBaseTick + mTicksPerLine);
+                if (mRegister[PPU_REG_PPUMASK] & 0x18)
+                    mScanlineAddress = incrementY(mScanlineAddress);
+                break;
+
+            case SCANLINE_ACTION_FETCH_HORIZONTAL:
+                if (mRegister[PPU_REG_PPUMASK] & 0x18)
+                    mScanlineAddress = (mScanlineAddress & ~0x041f) | (mInternalAddress & 0x041f);
+                break;
+
+            case SCANLINE_ACTION_FETCH_VERTICAL:
+                if (mRegister[PPU_REG_PPUMASK] & 0x18)
+                    mScanlineAddress = (mScanlineAddress & 0x041f) | (mInternalAddress & ~0x041f);
+                break;
+
+            case SCANLINE_ACTION_NEXT_LINE:
+                mScanlineBaseTick += mTicksPerLine;
+                mScanlineOffsetTick -= mTicksPerLine;
+                if (++mScanlineNumber < PPU_VBLANK_START_LINE)
+                    mScanlineEvent = &mScanlineEventsVisible[0];
+                else
+                    mScanlineEvent = &mScanlineEventsVBlank[0];
+                break;
+
+            default:
+                assert(false);
+            }
+        }
+
+        // Execute line events
+        mLastTickUpdated = tick;
+    }
+
+    void PPU::addressDirty()
+    {
     }
 }

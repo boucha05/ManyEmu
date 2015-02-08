@@ -38,8 +38,6 @@ namespace NES
     class Cpu6502 : public NES::Clock::IListener
     {
     public:
-        typedef void(*TimerCallback)(void* context, int32_t ticks);
-
         Cpu6502();
         ~Cpu6502();
         bool create(Clock& clock, MEMORY_BUS& bus, uint32_t master_clock_divider);
