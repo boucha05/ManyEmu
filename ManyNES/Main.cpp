@@ -6,33 +6,9 @@
 #include <assert.h>
 #include <string>
 #include <vector>
+#include "InputController.h"
 #include "Tests.h"
 #include "nes.h"
-
-namespace
-{
-    struct KeyboardMapping
-    {
-        SDL_Scancode    scancode;
-        uint32_t        buttonMask;
-    };
-
-    uint32_t readKeyboardController(const KeyboardMapping* mappings, uint32_t count)
-    {
-        const uint8_t* state = SDL_GetKeyboardState(nullptr);
-        uint32_t buttonMask = 0;
-        for (uint32_t input = 0; input < count; ++input)
-        {
-            const KeyboardMapping& mapping = mappings[input];
-            if (state[mapping.scancode])
-            {
-                buttonMask |= mapping.buttonMask;
-            }
-        }
-
-        return buttonMask;
-    }
-}
 
 class Application
 {
@@ -51,15 +27,17 @@ private:
 
     static const uint32_t BUFFERING = 2;
 
-    SDL_Window*             mWindow;
-    SDL_Renderer*           mRenderer;
-    SDL_Surface*            mScreen;
-    SDL_Texture*            mTexture[BUFFERING];
-    bool                    mValid;
-    bool                    mFirst;
-    uint32_t                mFrame;
-    NES::Rom*               mRom;
-    NES::Context*           mContext;
+    SDL_Window*                 mWindow;
+    SDL_Renderer*               mRenderer;
+    SDL_Surface*                mScreen;
+    SDL_Texture*                mTexture[BUFFERING];
+    bool                        mValid;
+    bool                        mFirst;
+    uint32_t                    mFrame;
+    NES::Rom*                   mRom;
+    NES::Context*               mContext;
+    NES::KeyboardController*    mKeyboard;
+    NES::InputController*       mPlayer1;
 };
 
 Application::Application()
@@ -69,6 +47,10 @@ Application::Application()
     , mValid(false)
     , mFirst(true)
     , mFrame(0)
+    , mRom(nullptr)
+    , mContext(nullptr)
+    , mKeyboard(nullptr)
+    , mPlayer1(nullptr)
 {
     for (uint32_t n = 0; n < BUFFERING; ++n)
         mTexture[n] = nullptr;
@@ -132,6 +114,20 @@ bool Application::create()
     if (!mContext)
         return false;
 
+    mKeyboard = NES::KeyboardController::create();
+    if (!mKeyboard)
+        return false;
+    mKeyboard->addKey(SDL_SCANCODE_UP, NES::Context::ButtonUp);
+    mKeyboard->addKey(SDL_SCANCODE_DOWN, NES::Context::ButtonDown);
+    mKeyboard->addKey(SDL_SCANCODE_LEFT, NES::Context::ButtonLeft);
+    mKeyboard->addKey(SDL_SCANCODE_RIGHT, NES::Context::ButtonRight);
+    mKeyboard->addKey(SDL_SCANCODE_X, NES::Context::ButtonB);
+    mKeyboard->addKey(SDL_SCANCODE_Z, NES::Context::ButtonA);
+    mKeyboard->addKey(SDL_SCANCODE_A, NES::Context::ButtonSelect);
+    mKeyboard->addKey(SDL_SCANCODE_S, NES::Context::ButtonStart);
+
+    mPlayer1 = mKeyboard;
+
     mFirst = true;
 
     return true;
@@ -139,6 +135,14 @@ bool Application::create()
 
 void Application::destroy()
 {
+    mPlayer1 = nullptr;
+
+    if (mKeyboard)
+    {
+        mKeyboard->dispose();
+        mKeyboard = nullptr;
+    }
+
     if (mContext)
     {
         mContext->dispose();
@@ -207,20 +211,8 @@ void Application::update()
         mContext->update();
     }
 
-    static const KeyboardMapping controllerMapping0[] =
-    {
-        { SDL_SCANCODE_UP, NES::Context::ButtonUp },
-        { SDL_SCANCODE_DOWN, NES::Context::ButtonDown },
-        { SDL_SCANCODE_LEFT, NES::Context::ButtonLeft },
-        { SDL_SCANCODE_RIGHT, NES::Context::ButtonRight },
-        { SDL_SCANCODE_X, NES::Context::ButtonB },
-        { SDL_SCANCODE_Z, NES::Context::ButtonA },
-        { SDL_SCANCODE_A, NES::Context::ButtonSelect },
-        { SDL_SCANCODE_S, NES::Context::ButtonStart },
-    };
-    static const uint32_t controllerMappingSize0 = sizeof(controllerMapping0) / sizeof(controllerMapping0[0]);
-    uint32_t controller0 = readKeyboardController(controllerMapping0, controllerMappingSize0);
-    mContext->setController(0, controller0);
+    if (mPlayer1)
+        mContext->setController(0, mPlayer1->readInput());
 
     void* pixels = nullptr;
     int pitch = 0;

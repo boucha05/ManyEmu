@@ -12,6 +12,7 @@
     <ClCompile Include="Clock.cpp" />
     <ClCompile Include="APU.cpp" />
     <ClCompile Include="Tests.cpp" />
+    <ClCompile Include="InputController.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Palette.h" />
@@ -24,6 +25,7 @@
     <ClInclude Include="Clock.h" />
     <ClInclude Include="APU.h" />
     <ClInclude Include="Tests.h" />
+    <ClInclude Include="InputController.h" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="r6502.asm" />
