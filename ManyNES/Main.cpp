@@ -24,11 +24,15 @@ private:
     void update();
     void render();
 
+    static const uint32_t BUFFERING = 2;
+
     SDL_Window*             mWindow;
     SDL_Renderer*           mRenderer;
     SDL_Surface*            mScreen;
-    SDL_Surface*            mSurface;
+    SDL_Texture*            mTexture[BUFFERING];
     bool                    mValid;
+    bool                    mFirst;
+    uint32_t                mFrame;
     NES::Rom*               mRom;
     NES::Context*           mContext;
 };
@@ -37,9 +41,12 @@ Application::Application()
     : mWindow(nullptr)
     , mRenderer(nullptr)
     , mScreen(nullptr)
-    , mSurface(nullptr)
     , mValid(false)
+    , mFirst(true)
+    , mFrame(0)
 {
+    for (uint32_t n = 0; n < BUFFERING; ++n)
+        mTexture[n] = nullptr;
 }
 
 Application::~Application()
@@ -66,7 +73,7 @@ void Application::terminate()
 
 bool Application::create()
 {
-    mWindow = SDL_CreateWindow("ManyNES", 100, 100, 256, 240, SDL_WINDOW_SHOWN);
+    mWindow = SDL_CreateWindow("ManyNES", 100, 100, 256, 240, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (!mWindow)
         return false;
 
@@ -78,15 +85,12 @@ bool Application::create()
     if (!mScreen)
         return false;
 
-    mSurface = SDL_CreateRGBSurface(0, 256, 240, 8, 0, 0, 0, 0);
-    if (!mSurface)
-        return false;
-
-    static const SDL_Color colors[64] =
+    for (uint32_t n = 0; n < BUFFERING; ++n)
     {
-#include "Palette.h"
-    };
-    SDL_SetPaletteColors(mSurface->format->palette, colors, 0, 64);
+        mTexture[n] = SDL_CreateTexture(mRenderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
+        if (!mTexture[n])
+            return false;
+    }
 
 #if 0
     if (!runTestRoms())
@@ -102,6 +106,8 @@ bool Application::create()
     mContext = NES::Context::create(*mRom);
     if (!mContext)
         return false;
+
+    mFirst = true;
 
     return true;
 }
@@ -132,10 +138,13 @@ void Application::destroy()
         mWindow = nullptr;
     }
 
-    if (mSurface)
+    for (uint32_t n = 0; n < BUFFERING; ++n)
     {
-        SDL_FreeSurface(mSurface);
-        mSurface = nullptr;
+        if (mTexture[n])
+        {
+            SDL_DestroyTexture(mTexture[n]);
+            mTexture[n] = nullptr;
+        }
     }
 }
 
@@ -173,26 +182,29 @@ void Application::update()
         mContext->update();
     }
 
-    if (SDL_LockSurface(mSurface) == 0)
+    void* pixels = nullptr;
+    int pitch = 0;
+    if (!SDL_LockTexture(mTexture[mFrame], nullptr, &pixels, &pitch))
     {
         if (++frameCount == frameTrigger)
             frameTrigger = frameTrigger;
 
-        mContext->setRenderSurface(mSurface->pixels, mSurface->pitch);
+        mContext->setRenderSurface(pixels, pitch);
         mContext->update();
 
-        SDL_UnlockSurface(mSurface);
+        SDL_UnlockTexture(mTexture[mFrame]);
     }
 }
 
 void Application::render()
 {
+    if (++mFrame >= BUFFERING)
+        mFrame = 0;
+    if (mFirst)
+        mFirst = false;
+    else
+        SDL_RenderCopy(mRenderer, mTexture[mFrame], nullptr, nullptr);
     SDL_RenderPresent(mRenderer);
-
-    SDL_Rect rect = { 0, 0, 256, 240 };
-    SDL_BlitSurface(mSurface, nullptr, mScreen, &rect);
-
-    SDL_UpdateWindowSurface(mWindow);
 }
 
 int main()

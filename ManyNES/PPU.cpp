@@ -67,6 +67,11 @@ namespace
     static const uint32_t SCANLINE_ACTION_FETCH_VERTICAL = 3;
     static const uint32_t SCANLINE_ACTION_NEXT_LINE = 4;
 
+    static uint8_t colorPalette[256][4] =
+    {
+#include "Palette.h"
+    };
+
     static uint8_t patternMask[256][8];
 
     bool initializePatternTable()
@@ -734,6 +739,13 @@ namespace NES
             dest[index] = palette[dest[index]];
     }
 
+    void PPU::blitSurface(uint32_t* dest, const uint8_t* src, uint32_t count)
+    {
+        for (uint32_t pos = 0; pos < count; ++pos)
+            dest[pos] = reinterpret_cast<uint32_t*>(colorPalette)[src[pos]];
+
+    }
+
     void PPU::render(int32_t lastTick)
     {
         if (!mSurface)
@@ -873,8 +885,7 @@ namespace NES
                 drawSprites(work + fineX + x0, y, spriteHeight);
             if (mRegister[PPU_REG_PPUMASK] & (PPU_MASK_SHOW_BACKGROUND | PPU_MASK_SHOW_SPRITES))
                 applyPalette(work + fineX + x0, palette, 256);
-            memcpy(surface + x0, work + fineX + x0, copySize);
-
+            blitSurface(reinterpret_cast<uint32_t*>(surface + x0 * 4), work + fineX + x0, copySize + 1);
             surface += mPitch;
 
             /*++patternTable;
