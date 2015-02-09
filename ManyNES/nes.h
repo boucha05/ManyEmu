@@ -50,7 +50,17 @@ namespace NES
     class Context : public IDisposable
     {
     public:
+        static const uint32_t ButtonA = 0x01;
+        static const uint32_t ButtonB = 0x02;
+        static const uint32_t ButtonSelect = 0x04;
+        static const uint32_t ButtonStart = 0x08;
+        static const uint32_t ButtonUp = 0x10;
+        static const uint32_t ButtonDown = 0x20;
+        static const uint32_t ButtonLeft = 0x40;
+        static const uint32_t ButtonRight = 0x80;
+
         virtual void reset() = 0;
+        virtual void setController(uint32_t index, uint32_t buttons) = 0;
         virtual void setRenderSurface(void* surface, size_t pitch) = 0;
         virtual void update() = 0;
         virtual uint8_t read8(uint16_t addr) = 0;

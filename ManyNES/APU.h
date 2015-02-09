@@ -21,6 +21,7 @@ namespace NES
         virtual void setDesiredTicks(int32_t ticks);
         uint8_t regRead(int32_t ticks, uint32_t addr);
         void regWrite(int32_t ticks, uint32_t addr, uint8_t value);
+        void setController(uint32_t index, uint8_t buttons);
 
         static const uint32_t APU_REGISTER_COUNT = 0x20;
 
@@ -50,6 +51,8 @@ namespace NES
     private:
         MemoryBus*  mMemory;
         uint8_t     mRegister[APU_REGISTER_COUNT];
+        uint8_t     mController[4];
+        uint8_t     mShifter[4];
     };
 }
 

@@ -210,6 +210,11 @@ namespace
             mapper->reset();
         }
 
+        virtual void setController(uint32_t index, uint32_t buttons)
+        {
+            apu.setController(index, buttons);
+        }
+
         virtual void setRenderSurface(void* surface, uint32_t pitch)
         {
             ppu.setRenderSurface(surface, pitch);

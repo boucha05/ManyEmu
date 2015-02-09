@@ -9,6 +9,31 @@
 #include "Tests.h"
 #include "nes.h"
 
+namespace
+{
+    struct KeyboardMapping
+    {
+        SDL_Scancode    scancode;
+        uint32_t        buttonMask;
+    };
+
+    uint32_t readKeyboardController(const KeyboardMapping* mappings, uint32_t count)
+    {
+        const uint8_t* state = SDL_GetKeyboardState(nullptr);
+        uint32_t buttonMask = 0;
+        for (uint32_t input = 0; input < count; ++input)
+        {
+            const KeyboardMapping& mapping = mappings[input];
+            if (state[mapping.scancode])
+            {
+                buttonMask |= mapping.buttonMask;
+            }
+        }
+
+        return buttonMask;
+    }
+}
+
 class Application
 {
 public:
@@ -181,6 +206,21 @@ void Application::update()
         --frameSkip;
         mContext->update();
     }
+
+    static const KeyboardMapping controllerMapping0[] =
+    {
+        { SDL_SCANCODE_UP, NES::Context::ButtonUp },
+        { SDL_SCANCODE_DOWN, NES::Context::ButtonDown },
+        { SDL_SCANCODE_LEFT, NES::Context::ButtonLeft },
+        { SDL_SCANCODE_RIGHT, NES::Context::ButtonRight },
+        { SDL_SCANCODE_X, NES::Context::ButtonB },
+        { SDL_SCANCODE_Z, NES::Context::ButtonA },
+        { SDL_SCANCODE_A, NES::Context::ButtonSelect },
+        { SDL_SCANCODE_S, NES::Context::ButtonStart },
+    };
+    static const uint32_t controllerMappingSize0 = sizeof(controllerMapping0) / sizeof(controllerMapping0[0]);
+    uint32_t controller0 = readKeyboardController(controllerMapping0, controllerMappingSize0);
+    mContext->setController(0, controller0);
 
     void* pixels = nullptr;
     int pitch = 0;

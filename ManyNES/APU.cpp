@@ -18,6 +18,8 @@ namespace NES
         : mMemory(nullptr)
     {
         memset(mRegister, 0, sizeof(mRegister));
+        memset(mController, 0, sizeof(mController));
+        memset(mShifter, 0, sizeof(mShifter));
     }
 
     APU::~APU()
@@ -80,12 +82,16 @@ namespace NES
         //case APU_REG_SND_CHN: break;
         case APU_REG_JOY1:
         {
-            mRegister[APU_REG_JOY1] = 0x40;
+            mRegister[APU_REG_JOY1] = 0x40 | (mShifter[0] & 1) | ((mShifter[2] & 1) << 1);
+            mShifter[0] = (mShifter[0] >> 1) | 0x80;
+            mShifter[2] = (mShifter[2] >> 1) | 0x80;
             break;
         }
         case APU_REG_JOY2:
         {
-            mRegister[APU_REG_JOY2] = 0x40;
+            mRegister[APU_REG_JOY2] = 0x40 | (mShifter[1] & 1) | ((mShifter[3] & 1) << 1);
+            mShifter[1] = (mShifter[1] >> 1) | 0x80;
+            mShifter[3] = (mShifter[3] >> 1) | 0x80;
             break;
         }
         default:
@@ -131,10 +137,24 @@ namespace NES
                 }
             }
             case APU_REG_SND_CHN: break;
-            case APU_REG_JOY1: break;
+            case APU_REG_JOY1:
+                // Controller strobe
+                if (value & 1)
+                {
+                    for (uint32_t controller = 0; controller < 4; ++controller)
+                        mShifter[controller] = mController[controller];
+                }
+                break;
             //case APU_REG_JOY2: break;
         default:
             NOT_IMPLEMENTED("Register write");
         }
+    }
+
+    void APU::setController(uint32_t index, uint8_t buttons)
+    {
+        if (index > 4)
+            return;
+        mController[index] = buttons;
     }
 }
