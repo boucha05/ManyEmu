@@ -32,10 +32,14 @@ namespace
     static const uint8_t PPU_CONTROL_NAMETABLE_PAGE_X = 0x01;
     static const uint8_t PPU_CONTROL_NAMETABLE_PAGE_Y = 0x02;
     static const uint8_t PPU_CONTROL_VERTICAL_INCREMENT = 0x04;
+    static const uint8_t PPU_CONTROL_SPRITE_PATTERN_TABLE = 0x08;
     static const uint8_t PPU_CONTROL_BACKGROUND_PATTERN_TABLE = 0x10;
     static const uint8_t PPU_CONTROL_SPRITE_SIZE = 0x20;
     static const uint8_t PPU_CONTROL_MASTER_SLAVE = 0x40;
     static const uint8_t PPU_CONTROL_VBLANK_OUTPUT = 0x80;
+
+    static const uint8_t PPU_MASK_SHOW_BACKGROUND = 0x08;
+    static const uint8_t PPU_MASK_SHOW_SPRITES = 0x10;
 
     static const uint8_t PPU_STATUS_VBLANK = 0x80;
     static const uint8_t PPU_STATUS_HIT_TEST = 0x40;
@@ -642,7 +646,7 @@ namespace NES
         }
     }
 
-    void PPU::fetchBackground(uint8_t* dest, const uint8_t* names, const uint8_t* attributes, uint16_t base, uint16_t size)
+    void PPU::drawBackground(uint8_t* dest, const uint8_t* names, const uint8_t* attributes, uint16_t base, uint16_t size)
     {
         MEMORY_BUS& memory = mMemory.getState();
         uint32_t base0 = base + 0;
@@ -671,14 +675,63 @@ namespace NES
         }
     }
 
-    void PPU::renderLine(uint8_t* dest, const uint8_t* names, const uint8_t* attributes, const uint8_t* palette, uint16_t patternBase, uint32_t count)
+    void PPU::drawSprites(uint8_t* dest, uint32_t y, uint32_t height)
     {
-        fetchBackground(dest, names, attributes, patternBase, count);
-        count <<= 3;
-        for (uint32_t index = 0; index < count; ++index)
+        // TODO: Support for 16-bit sprites
+        MEMORY_BUS& memory = mMemory.getState();
+        uint32_t base = (mRegister[PPU_REG_PPUCTRL] & PPU_CONTROL_SPRITE_PATTERN_TABLE) ? 0x1000 : 0x0000;
+        uint32_t rendered = 0;
+        uint32_t spriteMin = y - height;
+        uint32_t spriteLimit = height - 1;
+        for (uint32_t index = 0; index < 64; ++index)
         {
-            dest[index] = palette[dest[index]];
+            uint32_t posY = mOAM[index * 4 + 0];
+            if (posY >= 0xef)
+                continue;
+
+            uint32_t spriteLine = posY - spriteMin;
+            if (spriteLine >= height)
+                continue;
+
+            uint8_t attributes = mOAM[index * 4 + 2];
+            uint32_t flipX = (attributes & 0x40 ? 7 : 0);
+            uint32_t flipY = (attributes & 0x80 ? 0 : 7);
+            spriteLine ^= flipY;
+
+            uint32_t id = mOAM[index * 4 + 1];
+            uint32_t addr = base + id * 16 + spriteLine;
+            uint32_t pattern0 = memory_bus_read8(memory, 0, addr + 0);
+            uint32_t pattern1 = memory_bus_read8(memory, 0, addr + 8);
+            const uint8_t* patternMask0 = &patternMask[pattern0][0];
+            const uint8_t* patternMask1 = &patternMask[pattern1][0];
+
+            uint32_t posX = mOAM[index * 4 + 3];
+            uint8_t palette = ((attributes & 3) << 2) | 0x10;
+            for (uint32_t bit = 0; bit < 8; ++bit)
+            {
+                uint32_t srcPos = bit ^ flipX;
+                uint32_t dstPos = posX + bit;
+                uint8_t src = dest[dstPos];
+                if ((src & 0x10) || ((src & 3) && (attributes & 0x20)))
+                    continue;
+                uint8_t value = 0;
+                value |= patternMask0[srcPos] & 1;
+                value |= patternMask1[srcPos] & 2;
+                if (!value)
+                    continue;
+                value |= palette;
+                dest[dstPos] = value;
+            }
+
+            if (++rendered == 8)
+                break;
         }
+    }
+
+    void PPU::applyPalette(uint8_t* dest, const uint8_t* palette, uint32_t count)
+    {
+        for (uint32_t index = 0; index < count; ++index)
+            dest[index] = palette[dest[index]];
     }
 
     void PPU::render(int32_t lastTick)
@@ -750,6 +803,7 @@ namespace NES
         uint32_t baseNameX = baseAttributeX << 2; // Must snap to attribute
         uint32_t baseNameY = scrollY >> 3;
         uint32_t fineX = scrollX - (baseNameX << 3);
+        uint32_t spriteHeight = ((mRegister[PPU_REG_PPUCTRL] & PPU_CONTROL_SPRITE_SIZE) ? 16 : 8);
 
         // Assign left and right regions
         static const uint32_t addrAttribute[] = { 0x23c0, 0x27c0, 0x2bc0, 0x2fc0 };
@@ -775,7 +829,7 @@ namespace NES
         uint8_t attributes1[36];
         uint8_t attributes2[36];
         uint8_t names[36];
-        uint8_t work[SCANLINE_PIXEL_CAPACITY];
+        uint8_t work[SCANLINE_PIXEL_CAPACITY + 8];
         uint8_t* surface = mSurface + y0 * mPitch;
         uint8_t* attributes = attributes1;
 
@@ -813,7 +867,12 @@ namespace NES
         //while (y <= y1)
         if (y <= y1)
         {
-            renderLine(work, names, attributes, palette, patternTable, 36);
+            if (mRegister[PPU_REG_PPUMASK] & PPU_MASK_SHOW_BACKGROUND)
+                drawBackground(work, names, attributes, patternTable, 36);
+            if (mRegister[PPU_REG_PPUMASK] & PPU_MASK_SHOW_SPRITES)
+                drawSprites(work + fineX + x0, y, spriteHeight);
+            if (mRegister[PPU_REG_PPUMASK] & (PPU_MASK_SHOW_BACKGROUND | PPU_MASK_SHOW_SPRITES))
+                applyPalette(work + fineX + x0, palette, 256);
             memcpy(surface + x0, work + fineX + x0, copySize);
 
             surface += mPitch;
