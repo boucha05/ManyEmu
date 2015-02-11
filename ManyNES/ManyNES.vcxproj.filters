@@ -13,6 +13,8 @@
     <ClCompile Include="APU.cpp" />
     <ClCompile Include="Tests.cpp" />
     <ClCompile Include="InputController.cpp" />
+    <ClCompile Include="Serialization.cpp" />
+    <ClCompile Include="Stream.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Palette.h" />
@@ -26,6 +28,8 @@
     <ClInclude Include="APU.h" />
     <ClInclude Include="Tests.h" />
     <ClInclude Include="InputController.h" />
+    <ClInclude Include="Serialization.h" />
+    <ClInclude Include="Stream.h" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="r6502.asm" />

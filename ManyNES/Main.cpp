@@ -13,9 +13,21 @@
 class Application
 {
 public:
+    struct Config
+    {
+        std::string     rom;
+        std::string     recorded;
+        bool            playback;
+
+        Config()
+            : playback(false)
+        {
+        }
+    };
+
     Application();
     ~Application();
-    void run();
+    void run(const Config& config);
     void terminate();
 
 private:
@@ -27,6 +39,7 @@ private:
 
     static const uint32_t BUFFERING = 2;
 
+    Config                      mConfig;
     SDL_Window*                 mWindow;
     SDL_Renderer*               mRenderer;
     SDL_Surface*                mScreen;
@@ -37,6 +50,8 @@ private:
     NES::Rom*                   mRom;
     NES::Context*               mContext;
     NES::KeyboardController*    mKeyboard;
+    NES::InputRecorder*         mRecorder;
+    NES::InputPlayback*         mPlayback;
     NES::InputController*       mPlayer1;
 };
 
@@ -50,6 +65,8 @@ Application::Application()
     , mRom(nullptr)
     , mContext(nullptr)
     , mKeyboard(nullptr)
+    , mRecorder(nullptr)
+    , mPlayback(nullptr)
     , mPlayer1(nullptr)
 {
     for (uint32_t n = 0; n < BUFFERING; ++n)
@@ -61,8 +78,9 @@ Application::~Application()
     destroy();
 }
 
-void Application::run()
+void Application::run(const Config& config)
 {
+    mConfig = config;
     mValid = create();
     while (mValid)
     {
@@ -104,9 +122,7 @@ bool Application::create()
         return false;
 #endif
 
-    //mRom = NES::Rom::load("ROMs\\exitbike.nes");
-    mRom = NES::Rom::load("ROMs\\mario.nes");
-    //mRom = NES::Rom::load("ROMs\\nestest.nes");
+    mRom = NES::Rom::load(mConfig.rom.c_str());
     if (!mRom)
         return false;
 
@@ -125,8 +141,27 @@ bool Application::create()
     mKeyboard->addKey(SDL_SCANCODE_Z, NES::Context::ButtonA);
     mKeyboard->addKey(SDL_SCANCODE_A, NES::Context::ButtonSelect);
     mKeyboard->addKey(SDL_SCANCODE_S, NES::Context::ButtonStart);
-
     mPlayer1 = mKeyboard;
+
+    if (!mConfig.recorded.empty())
+    {
+        if (mConfig.playback)
+        {
+            mPlayback = NES::InputPlayback::create(*mPlayer1);
+            if (!mPlayback)
+                return false;
+            if (!mPlayback->load(mConfig.recorded.c_str()))
+                return false;
+            mPlayer1 = mPlayback;
+        }
+        else
+        {
+            mRecorder = NES::InputRecorder::create(*mPlayer1);
+            if (!mRecorder)
+                return false;
+            mPlayer1 = mRecorder;
+        }
+    }
 
     mFirst = true;
 
@@ -136,6 +171,14 @@ bool Application::create()
 void Application::destroy()
 {
     mPlayer1 = nullptr;
+
+    if (mRecorder)
+    {
+        if (!mConfig.recorded.empty())
+            mRecorder->save(mConfig.recorded.c_str());
+        mRecorder->dispose();
+        mRecorder = nullptr;
+    }
 
     if (mKeyboard)
     {
@@ -241,7 +284,14 @@ void Application::render()
 
 int main()
 {
+    Application::Config config;
+    //config.rom = "ROMs\\exitbike.nes";
+    config.rom = "ROMs\\mario.nes";
+    //config.rom = "ROMs\\nestest.nes";
+    config.recorded = "ROMs\\recorded.dat";
+    config.playback = true;
+
     Application application;
-    application.run();
+    application.run(config);
     return 0;
 }

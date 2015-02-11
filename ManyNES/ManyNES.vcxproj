@@ -120,6 +120,8 @@
     <ClCompile Include="Mappers.cpp" />
     <ClCompile Include="PPU.cpp" />
     <ClCompile Include="Rom.cpp" />
+    <ClCompile Include="Serialization.cpp" />
+    <ClCompile Include="Stream.cpp" />
     <ClCompile Include="Tests.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -133,6 +135,8 @@
     <ClInclude Include="Palette.h" />
     <ClInclude Include="PPU.h" />
     <ClInclude Include="r6502.h" />
+    <ClInclude Include="Serialization.h" />
+    <ClInclude Include="Stream.h" />
     <ClInclude Include="Tests.h" />
   </ItemGroup>
   <ItemGroup>

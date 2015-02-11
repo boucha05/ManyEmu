@@ -21,6 +21,24 @@ namespace NES
 
         static KeyboardController* create();
     };
+
+    class InputRecorder : public InputController
+    {
+    public:
+        virtual InputController& getSource() = 0;
+        virtual bool save(const char* path) = 0;
+
+        static InputRecorder* create(InputController& source);
+    };
+
+    class InputPlayback : public InputController
+    {
+    public:
+        virtual InputController& getSource() = 0;
+        virtual bool load(const char* path) = 0;
+
+        static InputPlayback* create(InputController& source);
+    };
 }
 
 #endif
