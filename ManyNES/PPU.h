@@ -23,6 +23,7 @@ namespace NES
         void reset();
         void execute();
         MemoryBus& getMemory();
+        uint8_t* getNameTableMemory();
         MEM_ACCESS* getPatternTableRead(uint32_t index);
         MEM_ACCESS* getPatternTableWrite(uint32_t index);
         MEM_ACCESS* getNameTableRead(uint32_t index);

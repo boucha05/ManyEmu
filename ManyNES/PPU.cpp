@@ -328,6 +328,11 @@ namespace NES
         return mMemory;
     }
 
+    uint8_t* PPU::getNameTableMemory()
+    {
+        return &mNameTableRAM[0];
+    }
+
     MEM_ACCESS* PPU::getPatternTableRead(uint32_t index)
     {
         return index < PATTERN_TABLE_COUNT ? &mPatternTableRead[index] : nullptr;

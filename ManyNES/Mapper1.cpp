@@ -30,7 +30,7 @@ namespace NES
         {
             if (!components.memory)
                 return false;
-            auto& cpu = *components.memory;
+            auto& cpuMemory = *components.memory;
 
             // PRG ROM
             if (!components.rom)
@@ -41,29 +41,30 @@ namespace NES
             mMemPrgRomRead[0].setReadMethod(unsupportedRead, nullptr);
             mMemPrgRomRead[1].setReadMethod(unsupportedRead, nullptr);
             mMemPrgRomWrite.setWriteMethod(regWrite, this);
-            cpu.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0x8000, 0xbfff, mMemPrgRomRead[0]);
-            cpu.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0xc000, 0xffff, mMemPrgRomRead[1]);
-            cpu.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, 0x8000, 0xffff, mMemPrgRomWrite);
+            cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0x8000, 0xbfff, mMemPrgRomRead[0]);
+            cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0xc000, 0xffff, mMemPrgRomRead[1]);
+            cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, 0x8000, 0xffff, mMemPrgRomWrite);
 
             // PRG RAM
             mPrgRam.resize(PRG_RAM_SIZE);
             mMemPrgRamRead.setReadMethod(unsupportedRead, nullptr);
             mMemPrgRamRead.setWriteMethod(unsupportedWrite, nullptr);
-            cpu.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0x6000, 0x7fff, mMemPrgRamRead);
-            cpu.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, 0x6000, 0x7fff, mMemPrgRamWrite);
+            cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0x6000, 0x7fff, mMemPrgRamRead);
+            cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, 0x6000, 0x7fff, mMemPrgRamWrite);
 
             // PPU CHR ROM
             if (!components.ppu)
                 return false;
-            auto& ppu = components.ppu->getMemory();
+            mPpu = components.ppu;
+            auto& ppuMemory = mPpu->getMemory();
             mMemChrRomRead[0].setReadMethod(unsupportedRead, nullptr);
             mMemChrRomRead[1].setReadMethod(unsupportedRead, nullptr);
             mMemChrRomWrite[0].setWriteMethod(unsupportedWrite, nullptr);
             mMemChrRomWrite[1].setWriteMethod(unsupportedWrite, nullptr);
-            ppu.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0x0000, 0x0fff, mMemChrRomRead[0]);
-            ppu.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0x1000, 0x1fff, mMemChrRomRead[1]);
-            ppu.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, 0x0000, 0x0fff, mMemChrRomWrite[0]);
-            ppu.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, 0x1000, 0x1fff, mMemChrRomWrite[1]);
+            ppuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0x0000, 0x0fff, mMemChrRomRead[0]);
+            ppuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0x1000, 0x1fff, mMemChrRomRead[1]);
+            ppuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, 0x0000, 0x0fff, mMemChrRomWrite[0]);
+            ppuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, 0x1000, 0x1fff, mMemChrRomWrite[1]);
 
             // CHR RAM
             if (romDescription.prgRamPages == 0)
@@ -106,11 +107,30 @@ namespace NES
         void initialize()
         {
             mRom = nullptr;
+            mPpu = nullptr;
             mShift = 0;
             mCycle = 0;
             mPrgRomPage[0] = mPrgRomPage[1] = 0;
             mChrRomPage[0] = mChrRomPage[1] = 0;
             mRegister[0] = mRegister[1] = mRegister[2] = mRegister[3];
+        }
+
+        void updateNameTables(uint32_t bank0, uint32_t bank1, uint32_t bank2, uint32_t bank3)
+        {
+            uint32_t banks[4] =
+            {
+                bank0,
+                bank1,
+                bank2,
+                bank3,
+            };
+            uint8_t* nameTables = mPpu->getNameTableMemory();
+            for (uint32_t index = 0; index < 4; ++index)
+            {
+                uint8_t* nameTable = &nameTables[banks[index] * 0x0400];
+                mPpu->getNameTableRead(index)->setReadMemory(nameTable);
+                mPpu->getNameTableWrite(index)->setWriteMemory(nameTable);
+            }
         }
 
         void updateMemoryMap()
@@ -158,6 +178,9 @@ namespace NES
                 mPrgRomPage[0] = prgBank;
                 mPrgRomPage[1] = romDescription.prgRomPages - 1;
                 break;
+
+            default:
+                break;
             }
 
             if (romDescription.chrRomPages == 0)
@@ -177,6 +200,30 @@ namespace NES
                 mMemChrRomRead[1].setReadMemory(&romContent.chrRom[4 * 1024 * chrBank1]);
                 mMemChrRomWrite[0].setWriteMethod(unsupportedWrite, nullptr);
                 mMemChrRomWrite[1].setWriteMethod(unsupportedWrite, nullptr);
+            }
+
+            uint8_t* nameTables = mPpu->getNameTableMemory();
+            uint32_t nameTableBanks[4] = { 0, 0, 0, 0 };
+            switch (mirroring)
+            {
+            case 0:
+                updateNameTables(0, 0, 0, 0);
+                break;
+
+            case 1:
+                updateNameTables(1, 1, 1, 1);
+                break;
+
+            case 2:
+                updateNameTables(0, 1, 0, 1);
+                break;
+
+            case 3:
+                updateNameTables(0, 0, 1, 1);
+                break;
+
+            default:
+                assert(false);
             }
 
             assert(mPrgRomPage[0] < romDescription.prgRomPages);
@@ -241,6 +288,7 @@ namespace NES
         }
 
         const NES::Rom*         mRom;
+        NES::PPU*               mPpu;
         MEM_ACCESS              mMemPrgRomRead[2];
         MEM_ACCESS              mMemPrgRomWrite;
         MEM_ACCESS              mMemPrgRamRead;
