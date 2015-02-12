@@ -16,6 +16,5 @@ namespace
         }
     };
 
-    NES::AutoRegisterMapper<Mapper> mapper0(0, "NROM");
-    NES::AutoRegisterMapper<Mapper> mapper1(1, "SxROM");
+    NES::AutoRegisterMapper<Mapper> mapper(0, "NROM");
 }

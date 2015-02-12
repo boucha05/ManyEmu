@@ -15,6 +15,7 @@
     <ClCompile Include="InputController.cpp" />
     <ClCompile Include="Serialization.cpp" />
     <ClCompile Include="Stream.cpp" />
+    <ClCompile Include="Mapper1.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Palette.h" />

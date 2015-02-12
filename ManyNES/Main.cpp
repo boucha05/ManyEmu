@@ -286,10 +286,11 @@ int main()
 {
     Application::Config config;
     //config.rom = "ROMs\\exitbike.nes";
-    config.rom = "ROMs\\mario.nes";
+    config.rom = "ROMs\\megaman2.nes";
+    //config.rom = "ROMs\\mario.nes";
     //config.rom = "ROMs\\nestest.nes";
-    config.recorded = "ROMs\\recorded.dat";
-    config.playback = true;
+    //config.recorded = "ROMs\\recorded.dat";
+    //config.playback = true;
 
     Application application;
     application.run(config);
