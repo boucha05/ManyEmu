@@ -17,10 +17,12 @@ public:
     {
         std::string     rom;
         std::string     recorded;
+        uint32_t        frameSkip;
         bool            playback;
 
         Config()
-            : playback(false)
+            : frameSkip(0)
+            , playback(false)
         {
         }
     };
@@ -46,7 +48,9 @@ private:
     SDL_Texture*                mTexture[BUFFERING];
     bool                        mValid;
     bool                        mFirst;
-    uint32_t                    mFrame;
+    uint32_t                    mBufferIndex;
+    uint32_t                    mFrameIndex;
+    uint32_t                    mBufferCount;
     NES::Rom*                   mRom;
     NES::Context*               mContext;
     NES::KeyboardController*    mKeyboard;
@@ -61,7 +65,9 @@ Application::Application()
     , mScreen(nullptr)
     , mValid(false)
     , mFirst(true)
-    , mFrame(0)
+    , mBufferIndex(0)
+    , mFrameIndex(0)
+    , mBufferCount(0)
     , mRom(nullptr)
     , mContext(nullptr)
     , mKeyboard(nullptr)
@@ -242,44 +248,51 @@ void Application::handleEvents()
 
 void Application::update()
 {
-    static uint32_t frameCount = 0;
     static uint32_t frameTrigger = 640;
-    static uint32_t frameSkip = 0;//640;
-
-    // Allow frames to be skipped if desired
-    mContext->setRenderSurface(nullptr, 0);
-    while (frameSkip)
-    {
-        --frameSkip;
-        mContext->update();
-    }
-
-    if (mPlayer1)
-        mContext->setController(0, mPlayer1->readInput());
 
     void* pixels = nullptr;
     int pitch = 0;
-    if (!SDL_LockTexture(mTexture[mFrame], nullptr, &pixels, &pitch))
+    if (!mConfig.frameSkip)
     {
-        if (++frameCount == frameTrigger)
-            frameTrigger = frameTrigger;
-
-        mContext->setRenderSurface(pixels, pitch);
-        mContext->update();
-
-        SDL_UnlockTexture(mTexture[mFrame]);
+        if (!SDL_LockTexture(mTexture[mBufferIndex], nullptr, &pixels, &pitch))
+            mContext->setRenderSurface(pixels, pitch);
     }
+    else
+    {
+        mContext->setRenderSurface(nullptr, 0);
+    }
+
+    if (++mFrameIndex == frameTrigger)
+        frameTrigger = frameTrigger;
+
+    if (mPlayer1)
+        mContext->setController(0, mPlayer1->readInput());
+    mContext->update();
+
+    if (pixels)
+        SDL_UnlockTexture(mTexture[mBufferIndex]);
+
+    ++mFrameIndex;
 }
 
 void Application::render()
 {
-    if (++mFrame >= BUFFERING)
-        mFrame = 0;
-    if (mFirst)
-        mFirst = false;
-    else
-        SDL_RenderCopy(mRenderer, mTexture[mFrame], nullptr, nullptr);
-    SDL_RenderPresent(mRenderer);
+    if (++mBufferIndex >= BUFFERING)
+        mBufferIndex = 0;
+
+    bool visible = !mFirst;
+    mFirst = false;
+    if (mConfig.frameSkip)
+    {
+        --mConfig.frameSkip;
+        visible = false;
+    }
+
+    if (visible)
+    {
+        SDL_RenderCopy(mRenderer, mTexture[mBufferIndex], nullptr, nullptr);
+        SDL_RenderPresent(mRenderer);
+    }
 }
 
 int main()
@@ -291,6 +304,7 @@ int main()
     //config.rom = "ROMs\\nestest.nes";
     //config.recorded = "ROMs\\recorded.dat";
     //config.playback = true;
+    //config.frameSkip = 512;
 
     Application application;
     application.run(config);

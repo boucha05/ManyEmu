@@ -690,9 +690,9 @@ namespace NES
         }
     }
 
-    void PPU::drawSprites(uint8_t* dest, uint32_t y, uint32_t height)
+    void PPU::drawSprites8(uint8_t* dest, uint32_t y)
     {
-        // TODO: Support for 16-bit sprites
+        static const uint32_t height = 8;
         MEMORY_BUS& memory = mMemory.getState();
         uint32_t base = (mRegister[PPU_REG_PPUCTRL] & PPU_CONTROL_SPRITE_PATTERN_TABLE) ? 0x1000 : 0x0000;
         uint32_t rendered = 0;
@@ -715,6 +715,64 @@ namespace NES
 
             uint32_t id = mOAM[index * 4 + 1];
             uint32_t addr = base + id * 16 + spriteLine;
+            uint32_t pattern0 = memory_bus_read8(memory, 0, addr + 0);
+            uint32_t pattern1 = memory_bus_read8(memory, 0, addr + 8);
+            const uint8_t* patternMask0 = &patternMask[pattern0][0];
+            const uint8_t* patternMask1 = &patternMask[pattern1][0];
+
+            uint32_t posX = mOAM[index * 4 + 3];
+            uint8_t palette = ((attributes & 3) << 2) | 0x10;
+            for (uint32_t bit = 0; bit < 8; ++bit)
+            {
+                uint32_t srcPos = bit ^ flipX;
+                uint32_t dstPos = posX + bit;
+                uint8_t src = dest[dstPos];
+                if ((src & 0x10) || ((src & 3) && (attributes & 0x20)))
+                    continue;
+                uint8_t value = 0;
+                value |= patternMask0[srcPos] & 1;
+                value |= patternMask1[srcPos] & 2;
+                if (!value)
+                    continue;
+                value |= palette;
+                dest[dstPos] = value;
+            }
+
+            if (++rendered == 8)
+                break;
+        }
+    }
+
+    void PPU::drawSprites16(uint8_t* dest, uint32_t y)
+    {
+        static const uint32_t height = 16;
+        MEMORY_BUS& memory = mMemory.getState();
+        uint32_t rendered = 0;
+        uint32_t spriteMin = y - height;
+        uint32_t spriteLimit = height - 1;
+        static const uint32_t offset[16] =
+        {
+            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+            0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+        };
+        for (uint32_t index = 0; index < 64; ++index)
+        {
+            uint32_t posY = mOAM[index * 4 + 0];
+            if (posY >= 0xef)
+                continue;
+
+            uint32_t spriteLine = posY - spriteMin;
+            if (spriteLine >= height)
+                continue;
+
+            uint8_t attributes = mOAM[index * 4 + 2];
+            uint32_t flipX = (attributes & 0x40 ? 7 : 0);
+            uint32_t flipY = (attributes & 0x80 ? 0 : 15);
+            spriteLine ^= flipY;
+
+            uint32_t id = mOAM[index * 4 + 1];
+            uint32_t base = (id & 1) ? 0x1000 : 0x0000;
+            uint32_t addr = base + (id & ~1) * 16 + offset[spriteLine];
             uint32_t pattern0 = memory_bus_read8(memory, 0, addr + 0);
             uint32_t pattern1 = memory_bus_read8(memory, 0, addr + 8);
             const uint8_t* patternMask0 = &patternMask[pattern0][0];
@@ -825,7 +883,7 @@ namespace NES
         uint32_t baseNameX = baseAttributeX << 2; // Must snap to attribute
         uint32_t baseNameY = scrollY >> 3;
         uint32_t fineX = scrollX - (baseNameX << 3);
-        uint32_t spriteHeight = ((mRegister[PPU_REG_PPUCTRL] & PPU_CONTROL_SPRITE_SIZE) ? 16 : 8);
+        uint32_t largeSprites = (mRegister[PPU_REG_PPUCTRL] & PPU_CONTROL_SPRITE_SIZE) != 0;
 
         // Assign left and right regions
         static const uint32_t addrAttribute[] = { 0x23c0, 0x27c0, 0x2bc0, 0x2fc0 };
@@ -892,7 +950,12 @@ namespace NES
             if (mRegister[PPU_REG_PPUMASK] & PPU_MASK_SHOW_BACKGROUND)
                 drawBackground(work, names, attributes, patternTable, 36);
             if (mRegister[PPU_REG_PPUMASK] & PPU_MASK_SHOW_SPRITES)
-                drawSprites(work + fineX + x0, y, spriteHeight);
+            {
+                if (largeSprites)
+                    drawSprites16(work + fineX + x0, y);
+                else
+                    drawSprites8(work + fineX + x0, y);
+            }
             if (mRegister[PPU_REG_PPUMASK] & (PPU_MASK_SHOW_BACKGROUND | PPU_MASK_SHOW_SPRITES))
                 applyPalette(work + fineX + x0, palette, 256);
             blitSurface(reinterpret_cast<uint32_t*>(surface + x0 * 4), work + fineX + x0, copySize + 1);

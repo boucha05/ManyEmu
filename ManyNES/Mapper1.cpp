@@ -115,6 +115,17 @@ namespace NES
             mRegister[0] = mRegister[1] = mRegister[2] = mRegister[3];
         }
 
+        static uint32_t clampBank(uint32_t value, uint32_t max)
+        {
+            uint32_t mask = 0x10;
+            while (mask && (value >= max))
+            {
+                value &= ~mask;
+                mask >>= 1;
+            }
+            return value;
+        }
+
         void updateNameTables(uint32_t bank0, uint32_t bank1, uint32_t bank2, uint32_t bank3)
         {
             uint32_t banks[4] =
@@ -159,6 +170,11 @@ namespace NES
                 prgRamEnable = ((chrBank0 | chrBank1) & 0x10) ? prgRamEnable : false;
                 chrBank0 &= ~0x10;
                 chrBank1 &= ~0x10;
+            }
+            else
+            {
+                chrBank0 = clampBank(chrBank0, romDescription.chrRomPages * 2);
+                chrBank1 = clampBank(chrBank1, romDescription.chrRomPages * 2);
             }
 
             switch (prgRomMode)

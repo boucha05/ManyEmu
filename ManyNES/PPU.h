@@ -77,7 +77,8 @@ namespace NES
         void fetchAttributes(uint8_t* dest1, uint8_t* dest2, uint16_t base, uint16_t size);
         void fetchNames(uint8_t* dest, uint16_t base, uint16_t size);
         void drawBackground(uint8_t* dest, const uint8_t* names, const uint8_t* attributes, uint16_t base, uint16_t size);
-        void drawSprites(uint8_t* dest, uint32_t y, uint32_t height);
+        void drawSprites8(uint8_t* dest, uint32_t y);
+        void drawSprites16(uint8_t* dest, uint32_t y);
         void applyPalette(uint8_t* dest, const uint8_t* palette, uint32_t count);
         void blitSurface(uint32_t* dest, const uint8_t* src, uint32_t count);
         void render(int32_t lastTick);
