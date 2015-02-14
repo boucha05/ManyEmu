@@ -47,8 +47,8 @@ namespace NES
 
             // PRG RAM
             mPrgRam.resize(PRG_RAM_SIZE);
-            mMemPrgRamRead.setReadMethod(unsupportedRead, nullptr);
-            mMemPrgRamRead.setWriteMethod(unsupportedWrite, nullptr);
+            mMemPrgRamRead.setReadMethod(enablePrgRamRead, this);
+            mMemPrgRamWrite.setWriteMethod(enablePrgRamWrite, this);
             cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0x6000, 0x7fff, mMemPrgRamRead);
             cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, 0x6000, 0x7fff, mMemPrgRamWrite);
 
@@ -284,6 +284,34 @@ namespace NES
         static void unsupportedWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value)
         {
             assert(0);
+        }
+
+        void enablePrgRam()
+        {
+            mMemPrgRamRead.setReadMemory(&mPrgRam[0]);
+            mMemPrgRamWrite.setWriteMemory(&mPrgRam[0]);
+        }
+
+        uint8_t onEnablePrgRamRead(uint32_t addr)
+        {
+            enablePrgRam();
+            return mPrgRam[addr];
+        }
+
+        void onEnablePrgRamWrite(uint32_t addr, uint8_t value)
+        {
+            enablePrgRam();
+            mPrgRam[addr] = value;
+        }
+
+        static uint8_t enablePrgRamRead(void* context, int32_t ticks, uint32_t addr)
+        {
+            return static_cast<MMC1*>(context)->onEnablePrgRamRead(addr);
+        }
+
+        static void enablePrgRamWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value)
+        {
+            static_cast<MMC1*>(context)->onEnablePrgRamWrite(addr, value);
         }
 
         void onRegisterWrite(uint32_t index, uint32_t value)
