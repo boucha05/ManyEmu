@@ -16,6 +16,7 @@
     <ClCompile Include="Serialization.cpp" />
     <ClCompile Include="Stream.cpp" />
     <ClCompile Include="Mapper1.cpp" />
+    <ClCompile Include="Path.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Palette.h" />
@@ -31,6 +32,7 @@
     <ClInclude Include="InputController.h" />
     <ClInclude Include="Serialization.h" />
     <ClInclude Include="Stream.h" />
+    <ClInclude Include="Path.h" />
   </ItemGroup>
   <ItemGroup>
     <MASM Include="r6502.asm" />

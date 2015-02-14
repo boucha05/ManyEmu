@@ -5,6 +5,8 @@
 
 namespace NES
 {
+    class ISerializer;
+
     class IDisposable
     {
     public:
@@ -65,6 +67,7 @@ namespace NES
         virtual void update() = 0;
         virtual uint8_t read8(uint16_t addr) = 0;
         virtual void write8(uint16_t addr, uint8_t value) = 0;
+        virtual void serializeGameData(ISerializer& serializer) = 0;
 
         static Context* create(const Rom& rom);
     };

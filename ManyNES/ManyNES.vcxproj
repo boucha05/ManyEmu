@@ -119,6 +119,7 @@
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Mapper0.cpp" />
     <ClCompile Include="Mappers.cpp" />
+    <ClCompile Include="Path.cpp" />
     <ClCompile Include="PPU.cpp" />
     <ClCompile Include="Rom.cpp" />
     <ClCompile Include="Serialization.cpp" />
@@ -134,6 +135,7 @@
     <ClInclude Include="Mappers.h" />
     <ClInclude Include="nes.h" />
     <ClInclude Include="Palette.h" />
+    <ClInclude Include="Path.h" />
     <ClInclude Include="PPU.h" />
     <ClInclude Include="r6502.h" />
     <ClInclude Include="Serialization.h" />

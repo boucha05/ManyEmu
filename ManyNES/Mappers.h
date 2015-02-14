@@ -10,6 +10,7 @@ namespace NES
     class Cpu6502;
     class MemoryBus;
     class PPU;
+    class ISerializer;
 
     class Mapper : public IDisposable
     {
@@ -25,6 +26,7 @@ namespace NES
         virtual bool initialize(const Components& components) = 0;
         virtual void reset() { }
         virtual void update() { }
+        virtual void serializeGameData(ISerializer& serializer) { }
     };
 
     typedef Mapper* (*MapperCreateFunc)();

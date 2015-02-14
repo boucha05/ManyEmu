@@ -1,6 +1,7 @@
 #include "Mappers.h"
 #include "MemoryBus.h"
 #include "PPU.h"
+#include "Serialization.h"
 #include <assert.h>
 #include <vector>
 
@@ -101,6 +102,12 @@ namespace NES
             mRegister[3] = 0x00;
 
             updateMemoryMap();
+        }
+
+        void serializeGameData(NES::ISerializer& serializer)
+        {
+            if (mRom->getDescription().battery)
+                serializer.serialize(&mPrgRam[0], mPrgRam.size());
         }
 
     private:
@@ -374,6 +381,11 @@ namespace
         virtual void reset()
         {
             mMMC1.reset();
+        }
+
+        virtual void serializeGameData(NES::ISerializer& serializer)
+        {
+            mMMC1.serializeGameData(serializer);
         }
 
     private:

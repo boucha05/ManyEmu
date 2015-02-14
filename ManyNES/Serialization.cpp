@@ -25,7 +25,7 @@ namespace NES
 
     void BinaryReader::serialize(void* data, size_t size)
     {
-        serializeSafe(data, sizeof(data));
+        serializeSafe(data, size);
     }
 
     void BinaryReader::serializeSafe(void* data, size_t size)
@@ -56,6 +56,6 @@ namespace NES
 
     void BinaryWriter::serialize(void* data, size_t size)
     {
-        mStream->write(&data, sizeof(data));
+        mStream->write(data, size);
     }
 }

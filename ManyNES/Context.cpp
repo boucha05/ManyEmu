@@ -245,6 +245,11 @@ namespace
             memory_bus_write8(cpuMemory.getState(), clock.getDesiredTicks(), addr, value);
         }
 
+        virtual void serializeGameData(NES::ISerializer& serializer)
+        {
+            mapper->serializeGameData(serializer);
+        }
+
     private:
         static uint8_t ppuRegsRead(void* context, int32_t ticks, uint32_t addr)
         {
