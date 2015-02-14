@@ -22,6 +22,23 @@ namespace NES
         static KeyboardController* create();
     };
 
+    class GameController : public InputController
+    {
+    public:
+        virtual void addButton(SDL_GameControllerButton button, uint32_t buttonMask) = 0;
+        virtual void addAxis(SDL_GameControllerAxis axis, uint32_t buttonMask1, uint32_t buttonMask2) = 0;
+
+        static GameController* create(uint32_t index);
+    };
+
+    class GroupController : public InputController
+    {
+    public:
+        virtual void addController(InputController& controller) = 0;
+
+        static GroupController* create();
+    };
+
     class InputRecorder : public InputController
     {
     public:

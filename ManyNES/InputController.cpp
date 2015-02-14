@@ -63,6 +63,164 @@ namespace
 
     ///////////////////////////////////////////////////////////////////////////
 
+    class GameControllerImpl : public NES::GameController
+    {
+    public:
+        GameControllerImpl()
+            : mGameController(nullptr)
+        {
+        }
+
+        ~GameControllerImpl()
+        {
+            destroy();
+        }
+
+        virtual void dispose()
+        {
+            delete this;
+        }
+
+        bool create(uint32_t index)
+        {
+            mGameController = SDL_GameControllerOpen(index);
+            if (!mGameController)
+                return false;
+
+            return true;
+        }
+
+        void destroy()
+        {
+            if (mGameController)
+            {
+                SDL_GameControllerClose(mGameController);
+                mGameController = nullptr;
+            }
+        }
+
+        virtual uint8_t readInput()
+        {
+            uint8_t buttonMask = 0;
+            for (auto mapping : mButtons)
+            {
+                if (SDL_GameControllerGetButton(mGameController, mapping.button))
+                    buttonMask |= mapping.buttonMask;
+            }
+            for (auto mapping : mAxis)
+            {
+                static const int16_t threshold = 32768 * 20 / 100;
+                int16_t value = SDL_GameControllerGetAxis(mGameController, mapping.axis);
+                if (value < -threshold)
+                    buttonMask |= mapping.buttonMask1;
+                else if (value > threshold)
+                    buttonMask |= mapping.buttonMask2;
+            }
+            return buttonMask;
+        }
+
+        virtual void addButton(SDL_GameControllerButton button, uint32_t buttonMask)
+        {
+            ButtonMapping mapping =
+            {
+                button,
+                buttonMask
+            };
+            mButtons.push_back(mapping);
+        }
+
+        virtual void addAxis(SDL_GameControllerAxis axis, uint32_t buttonMask1, uint32_t buttonMask2)
+        {
+            AxisMapping mapping =
+            {
+                axis,
+                buttonMask1,
+                buttonMask2,
+            };
+            mAxis.push_back(mapping);
+        }
+
+    private:
+        struct ButtonMapping
+        {
+            SDL_GameControllerButton    button;
+            uint32_t                    buttonMask;
+        };
+
+        struct AxisMapping
+        {
+            SDL_GameControllerAxis      axis;
+            uint32_t                    buttonMask1;
+            uint32_t                    buttonMask2;
+        };
+
+        typedef std::vector<ButtonMapping> ButtonMappingTable;
+        typedef std::vector<AxisMapping> AxisMappingTable;
+
+        ButtonMappingTable      mButtons;
+        AxisMappingTable        mAxis;
+        SDL_GameController*     mGameController;
+    };
+
+    ///////////////////////////////////////////////////////////////////////////
+
+    class GroupControllerImpl : public NES::GroupController
+    {
+    public:
+        GroupControllerImpl()
+        {
+        }
+
+        ~GroupControllerImpl()
+        {
+            destroy();
+        }
+
+        virtual void dispose()
+        {
+            delete this;
+        }
+
+        bool create()
+        {
+            return true;
+        }
+
+        void destroy()
+        {
+        }
+
+        virtual void reset()
+        {
+            for (auto controller : mControllers)
+            {
+                controller->reset();
+            }
+        }
+
+        virtual uint8_t readInput()
+        {
+            uint8_t buttonMask = 0;
+            for (auto controller : mControllers)
+            {
+                buttonMask |= controller->readInput();
+            }
+            return buttonMask;
+        }
+
+        virtual void addController(InputController& controller)
+        {
+            mControllers.push_back(&controller);
+        }
+
+    private:
+        typedef std::vector<InputController*> ControllerColllection;
+
+        ControllerColllection   mControllers;
+    };
+
+    ///////////////////////////////////////////////////////////////////////////
+
     struct InputStreamData
     {
         std::vector<uint8_t>    repeat;
@@ -240,6 +398,28 @@ namespace NES
     KeyboardController* KeyboardController::create()
     {
         KeyboardControllerImpl* instance = new KeyboardControllerImpl();
+        if (!instance->create())
+        {
+            instance->dispose();
+            instance = nullptr;
+        }
+        return instance;
+    }
+
+    GameController* GameController::create(uint32_t index)
+    {
+        GameControllerImpl* instance = new GameControllerImpl();
+        if (!instance->create(index))
+        {
+            instance->dispose();
+            instance = nullptr;
+        }
+        return instance;
+    }
+
+    GroupController* GroupController::create()
+    {
+        GroupControllerImpl* instance = new GroupControllerImpl();
         if (!instance->create())
         {
             instance->dispose();

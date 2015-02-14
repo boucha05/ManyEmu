@@ -13,6 +13,17 @@
 #include "Tests.h"
 #include "nes.h"
 
+namespace
+{
+    bool initSDL()
+    {
+        SDL_Init(SDL_INIT_GAMECONTROLLER);
+        return true;
+    }
+
+    static bool sdlInitialized = initSDL();
+}
+
 class Application
 {
 public:
@@ -60,7 +71,9 @@ private:
     uint32_t                    mBufferCount;
     NES::Rom*                   mRom;
     NES::Context*               mContext;
+    NES::GroupController*       mPlayer1Controllers;
     NES::KeyboardController*    mKeyboard;
+    NES::GameController*        mGameController;
     NES::InputRecorder*         mRecorder;
     NES::InputPlayback*         mPlayback;
     NES::InputController*       mPlayer1;
@@ -77,7 +90,9 @@ Application::Application()
     , mBufferCount(0)
     , mRom(nullptr)
     , mContext(nullptr)
+    , mPlayer1Controllers(nullptr)
     , mKeyboard(nullptr)
+    , mGameController(nullptr)
     , mRecorder(nullptr)
     , mPlayback(nullptr)
     , mPlayer1(nullptr)
@@ -154,6 +169,11 @@ bool Application::create()
 
     loadGameData();
 
+    mPlayer1Controllers = NES::GroupController::create();
+    if (!mPlayer1Controllers)
+        return false;
+    mPlayer1 = mPlayer1Controllers;
+
     mKeyboard = NES::KeyboardController::create();
     if (!mKeyboard)
         return false;
@@ -161,11 +181,33 @@ bool Application::create()
     mKeyboard->addKey(SDL_SCANCODE_DOWN, NES::Context::ButtonDown);
     mKeyboard->addKey(SDL_SCANCODE_LEFT, NES::Context::ButtonLeft);
     mKeyboard->addKey(SDL_SCANCODE_RIGHT, NES::Context::ButtonRight);
+    mKeyboard->addKey(SDL_SCANCODE_KP_8, NES::Context::ButtonUp);
+    mKeyboard->addKey(SDL_SCANCODE_KP_2, NES::Context::ButtonDown);
+    mKeyboard->addKey(SDL_SCANCODE_KP_4, NES::Context::ButtonLeft);
+    mKeyboard->addKey(SDL_SCANCODE_KP_6, NES::Context::ButtonRight);
     mKeyboard->addKey(SDL_SCANCODE_X, NES::Context::ButtonB);
     mKeyboard->addKey(SDL_SCANCODE_Z, NES::Context::ButtonA);
     mKeyboard->addKey(SDL_SCANCODE_A, NES::Context::ButtonSelect);
     mKeyboard->addKey(SDL_SCANCODE_S, NES::Context::ButtonStart);
-    mPlayer1 = mKeyboard;
+    mPlayer1Controllers->addController(*mKeyboard);
+
+    mGameController = NES::GameController::create(0);
+    if (mGameController)
+    {
+        mGameController->addButton(SDL_CONTROLLER_BUTTON_DPAD_UP, NES::Context::ButtonUp);
+        mGameController->addButton(SDL_CONTROLLER_BUTTON_DPAD_DOWN, NES::Context::ButtonDown);
+        mGameController->addButton(SDL_CONTROLLER_BUTTON_DPAD_LEFT, NES::Context::ButtonLeft);
+        mGameController->addButton(SDL_CONTROLLER_BUTTON_DPAD_RIGHT, NES::Context::ButtonRight);
+        mGameController->addAxis(SDL_CONTROLLER_AXIS_LEFTX, NES::Context::ButtonLeft, NES::Context::ButtonRight);
+        mGameController->addAxis(SDL_CONTROLLER_AXIS_LEFTY, NES::Context::ButtonUp, NES::Context::ButtonDown);
+        mGameController->addButton(SDL_CONTROLLER_BUTTON_BACK, NES::Context::ButtonSelect);
+        mGameController->addButton(SDL_CONTROLLER_BUTTON_START, NES::Context::ButtonStart);
+        mGameController->addButton(SDL_CONTROLLER_BUTTON_A, NES::Context::ButtonA);
+        mGameController->addButton(SDL_CONTROLLER_BUTTON_B, NES::Context::ButtonB);
+        mGameController->addButton(SDL_CONTROLLER_BUTTON_X, NES::Context::ButtonB);
+        mGameController->addButton(SDL_CONTROLLER_BUTTON_Y, NES::Context::ButtonA);
+        mPlayer1Controllers->addController(*mGameController);
+    }
 
     if (!mConfig.recorded.empty())
     {
@@ -204,10 +246,22 @@ void Application::destroy()
         mRecorder = nullptr;
     }
 
+    if (mGameController)
+    {
+        mGameController->dispose();
+        mGameController = nullptr;
+    }
+
     if (mKeyboard)
     {
         mKeyboard->dispose();
         mKeyboard = nullptr;
+    }
+
+    if (mPlayer1Controllers)
+    {
+        mPlayer1Controllers->dispose();
+        mPlayer1Controllers = nullptr;
     }
 
     if (mContext)
