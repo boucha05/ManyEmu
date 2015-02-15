@@ -38,6 +38,8 @@ namespace
     static const uint8_t PPU_CONTROL_MASTER_SLAVE = 0x40;
     static const uint8_t PPU_CONTROL_VBLANK_OUTPUT = 0x80;
 
+    static const uint8_t PPU_MASK_SHOW_BACKGROUND_LEFT_BORDER = 0x02;
+    static const uint8_t PPU_MASK_SHOW_SPRITE_LEFT_BORDER = 0x04;
     static const uint8_t PPU_MASK_SHOW_BACKGROUND = 0x08;
     static const uint8_t PPU_MASK_SHOW_SPRITES = 0x10;
 
@@ -561,6 +563,7 @@ namespace NES
 
     void PPU::onVBlankStart(int32_t ticks)
     {
+        advanceFrame(ticks);
         mVisibleArea = false;
         mCheckHitTest = false;
         startVBlank();
@@ -697,7 +700,7 @@ namespace NES
         uint32_t base = (mRegister[PPU_REG_PPUCTRL] & PPU_CONTROL_SPRITE_PATTERN_TABLE) ? 0x1000 : 0x0000;
         uint32_t rendered = 0;
         uint32_t spriteMin = y - height;
-        uint32_t spriteLimit = height - 1;
+        bool trimLeft = !(mRegister[PPU_REG_PPUMASK] & PPU_MASK_SHOW_SPRITE_LEFT_BORDER);
         for (uint32_t index = 0; index < 64; ++index)
         {
             uint32_t posY = mOAM[index * 4 + 0];
@@ -724,9 +727,20 @@ namespace NES
             uint8_t palette = ((attributes & 3) << 2) | 0x10;
             for (uint32_t bit = 0; bit < 8; ++bit)
             {
-                uint32_t srcPos = bit ^ flipX;
                 uint32_t dstPos = posX + bit;
+                if (trimLeft && (dstPos < 8))
+                    continue;
+                uint32_t srcPos = bit ^ flipX;
                 uint8_t src = dest[dstPos];
+                if (mCheckHitTest && (index == 0) && (src & 3))
+                {
+                    uint8_t value = patternMask0[srcPos] | patternMask1[srcPos];
+                    if (value)
+                    {
+                        mCheckHitTest = false;
+                        mRegister[PPU_REG_PPUSTATUS] |= PPU_STATUS_HIT_TEST;
+                    }
+                }
                 if ((src & 0x10) || ((src & 3) && (attributes & 0x20)))
                     continue;
                 uint8_t value = 0;
@@ -749,7 +763,7 @@ namespace NES
         MEMORY_BUS& memory = mMemory.getState();
         uint32_t rendered = 0;
         uint32_t spriteMin = y - height;
-        uint32_t spriteLimit = height - 1;
+        bool trimLeft = !(mRegister[PPU_REG_PPUMASK] & PPU_MASK_SHOW_SPRITE_LEFT_BORDER);
         static const uint32_t offset[16] =
         {
             0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -782,9 +796,20 @@ namespace NES
             uint8_t palette = ((attributes & 3) << 2) | 0x10;
             for (uint32_t bit = 0; bit < 8; ++bit)
             {
-                uint32_t srcPos = bit ^ flipX;
                 uint32_t dstPos = posX + bit;
+                if (trimLeft && (dstPos < 8))
+                    continue;
+                uint32_t srcPos = bit ^ flipX;
                 uint8_t src = dest[dstPos];
+                if (mCheckHitTest && (index == 0) && (src & 3))
+                {
+                    uint8_t value = patternMask0[srcPos] | patternMask1[srcPos];
+                    if (value)
+                    {
+                        mCheckHitTest = false;
+                        mRegister[PPU_REG_PPUSTATUS] |= PPU_STATUS_HIT_TEST;
+                    }
+                }
                 if ((src & 0x10) || ((src & 3) && (attributes & 0x20)))
                     continue;
                 uint8_t value = 0;
@@ -948,13 +973,18 @@ namespace NES
         if (y <= y1)
         {
             if (mRegister[PPU_REG_PPUMASK] & PPU_MASK_SHOW_BACKGROUND)
+            {
                 drawBackground(work, names, attributes, patternTable, 36);
+                if (!(mRegister[PPU_REG_PPUMASK] & PPU_MASK_SHOW_BACKGROUND_LEFT_BORDER))
+                    memset(work + fineX, 0, 8);
+            }
             if (mRegister[PPU_REG_PPUMASK] & PPU_MASK_SHOW_SPRITES)
             {
+                memset(work + fineX + PPU_VISIBLE_COLUMNS, 0, 8);
                 if (largeSprites)
-                    drawSprites16(work + fineX + x0, y);
+                    drawSprites16(work + fineX, y);
                 else
-                    drawSprites8(work + fineX + x0, y);
+                    drawSprites8(work + fineX, y);
             }
             if (mRegister[PPU_REG_PPUMASK] & (PPU_MASK_SHOW_BACKGROUND | PPU_MASK_SHOW_SPRITES))
                 applyPalette(work + fineX + x0, palette, 256);
@@ -1021,19 +1051,8 @@ namespace NES
 
     void PPU::checkHitTest(int32_t tick)
     {
-        if (!mCheckHitTest)
-            return;
-
-        //if (tick >= mSprite0StartTick)
-        if (tick >= mSprite0EndTick) // Better for smb1
-        {
-            // TODO: Accurate hit test
-            mCheckHitTest = false;
-            if (mSprite0StartTick >= mTicksPerLine)
-            {
-                mRegister[PPU_REG_PPUSTATUS] |= PPU_STATUS_HIT_TEST;
-            }
-        }
+        if (mCheckHitTest)
+            advanceFrame(tick);
     }
 
     void PPU::beginFrame()

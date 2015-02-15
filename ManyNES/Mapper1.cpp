@@ -101,6 +101,17 @@ namespace NES
             mRegister[2] = 0x00;
             mRegister[3] = 0x00;
 
+            switch (romDescription.mirroring)
+            {
+            case NES::Rom::Mirroring_Vertical:
+                mRegister[0] |= 2;
+                break;
+
+            case NES::Rom::Mirroring_Horizontal:
+                mRegister[0] |= 3;
+                break;
+            }
+
             updateMemoryMap();
         }
 
