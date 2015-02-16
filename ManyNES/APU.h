@@ -6,6 +6,7 @@
 
 namespace NES
 {
+    class Clock;
     class MemoryBus;
 
     class APU : public Clock::IListener
@@ -13,7 +14,7 @@ namespace NES
     public:
         APU();
         ~APU();
-        bool create(MemoryBus& memoryBus);
+        bool create(Clock& clock, MemoryBus& memoryBus, uint32_t masterClockDivider, uint32_t masterClockFrequency);
         void destroy();
         void reset();
         void execute();
@@ -22,6 +23,8 @@ namespace NES
         uint8_t regRead(int32_t ticks, uint32_t addr);
         void regWrite(int32_t ticks, uint32_t addr, uint8_t value);
         void setController(uint32_t index, uint8_t buttons);
+        void setSoundBuffer(int16_t* buffer, size_t size);
+        void advanceBuffer(int32_t tick);
 
         static const uint32_t APU_REGISTER_COUNT = 0x20;
 
@@ -49,10 +52,39 @@ namespace NES
         static const uint32_t APU_REG_JOY2 = 0x17;
 
     private:
-        MemoryBus*  mMemory;
-        uint8_t     mRegister[APU_REGISTER_COUNT];
-        uint8_t     mController[4];
-        uint8_t     mShifter[4];
+        struct Pulse
+        {
+            uint32_t    duty;
+            uint32_t    volume;
+            uint32_t    sweepPeriod;
+            uint32_t    sweepShift;
+            uint32_t    timer;
+            uint32_t    length;
+            bool        loop;
+            bool        constant;
+            bool        sweepEnable;
+            bool        sweepNegate;
+
+            void reset();
+            void disable();
+        };
+
+        void initialize();
+
+        Clock*                  mClock;
+        MemoryBus*              mMemory;
+        uint32_t                mMasterClockDivider;
+        uint32_t                mFrameCountTicks;
+        uint8_t                 mRegister[APU_REGISTER_COUNT];
+        uint8_t                 mController[4];
+        uint8_t                 mShifter[4];
+        int16_t*                mSoundBuffer;
+        uint32_t                mSoundBufferSize;
+        std::vector<uint8_t*>   mSampleBuffer;
+        int32_t                 mBufferTick;
+        Pulse                   mPulse[2];
+        bool                    mMode5Step;
+        bool                    mIRQ;
     };
 }
 

@@ -90,7 +90,7 @@ namespace
                 return false;
 
             // APU
-            if (!apu.create(cpuMemory))
+            if (!apu.create(clock, cpuMemory, MASTER_CLOCK_CPU_DIVIDER_NTSC, MASTER_CLOCK_FREQUENCY_NTSC))
                 return false;
 
             // ROM
