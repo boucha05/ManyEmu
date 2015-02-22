@@ -34,10 +34,12 @@ public:
         std::string     saveFolder;
         uint32_t        frameSkip;
         bool            playback;
+        bool            saveAudio;
 
         Config()
             : frameSkip(0)
             , playback(false)
+            , saveAudio(false)
         {
         }
     };
@@ -69,6 +71,9 @@ private:
     uint32_t                    mBufferIndex;
     uint32_t                    mFrameIndex;
     uint32_t                    mBufferCount;
+    std::vector<int16_t>        mSoundBuffer;
+    NES::FileStream*            mSoundFile;
+    NES::BinaryWriter*          mSoundWriter;
     NES::Rom*                   mRom;
     NES::Context*               mContext;
     NES::GroupController*       mPlayer1Controllers;
@@ -88,6 +93,8 @@ Application::Application()
     , mBufferIndex(0)
     , mFrameIndex(0)
     , mBufferCount(0)
+    , mSoundFile(nullptr)
+    , mSoundWriter(nullptr)
     , mRom(nullptr)
     , mContext(nullptr)
     , mPlayer1Controllers(nullptr)
@@ -229,6 +236,20 @@ bool Application::create()
         }
     }
 
+    mSoundBuffer.clear();
+    mSoundBuffer.resize(44100 / 60, 0);
+    if (mConfig.saveAudio)
+    {
+        std::string path = Path::join(mConfig.saveFolder, romName) + ".snd";
+        mSoundFile = new NES::FileStream(path.c_str(), "wb");
+        if (!mSoundFile)
+            return false;
+
+        mSoundWriter = new NES::BinaryWriter(*mSoundFile);
+        if (!mSoundWriter)
+            return false;
+    }
+
     mFirst = true;
 
     return true;
@@ -237,6 +258,18 @@ bool Application::create()
 void Application::destroy()
 {
     mPlayer1 = nullptr;
+
+    if (mSoundWriter)
+    {
+        delete mSoundWriter;
+        mSoundWriter = nullptr;
+    }
+    if (mSoundFile)
+    {
+        delete mSoundFile;
+        mSoundFile = nullptr;
+    }
+    mSoundBuffer.clear();
 
     if (mRecorder)
     {
@@ -371,10 +404,27 @@ void Application::update()
 
     if (mPlayer1)
         mContext->setController(0, mPlayer1->readInput());
+    if (mSoundBuffer.size())
+    {
+        size_t size = mSoundBuffer.size();
+        mSoundBuffer.clear();
+        mSoundBuffer.resize(size, 0);
+        mContext->setSoundBuffer(&mSoundBuffer[0], mSoundBuffer.size());
+    }
     mContext->update();
 
     if (pixels)
         SDL_UnlockTexture(mTexture[mBufferIndex]);
+
+    if (mSoundWriter)
+    {
+        for (uint32_t pos = 0; pos < mSoundBuffer.size(); ++pos)
+        {
+            if (mSoundBuffer[pos] != 0)
+                pos = pos;
+        }
+        mSoundWriter->serialize(&mSoundBuffer[0], mSoundBuffer.size() * 2);
+    }
 
     ++mFrameIndex;
 }
@@ -403,10 +453,11 @@ int main()
 {
     Application::Config config;
     config.saveFolder = "Save";
-    config.rom = "C:\\Emu\\NES\\roms\\zelda2.nes";
+    config.saveAudio = true;
+    //config.rom = "C:\\Emu\\NES\\roms\\zelda2.nes";
     //config.rom = "C:\\Emu\\NES\\roms\\cvania2.nes";
     //config.rom = "C:\\Emu\\NES\\roms\\kidicar.nes";
-    //config.rom = "ROMs\\exitbike.nes";
+    config.rom = "ROMs\\exitbike.nes";
     //config.rom = "ROMs\\megaman2.nes";
     //config.rom = "ROMs\\mario.nes";
     //config.rom = "ROMs\\nestest.nes";

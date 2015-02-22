@@ -24,7 +24,6 @@ namespace NES
         void regWrite(int32_t ticks, uint32_t addr, uint8_t value);
         void setController(uint32_t index, uint8_t buttons);
         void setSoundBuffer(int16_t* buffer, size_t size);
-        void advanceBuffer(int32_t tick);
 
         static const uint32_t APU_REGISTER_COUNT = 0x20;
 
@@ -54,35 +53,98 @@ namespace NES
     private:
         struct Pulse
         {
+            // Configuration
+            uint32_t    masterClockDivider;
+
+            // Register fields
             uint32_t    duty;
-            uint32_t    volume;
+            bool        loop;
+            bool        constant;
+            uint32_t    envelope;
+            bool        sweepEnable;
             uint32_t    sweepPeriod;
+            bool        sweepNegate;
             uint32_t    sweepShift;
             uint32_t    timer;
             uint32_t    length;
-            bool        loop;
-            bool        constant;
-            bool        sweepEnable;
-            bool        sweepNegate;
 
-            void reset();
-            void disable();
+            // State
+            bool        halt;
+            uint32_t    period;
+            uint32_t    timerCount;
+            uint32_t    cycle;
+            int8_t      level;
+
+            // Envelope
+            uint32_t    divider;
+            uint32_t    counter;
+            uint32_t    volume;
+
+            void reset(uint32_t _masterClockDivider);
+            void enable(bool enabled);
+            void reload();
+            void update(uint32_t ticks);
+            void updateEnvelope();
+            void updateLengthCounter();
+            void updateSweep();
+            void write(uint32_t index, uint32_t value);
+        };
+
+        struct Triangle
+        {
+            // Configuration
+            uint32_t    masterClockDivider;
+
+            // Register fields
+            bool        control;
+            uint32_t    linear;
+            uint32_t    timer;
+            uint32_t    length;
+            bool        reload;
+
+            // State
+            bool        halt;
+            uint32_t    period;
+            uint32_t    timerCount;
+            uint32_t    linearCount;
+            uint32_t    sequence;
+            int8_t      level;
+
+            void reset(uint32_t _masterClockDivider);
+            void enable(bool enabled);
+            void update(uint32_t ticks);
+            void updateLengthCounter();
+            void updateLinearCounter();
+            void write(uint32_t index, uint32_t value);
         };
 
         void initialize();
+        void updateEnvelopesAndLinearCounter();
+        void updateLengthCountersAndSweepUnits();
+        void advanceSamples(int32_t tick);
+        void advanceBuffer(int32_t tick);
+        void onSequenceEvent(int32_t tick);
+        static void onSequenceEvent(void* context, int32_t tick);
 
         Clock*                  mClock;
         MemoryBus*              mMemory;
         uint32_t                mMasterClockDivider;
+        uint32_t                mMasterClockFrequency;
         uint32_t                mFrameCountTicks;
         uint8_t                 mRegister[APU_REGISTER_COUNT];
         uint8_t                 mController[4];
         uint8_t                 mShifter[4];
         int16_t*                mSoundBuffer;
         uint32_t                mSoundBufferSize;
+        uint32_t                mSoundBufferOffset;
         std::vector<uint8_t*>   mSampleBuffer;
+        uint32_t                mSampleSpeed;
         int32_t                 mBufferTick;
+        int32_t                 mSampleTick;
+        int32_t                 mSequenceTick;
+        uint32_t                mSequenceCount;
         Pulse                   mPulse[2];
+        Triangle                mTriangle;
         bool                    mMode5Step;
         bool                    mIRQ;
     };

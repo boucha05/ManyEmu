@@ -63,6 +63,7 @@ namespace NES
 
         virtual void reset() = 0;
         virtual void setController(uint32_t index, uint32_t buttons) = 0;
+        virtual void setSoundBuffer(int16_t* buffer, size_t size) = 0;
         virtual void setRenderSurface(void* surface, size_t pitch) = 0;
         virtual void update() = 0;
         virtual uint8_t read8(uint16_t addr) = 0;

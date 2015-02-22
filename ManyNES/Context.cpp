@@ -24,6 +24,10 @@ namespace
     static const uint32_t MASTER_CLOCK_CPU_DIVIDER_PAL = 16;
     static const uint32_t MASTER_CLOCK_CPU_DIVIDER_DENDY = 15;
 
+    static const uint32_t MASTER_CLOCK_APU_DIVIDER_NTSC = 12;
+    static const uint32_t MASTER_CLOCK_APU_DIVIDER_PAL = 16;
+    static const uint32_t MASTER_CLOCK_APU_DIVIDER_DENDY = 15;
+
     static const uint32_t MASTER_CLOCK_PPU_DIVIDER_NTSC = 4;
     static const uint32_t MASTER_CLOCK_PPU_DIVIDER_PAL = 5;
     static const uint32_t MASTER_CLOCK_PPU_DIVIDER_DENDY = 5;
@@ -90,7 +94,7 @@ namespace
                 return false;
 
             // APU
-            if (!apu.create(clock, cpuMemory, MASTER_CLOCK_CPU_DIVIDER_NTSC, MASTER_CLOCK_FREQUENCY_NTSC))
+            if (!apu.create(clock, cpuMemory, MASTER_CLOCK_APU_DIVIDER_NTSC, MASTER_CLOCK_FREQUENCY_NTSC))
                 return false;
 
             // ROM
@@ -213,6 +217,11 @@ namespace
         virtual void setController(uint32_t index, uint32_t buttons)
         {
             apu.setController(index, buttons);
+        }
+
+        virtual void setSoundBuffer(int16_t* buffer, size_t size)
+        {
+            apu.setSoundBuffer(buffer, size);
         }
 
         virtual void setRenderSurface(void* surface, uint32_t pitch)
