@@ -55,6 +55,7 @@ namespace NES
         {
             // Configuration
             uint32_t    masterClockDivider;
+            uint32_t    sweepCarry;
 
             // Register fields
             uint32_t    duty;
@@ -67,23 +68,28 @@ namespace NES
             uint32_t    sweepShift;
             uint32_t    timer;
             uint32_t    length;
+            bool        enabled;
 
             // State
-            bool        halt;
             uint32_t    period;
             uint32_t    timerCount;
             uint32_t    cycle;
             int8_t      level;
 
             // Envelope
-            uint32_t    divider;
-            uint32_t    counter;
-            uint32_t    volume;
+            uint32_t    envelopeDivider;
+            uint32_t    envelopeCounter;
+            uint32_t    envelopeVolume;
 
-            void reset(uint32_t _masterClockDivider);
-            void enable(bool enabled);
+            // Sweep
+            bool        sweepReload;
+            uint32_t    sweepDivider;
+
+            void reset(uint32_t _masterClockDivider, uint32_t _sweepCarry);
+            void enable(bool _enabled);
             void reload();
             void update(uint32_t ticks);
+            void updatePeriod();
             void updateEnvelope();
             void updateLengthCounter();
             void updateSweep();
@@ -101,9 +107,9 @@ namespace NES
             uint32_t    timer;
             uint32_t    length;
             bool        reload;
+            bool        enabled;
 
             // State
-            bool        halt;
             uint32_t    period;
             uint32_t    timerCount;
             uint32_t    linearCount;
@@ -111,7 +117,7 @@ namespace NES
             int8_t      level;
 
             void reset(uint32_t _masterClockDivider);
-            void enable(bool enabled);
+            void enable(bool _enabled);
             void update(uint32_t ticks);
             void updateLengthCounter();
             void updateLinearCounter();

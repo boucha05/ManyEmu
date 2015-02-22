@@ -49,8 +49,8 @@ namespace NES
         mSampleTick = 0;
         mSequenceTick = 0;
         mSequenceCount = 0;
-        mPulse[0].reset(mMasterClockDivider * 2);
-        mPulse[1].reset(mMasterClockDivider * 2);
+        mPulse[0].reset(mMasterClockDivider * 2, 0);
+        mPulse[1].reset(mMasterClockDivider * 2, 1);
         mTriangle.reset(mMasterClockDivider);
         mMode5Step = false;
         mIRQ = false;
@@ -81,8 +81,8 @@ namespace NES
         mBufferTick = 0;
         mSequenceTick = 0;
         mSequenceCount = 0;
-        mPulse[0].reset(mMasterClockDivider * 2);
-        mPulse[1].reset(mMasterClockDivider * 2);
+        mPulse[0].reset(mMasterClockDivider * 2, 0);
+        mPulse[1].reset(mMasterClockDivider * 2, 1);
         mTriangle.reset(mMasterClockDivider);
         mClock->addEvent(onSequenceEvent, this, mSequenceTick);
     }
@@ -97,8 +97,16 @@ namespace NES
         mBufferTick -= ticks;
         mSequenceTick -= ticks;
         mSampleTick = 0;
-        assert(mSoundBufferOffset == mSoundBufferSize - 1);
-        mSoundBufferOffset = 0;
+        if (mSoundBuffer)
+        {
+            assert(mSoundBufferOffset == mSoundBufferSize - 1);
+            while (mSoundBufferOffset < mSoundBufferSize)
+            {
+                mSoundBuffer[mSoundBufferOffset] = mSoundBuffer[mSoundBufferOffset - 1];
+                ++mSoundBufferOffset;
+            }
+            mSoundBufferOffset -= mSoundBufferSize;
+        }
         assert(mBufferTick >= 0);
         assert(mSequenceTick >= 0);
         assert(mSampleTick >= 0);
@@ -283,10 +291,10 @@ namespace NES
 
     void APU::updateLengthCountersAndSweepUnits()
     {
-        mPulse[0].updateLengthCounter();
         mPulse[0].updateSweep();
-        mPulse[1].updateLengthCounter();
+        mPulse[0].updateLengthCounter();
         mPulse[1].updateSweep();
+        mPulse[1].updateLengthCounter();
         mTriangle.updateLengthCounter();
     }
 
@@ -407,9 +415,10 @@ namespace NES
 
     ///////////////////////////////////////////////////////////////////////////
 
-    void APU::Pulse::reset(uint32_t _masterClockDivider)
+    void APU::Pulse::reset(uint32_t _masterClockDivider, uint32_t _sweepCarry)
     {
         masterClockDivider = _masterClockDivider;
+        sweepCarry = _sweepCarry;
 
         duty = 0;
         loop = false;
@@ -421,41 +430,37 @@ namespace NES
         sweepShift = 0;
         timer = 0;
         length = 0;
+        enabled = false;
 
-        halt = true;
         period = 0;
         timerCount = 0;
         cycle = 0;
         level = 0;
 
-        divider = 0;
-        counter = 0;
-        volume = 0;
+        envelopeDivider = 0;
+        envelopeCounter = 0;
+        envelopeVolume = 0;
+
+        sweepReload = false;
+        sweepDivider = 0;
     }
 
-    void APU::Pulse::enable(bool enabled)
+    void APU::Pulse::enable(bool _enabled)
     {
+        enabled = _enabled;
         if (!enabled)
         {
             level = 0;
             length = 0;
         }
-        halt = !enabled;
     }
 
     void APU::Pulse::reload()
     {
-        if (timer < 8)
-        {
-            enable(false);
-        }
-        else
-        {
-            timerCount = period;
-            cycle = 0;
-            counter = 15;
-            divider = envelope;
-        }
+        timerCount = period;
+        cycle = 0;
+        envelopeCounter = 15;
+        envelopeDivider = envelope;
     }
 
     void APU::Pulse::update(uint32_t ticks)
@@ -489,35 +494,71 @@ namespace NES
             { -12, +12 }, { -13, +13 }, { -14, +14 }, { -15, +15 },
         };
         uint32_t value =  kLevel[duty][cycle];
-        level = halt ? 0 : kVolume[volume][value];
+        level = (!length || (timer < 8)) ? 0 : kVolume[envelopeVolume][value];
+    }
+
+    void APU::Pulse::updatePeriod()
+    {
+        if (timer >= 8)
+            period = (timer + 1) * masterClockDivider;
     }
 
     void APU::Pulse::updateEnvelope()
     {
-        if (divider-- == 0)
+        if (envelopeDivider-- == 0)
         {
-            divider = 15;
-            if (counter)
-                --counter;
+            envelopeDivider = envelope;
+            if (envelopeCounter)
+                --envelopeCounter;
             else if (loop)
-                counter = 15;
-            if (!constant)
-                volume = counter;
+                envelopeCounter = 15;
         }
+        envelopeVolume = constant ? envelope : envelopeCounter;
     }
 
     void APU::Pulse::updateLengthCounter()
     {
         if (!loop && length)
-        {
-            if (--length == 0)
-                volume = 0;
-        }
+            --length;
     }
 
     void APU::Pulse::updateSweep()
     {
-        // TODO: Update sweep
+        bool adjustPeriod = false;
+        if (sweepReload)
+        {
+            adjustPeriod = !sweepDivider && sweepEnable;
+            sweepDivider = sweepPeriod + 1;
+            sweepReload = false;
+        }
+        else
+        {
+            if (sweepDivider)
+                --sweepDivider;
+            else if (sweepEnable)
+            {
+                sweepDivider = sweepPeriod + 1;
+                adjustPeriod = true;
+            }
+        }
+
+        if (adjustPeriod)
+        {
+            if (timer)
+                timer = timer;
+            uint32_t timerShifted = timer >> sweepShift;
+            uint32_t nextTimer = timer + (sweepNegate ? (sweepCarry - timerShifted) : timerShifted);
+            if ((nextTimer > 0x7ff) || (nextTimer < 8))
+            {
+                level = 0;
+                length = 0;
+            }
+            else
+            {
+                timer = nextTimer;
+                updatePeriod();
+            }
+        }
     }
 
     void APU::Pulse::write(uint32_t index, uint32_t value)
@@ -540,13 +581,14 @@ namespace NES
 
         case 2:
             timer = (timer & ~0xff) | (value & 0xff);
-            period = (timer + 1) * masterClockDivider;
+            updatePeriod();
             break;
 
         case 3:
             timer = (timer & 0xff) | ((value & 0x07) << 8);
-            length = kLength[(value >> 3) & 0x1f];
-            period = (timer + 1) * masterClockDivider;
+            if (enabled)
+                length = kLength[(value >> 3) & 0x1f];
+            updatePeriod();
             reload();
             break;
 
@@ -567,7 +609,7 @@ namespace NES
         length = 0;
         reload = true;
 
-        halt = true;
+        enabled = false;
         period = 0;
         timerCount = 0;
         linearCount = 0;
@@ -575,14 +617,14 @@ namespace NES
         level = 0;
     }
 
-    void APU::Triangle::enable(bool enabled)
+    void APU::Triangle::enable(bool _enabled)
     {
+        enabled = _enabled;
         if (!enabled)
         {
             level = 0;
             length = 0;
         }
-        halt = !enabled;
     }
 
     void APU::Triangle::update(uint32_t ticks)
@@ -607,12 +649,12 @@ namespace NES
             +7, +6, +5, +4, +3, +2, +1, +0, -1, -2, -3, -4, -5, -6, -7, -8,
         };
         uint32_t value = kLevel[sequence];
-        level = halt ? 0 : value;
+        level = (!linearCount || !length || (timer < 4)) ? 0 : value;
     }
 
     void APU::Triangle::updateLengthCounter()
     {
-        if (length && !halt)
+        if (length)
             --length;
     }
 
@@ -646,7 +688,8 @@ namespace NES
 
         case 3:
             timer = (timer & 0xff) | ((value & 0x07) << 8);
-            length = kLength[(value >> 3) & 0x1f];
+            if (enabled)
+                length = kLength[(value >> 3) & 0x1f];
             period = (timer + 1) * masterClockDivider;
             reload = true;
             break;
