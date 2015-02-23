@@ -124,6 +124,41 @@ namespace NES
             void write(uint32_t index, uint32_t value);
         };
 
+        struct Noise
+        {
+            // Configuration
+            uint32_t    masterClockDivider;
+
+            // Register fields
+            bool        loop;
+            bool        constant;
+            uint32_t    envelope;
+            uint32_t    shiftMode;
+            uint32_t    timer;
+            uint32_t    length;
+            bool        enabled;
+
+            // State
+            uint32_t    period;
+            uint32_t    timerCount;
+            uint32_t    generator;
+            int8_t      level;
+
+            // Envelope
+            uint32_t    envelopeDivider;
+            uint32_t    envelopeCounter;
+            uint32_t    envelopeVolume;
+
+            void reset(uint32_t _masterClockDivider);
+            void enable(bool _enabled);
+            void reload();
+            void update(uint32_t ticks);
+            void updatePeriod();
+            void updateEnvelope();
+            void updateLengthCounter();
+            void write(uint32_t index, uint32_t value);
+        };
+
         void initialize();
         void updateEnvelopesAndLinearCounter();
         void updateLengthCountersAndSweepUnits();
@@ -151,6 +186,7 @@ namespace NES
         uint32_t                mSequenceCount;
         Pulse                   mPulse[2];
         Triangle                mTriangle;
+        Noise                   mNoise;
         bool                    mMode5Step;
         bool                    mIRQ;
     };

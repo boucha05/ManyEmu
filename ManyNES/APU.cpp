@@ -52,6 +52,7 @@ namespace NES
         mPulse[0].reset(mMasterClockDivider * 2, 0);
         mPulse[1].reset(mMasterClockDivider * 2, 1);
         mTriangle.reset(mMasterClockDivider);
+        mNoise.reset(mMasterClockDivider);
         mMode5Step = false;
         mIRQ = false;
     }
@@ -84,6 +85,7 @@ namespace NES
         mPulse[0].reset(mMasterClockDivider * 2, 0);
         mPulse[1].reset(mMasterClockDivider * 2, 1);
         mTriangle.reset(mMasterClockDivider);
+        mNoise.reset(mMasterClockDivider);
         mClock->addEvent(onSequenceEvent, this, mSequenceTick);
     }
 
@@ -214,9 +216,18 @@ namespace NES
                 mTriangle.write(3, value);
                 break;
 
-            case APU_REG_NOISE_VOL: break;
-            case APU_REG_NOISE_LO: break;
-            case APU_REG_NOISE_HI: break;
+            case APU_REG_NOISE_VOL:
+                mNoise.write(0, value);
+                break;
+
+            case APU_REG_NOISE_LO:
+                mNoise.write(2, value);
+                break;
+
+            case APU_REG_NOISE_HI:
+                mNoise.write(3, value);
+                break;
+
             case APU_REG_DMC_FREQ: break;
             case APU_REG_DMC_RAW: break;
             case APU_REG_DMC_START: break;
@@ -239,6 +250,7 @@ namespace NES
                 mPulse[0].enable((value & 0x01) != 0);
                 mPulse[1].enable((value & 0x02) != 0);
                 mTriangle.enable((value & 0x04) != 0);
+                mNoise.enable((value & 0x08) != 0);
                 break;
 
             case APU_REG_JOY1:
@@ -287,6 +299,7 @@ namespace NES
         mPulse[0].updateEnvelope();
         mPulse[1].updateEnvelope();
         mTriangle.updateLinearCounter();
+        mNoise.updateEnvelope();
     }
 
     void APU::updateLengthCountersAndSweepUnits()
@@ -296,6 +309,7 @@ namespace NES
         mPulse[1].updateSweep();
         mPulse[1].updateLengthCounter();
         mTriangle.updateLengthCounter();
+        mNoise.updateLengthCounter();
     }
 
     void APU::advanceSamples(int32_t tick)
@@ -309,6 +323,7 @@ namespace NES
             mPulse[0].update(updateTicks);
             mPulse[1].update(updateTicks);
             mTriangle.update(updateTicks);
+            mNoise.update(updateTicks);
             if (mSoundBuffer)
             {
                 union
@@ -317,8 +332,8 @@ namespace NES
                     int16_t merged;
                 } value;
 
-                value.channel[0] = mPulse[0].level + mPulse[1].level;
-                value.channel[1] = mTriangle.level;
+                value.channel[0] = ((mPulse[0].level + mPulse[1].level) * 2 + mTriangle.level) >> 1;
+                value.channel[1] = mNoise.level;
 
                 mSoundBuffer[mSoundBufferOffset++] = value.merged;
             }
@@ -692,6 +707,137 @@ namespace NES
                 length = kLength[(value >> 3) & 0x1f];
             period = (timer + 1) * masterClockDivider;
             reload = true;
+            break;
+
+        default:
+            assert(false);
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+
+    void APU::Noise::reset(uint32_t _masterClockDivider)
+    {
+        masterClockDivider = _masterClockDivider;
+
+        loop = false;
+        constant = false;
+        envelope = 0;
+        shiftMode = 1;
+        timer = 0;
+        length = 0;
+        enabled = false;
+
+        period = 0;
+        timerCount = 0;
+        generator = 1;
+        level = 0;
+
+        envelopeDivider = 0;
+        envelopeCounter = 0;
+        envelopeVolume = 0;
+    }
+
+    void APU::Noise::enable(bool _enabled)
+    {
+        enabled = _enabled;
+        if (!enabled)
+        {
+            level = 0;
+            length = 0;
+        }
+    }
+
+    void APU::Noise::reload()
+    {
+        timerCount = period;
+        envelopeCounter = 15;
+        envelopeDivider = envelope;
+    }
+
+    void APU::Noise::update(uint32_t ticks)
+    {
+        if (!period)
+            return;
+
+        // Update timer
+        while (ticks > timerCount)
+        {
+            ticks -= timerCount;
+            timerCount = period;
+            uint32_t feedback = ((generator >> shiftMode) ^ generator) & 1;
+            generator = (generator >> 1) | (feedback << 14);
+        }
+        timerCount -= ticks;
+
+        // Update level
+        static const int8_t kVolume[16][2] =
+        {
+            {  -0,  +0 }, {  -1,  +1 }, {  -2,  +2 }, {  -3,  +3 },
+            {  -4,  +4 }, {  -5,  +5 }, {  -6,  +6 }, {  -7,  +7 },
+            {  -8,  +8 }, {  -9,  +9 }, { -10, +10 }, { -11, +11 },
+            { -12, +12 }, { -13, +13 }, { -14, +14 }, { -15, +15 },
+        };
+        uint32_t value = (generator & 1) ^ 1;
+        level = !length ? 0 : kVolume[envelopeVolume][value];
+    }
+
+    void APU::Noise::updatePeriod()
+    {
+        period = (timer + 1) * masterClockDivider;
+    }
+
+    void APU::Noise::updateEnvelope()
+    {
+        if (envelopeDivider-- == 0)
+        {
+            envelopeDivider = envelope;
+            if (envelopeCounter)
+                --envelopeCounter;
+            else if (loop)
+                envelopeCounter = 15;
+        }
+        envelopeVolume = constant ? envelope : envelopeCounter;
+    }
+
+    void APU::Noise::updateLengthCounter()
+    {
+        if (!loop && length)
+            --length;
+    }
+
+    void APU::Noise::write(uint32_t index, uint32_t value)
+    {
+        static const uint32_t kTimer[] =
+        {
+            0x004, 0x008, 0x010, 0x020,
+            0x040, 0x060, 0x080, 0x0A0,
+            0x0CA, 0x0FE, 0x17C, 0x1FC,
+            0x2FA, 0x3F8, 0x7F2, 0xFE4,
+        };
+
+        switch (index)
+        {
+        case 0:
+            loop = (value & 0x20) != 0;
+            constant = (value & 0x10) != 0;
+            envelope = (value & 0x0f);
+            break;
+
+        case 1:
+            assert(false);
+            break;
+
+        case 2:
+            shiftMode = (value & 80) ? 6 : 1;
+            timer = kTimer[value & 0x0f];
+            updatePeriod();
+            break;
+
+        case 3:
+            if (enabled)
+                length = kLength[(value >> 3) & 0x1f];
+            reload();
             break;
 
         default:
