@@ -287,6 +287,15 @@ namespace NES
     {
         if (index > 4)
             return;
+
+        // Filter out invalid button combinations
+        static const uint32_t leftRight = NES::Context::ButtonLeft | NES::Context::ButtonRight;
+        static const uint32_t upDown = NES::Context::ButtonUp | NES::Context::ButtonDown;
+        if ((buttons & leftRight) == leftRight)
+            buttons &= ~leftRight;
+        if ((buttons & upDown) == upDown)
+            buttons &= ~upDown;
+
         mController[index] = buttons;
     }
 
