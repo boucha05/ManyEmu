@@ -7,6 +7,8 @@
 
 namespace NES
 {
+    class ISerializer;
+
     class PPU : public Clock::IListener
     {
     public:
@@ -21,6 +23,7 @@ namespace NES
         bool create(NES::Clock& clock, uint32_t masterClockDivider, uint32_t createFlags, uint32_t visibleLines);
         void destroy();
         void reset();
+        void beginFrame();
         void execute();
         MemoryBus& getMemory();
         uint8_t* getNameTableMemory();
@@ -37,6 +40,8 @@ namespace NES
         void addListener(IListener& listener);
         void removeListener(IListener& listener);
         void setRenderSurface(void* surface, size_t pitch);
+        void startFrame();
+        void serialize(ISerializer& serializer);
 
         static const uint32_t CREATE_VRAM_ONE_SCREEN = 0x00000001;
         static const uint32_t CREATE_VRAM_HORIZONTAL_MIRROR = 0x00000002;
@@ -84,7 +89,6 @@ namespace NES
         void render(int32_t lastTick);
         void updateSpriteHitTestConditions();
         void checkHitTest(int32_t tick);
-        void beginFrame();
         void advanceFrame(int32_t tick);
         void addressDirty();
 
@@ -103,6 +107,11 @@ namespace NES
         };
 
         typedef std::vector<ScanlineEvent> ScanlineEventTable;
+
+        static const uint32_t SCANLINE_TYPE_PRESCAN = 0;
+        static const uint32_t SCANLINE_TYPE_VISIBLE = 1;
+        static const uint32_t SCANLINE_TYPE_VBLANK = 2;
+        static const uint32_t SCANLINE_TYPE_COUNT = 3;
 
         NES::Clock*             mClock;
         uint32_t                mMasterClockDivider;
@@ -128,7 +137,7 @@ namespace NES
         MEM_ACCESS              mNameTableWrite[NAME_TABLE_COUNT];
         MEM_ACCESS              mPaletteRead;
         MEM_ACCESS              mPaletteWrite;
-        ScanlineEventTable      mScanlineEventsPrescan;
+        ScanlineEventTable      mScanlineEvents[SCANLINE_TYPE_COUNT];
         ScanlineEventTable      mScanlineEventsVisible;
         ScanlineEventTable      mScanlineEventsVBlank;
         std::vector<uint8_t>    mNameTableRAM;
@@ -141,7 +150,8 @@ namespace NES
         int32_t                 mScanlineNumber;
         int32_t                 mScanlineBaseTick;
         int32_t                 mScanlineOffsetTick;
-        const ScanlineEvent*    mScanlineEvent;
+        uint32_t                mScanlineType;
+        uint32_t                mScanlineEventIndex;
     };
 }
 

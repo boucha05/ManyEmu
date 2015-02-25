@@ -1,4 +1,5 @@
 #include "Clock.h"
+#include "Serialization.h"
 #include <assert.h>
 
 namespace
@@ -114,6 +115,11 @@ namespace NES
             setDesiredTicks(ticks);
     }
 
+    void Clock::clearEvents()
+    {
+        mTimers.clear();
+    }
+
     void Clock::addListener(IListener& listener)
     {
         mListeners.push_back(&listener);
@@ -123,5 +129,15 @@ namespace NES
     {
         auto item = std::find(mListeners.begin(), mListeners.end(), &listener);
         mListeners.erase(item);
+    }
+
+    void Clock::serialize(ISerializer& serializer)
+    {
+        // Can't serialize properly if we have timers queued
+        assert(mTimers.empty());
+
+        uint32_t version = 1;
+        serializer.serialize(mTargetTicks);
+        serializer.serialize(mDesiredTicks);
     }
 }

@@ -27,7 +27,7 @@ namespace NES
     {
         if ((mWritePos + size) > mBuffer.size())
         {
-            mBuffer.resize(size, 0);
+            mBuffer.resize(mWritePos + size, 0);
             memcpy(&mBuffer[mWritePos], data, size);
         }
         mWritePos += size;

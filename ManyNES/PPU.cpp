@@ -1,4 +1,5 @@
 #include "PPU.h"
+#include "Serialization.h"
 #include <assert.h>
 #include <vector>
 
@@ -176,8 +177,6 @@ namespace NES
         memset(&mOAM[0], 0, mOAM.size());
         memset(mRegister, 0, sizeof(mRegister));
         mRegister[PPU_REG_PPUSTATUS] |= PPU_STATUS_VBLANK;
-        mClock->addEvent(onVBlankEnd, this, mVBlankEndTicks);
-        mClock->addEvent(onVBlankStart, this, mVBlankStartTicks);
         mVisibleArea = false;
         mCheckHitTest = false;
         mInternalAddress = 0;
@@ -190,7 +189,8 @@ namespace NES
         mScanlineNumber = 0;
         mScanlineBaseTick = 0;
         mScanlineOffsetTick = 0;
-        mScanlineEvent = nullptr;
+        mScanlineType = SCANLINE_TYPE_PRESCAN;
+        mScanlineEventIndex = 0;
     }
 
     bool PPU::create(Clock& clock, uint32_t masterClockDivider, uint32_t createFlags, uint32_t visibleLines)
@@ -293,23 +293,26 @@ namespace NES
         mOAM.resize(OAM_SIZE, 0);
 
         // Create scanline actions
-        mScanlineEventsPrescan.push_back(ScanlineEvent::make(256 * masterClockDivider, SCANLINE_ACTION_INCR_VERTICAL));
-        mScanlineEventsPrescan.push_back(ScanlineEvent::make(257 * masterClockDivider, SCANLINE_ACTION_FETCH_HORIZONTAL));
+        mScanlineEvents[SCANLINE_TYPE_PRESCAN].push_back(ScanlineEvent::make(256 * masterClockDivider, SCANLINE_ACTION_INCR_VERTICAL));
+        mScanlineEvents[SCANLINE_TYPE_PRESCAN].push_back(ScanlineEvent::make(257 * masterClockDivider, SCANLINE_ACTION_FETCH_HORIZONTAL));
         for (uint32_t cycle = 280; cycle < 305; ++cycle)
-            mScanlineEventsPrescan.push_back(ScanlineEvent::make(280 * masterClockDivider, SCANLINE_ACTION_FETCH_VERTICAL));
-        mScanlineEventsPrescan.push_back(ScanlineEvent::make(341 * masterClockDivider, SCANLINE_ACTION_NEXT_LINE));
+            mScanlineEvents[SCANLINE_TYPE_PRESCAN].push_back(ScanlineEvent::make(280 * masterClockDivider, SCANLINE_ACTION_FETCH_VERTICAL));
+        mScanlineEvents[SCANLINE_TYPE_PRESCAN].push_back(ScanlineEvent::make(341 * masterClockDivider, SCANLINE_ACTION_NEXT_LINE));
 
-        mScanlineEventsVisible.push_back(ScanlineEvent::make(256 * masterClockDivider, SCANLINE_ACTION_INCR_VERTICAL));
-        mScanlineEventsVisible.push_back(ScanlineEvent::make(257 * masterClockDivider, SCANLINE_ACTION_FETCH_HORIZONTAL));
-        mScanlineEventsVisible.push_back(ScanlineEvent::make(341 * masterClockDivider, SCANLINE_ACTION_NEXT_LINE));
+        mScanlineEvents[SCANLINE_TYPE_VISIBLE].push_back(ScanlineEvent::make(256 * masterClockDivider, SCANLINE_ACTION_INCR_VERTICAL));
+        mScanlineEvents[SCANLINE_TYPE_VISIBLE].push_back(ScanlineEvent::make(257 * masterClockDivider, SCANLINE_ACTION_FETCH_HORIZONTAL));
+        mScanlineEvents[SCANLINE_TYPE_VISIBLE].push_back(ScanlineEvent::make(341 * masterClockDivider, SCANLINE_ACTION_NEXT_LINE));
 
-        mScanlineEventsVBlank.push_back(ScanlineEvent::make(341 * masterClockDivider, SCANLINE_ACTION_NEXT_LINE));
+        mScanlineEvents[SCANLINE_TYPE_VBLANK].push_back(ScanlineEvent::make(341 * masterClockDivider, SCANLINE_ACTION_NEXT_LINE));
 
         return true;
     }
 
     void PPU::destroy()
     {
+        mScanlineEvents[SCANLINE_TYPE_PRESCAN].clear();
+        mScanlineEvents[SCANLINE_TYPE_VISIBLE].clear();
+        mScanlineEvents[SCANLINE_TYPE_VBLANK].clear();
         mMemory.destroy();
         if (mClock)
             mClock->removeListener(*this);
@@ -319,6 +322,12 @@ namespace NES
     void PPU::reset()
     {
         initialize();
+    }
+
+    void PPU::beginFrame()
+    {
+        mClock->addEvent(onVBlankEnd, this, mVBlankEndTicks);
+        mClock->addEvent(onVBlankStart, this, mVBlankStartTicks);
     }
 
     void PPU::execute()
@@ -357,8 +366,6 @@ namespace NES
 
     void PPU::advanceClock(int32_t ticks)
     {
-        mClock->addEvent(onVBlankEnd, this, mVBlankEndTicks);
-        mClock->addEvent(onVBlankStart, this, mVBlankStartTicks);
     }
 
     void PPU::setDesiredTicks(int32_t ticks)
@@ -572,7 +579,7 @@ namespace NES
     void PPU::onVBlankEnd()
     {
         endVBlank();
-        beginFrame();
+        startFrame();
         mRegister[PPU_REG_PPUSTATUS] &= ~PPU_STATUS_HIT_TEST;
         mVisibleArea = true;
 
@@ -836,7 +843,6 @@ namespace NES
     {
         for (uint32_t pos = 0; pos < count; ++pos)
             dest[pos] = reinterpret_cast<uint32_t*>(colorPalette)[src[pos]];
-
     }
 
     void PPU::render(int32_t lastTick)
@@ -1055,14 +1061,15 @@ namespace NES
             advanceFrame(tick);
     }
 
-    void PPU::beginFrame()
+    void PPU::startFrame()
     {
         mLastTickRendered = 0;
         mLastTickUpdated = 0;
         mScanlineNumber = 0;
         mScanlineBaseTick = 0;
         mScanlineOffsetTick = 0;
-        mScanlineEvent = &mScanlineEventsPrescan[0];
+        mScanlineType = SCANLINE_TYPE_PRESCAN;
+        mScanlineEventIndex = 0;
     }
 
     void PPU::advanceFrame(int32_t tick)
@@ -1074,12 +1081,14 @@ namespace NES
         mScanlineOffsetTick += newTicks;
 
         // Execute scanline events as long as we fail to catch up
-        while (mScanlineOffsetTick >= mScanlineEvent->offsetTick)
+        ScanlineEvent* scanlineEvent = &mScanlineEvents[mScanlineType][mScanlineEventIndex];
+        while (mScanlineOffsetTick >= scanlineEvent->offsetTick)
         {
-            int32_t tick = mScanlineBaseTick + mScanlineEvent->offsetTick;
+            int32_t tick = mScanlineBaseTick + scanlineEvent->offsetTick;
 
-            uint32_t action = mScanlineEvent->action;
-            ++mScanlineEvent;
+            uint32_t action = scanlineEvent->action;
+            ++scanlineEvent;
+            ++mScanlineEventIndex;
             switch (action)
             {
             case SCANLINE_ACTION_INCR_HORIZONTAL:
@@ -1107,9 +1116,11 @@ namespace NES
                 mScanlineBaseTick += mTicksPerLine;
                 mScanlineOffsetTick -= mTicksPerLine;
                 if (++mScanlineNumber < PPU_VBLANK_START_LINE)
-                    mScanlineEvent = &mScanlineEventsVisible[0];
+                    mScanlineType = SCANLINE_TYPE_VISIBLE;
                 else
-                    mScanlineEvent = &mScanlineEventsVBlank[0];
+                    mScanlineType = SCANLINE_TYPE_VBLANK;
+                mScanlineEventIndex = 0;
+                scanlineEvent = &mScanlineEvents[mScanlineType][mScanlineEventIndex];
                 break;
 
             default:
@@ -1123,5 +1134,30 @@ namespace NES
 
     void PPU::addressDirty()
     {
+    }
+
+    void PPU::serialize(ISerializer& serializer)
+    {
+        uint32_t version = 1;
+        serializer.serialize(version);
+        serializer.serialize(mRegister, PPU_REGISTER_COUNT);
+        serializer.serialize(mDataReadBuffer);
+        serializer.serialize(mInternalAddress);
+        serializer.serialize(mScanlineAddress);
+        serializer.serialize(mFineX);
+        serializer.serialize(mWriteToggle);
+        serializer.serialize(mVisibleArea);
+        serializer.serialize(mCheckHitTest);
+        serializer.serialize(mNameTableRAM);
+        serializer.serialize(mPaletteRAM);
+        serializer.serialize(mOAM);
+        serializer.serialize(mLastTickRendered);
+        serializer.serialize(mLastTickUpdated);
+        serializer.serialize(mScanlineNumber);
+        serializer.serialize(mScanlineBaseTick);
+        serializer.serialize(mScanlineOffsetTick);
+        serializer.serialize(mScanlineType);
+        serializer.serialize(mScanlineEventIndex);
+        updateSpriteHitTestConditions();
     }
 }

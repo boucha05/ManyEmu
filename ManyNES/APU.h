@@ -8,6 +8,7 @@ namespace NES
 {
     class Clock;
     class MemoryBus;
+    class ISerializer;
 
     class APU : public Clock::IListener
     {
@@ -17,6 +18,7 @@ namespace NES
         bool create(Clock& clock, MemoryBus& memoryBus, uint32_t masterClockDivider, uint32_t masterClockFrequency);
         void destroy();
         void reset();
+        void beginFrame();
         void execute();
         virtual void advanceClock(int32_t ticks);
         virtual void setDesiredTicks(int32_t ticks);
@@ -24,6 +26,7 @@ namespace NES
         void regWrite(int32_t ticks, uint32_t addr, uint8_t value);
         void setController(uint32_t index, uint8_t buttons);
         void setSoundBuffer(int16_t* buffer, size_t size);
+        void serialize(ISerializer& serializer);
 
         static const uint32_t APU_REGISTER_COUNT = 0x20;
 
@@ -94,6 +97,7 @@ namespace NES
             void updateLengthCounter();
             void updateSweep();
             void write(uint32_t index, uint32_t value);
+            void serialize(ISerializer& serializer);
         };
 
         struct Triangle
@@ -122,6 +126,7 @@ namespace NES
             void updateLengthCounter();
             void updateLinearCounter();
             void write(uint32_t index, uint32_t value);
+            void serialize(ISerializer& serializer);
         };
 
         struct Noise
@@ -157,6 +162,7 @@ namespace NES
             void updateEnvelope();
             void updateLengthCounter();
             void write(uint32_t index, uint32_t value);
+            void serialize(ISerializer& serializer);
         };
 
         void initialize();
@@ -178,7 +184,6 @@ namespace NES
         int16_t*                mSoundBuffer;
         uint32_t                mSoundBufferSize;
         uint32_t                mSoundBufferOffset;
-        std::vector<uint8_t*>   mSampleBuffer;
         uint32_t                mSampleSpeed;
         int32_t                 mBufferTick;
         int32_t                 mSampleTick;

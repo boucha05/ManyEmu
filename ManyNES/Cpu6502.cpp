@@ -1,5 +1,6 @@
 #include "Cpu6502.h"
 #include "MemoryBus.h"
+#include "Serialization.h"
 #include <assert.h>
 #include <memory.h>
 #include <stdio.h>
@@ -960,6 +961,24 @@ namespace
     |  Implied       |   TYA                 |    98   |    1    |    2     |
     */
 
+    void serialize(CPU_STATE& state, NES::ISerializer& serializer)
+    {
+        uint32_t version = 1;
+        serializer.serialize(version);
+        serializer.serialize(state.a);
+        serializer.serialize(state.x);
+        serializer.serialize(state.y);
+        serializer.serialize(state.sr);
+        serializer.serialize(state.sp);
+        serializer.serialize(state.pc);
+        serializer.serialize(state.desired_ticks);
+        serializer.serialize(state.executed_ticks);
+        serializer.serialize(state.flag_c);
+        serializer.serialize(state.flag_z);
+        serializer.serialize(state.flag_v);
+        serializer.serialize(state.flag_n);
+    }
+
     void executeDummyTimerEvent(void* context, int32_t ticks)
     {
     }
@@ -1304,5 +1323,10 @@ namespace NES
     uint16_t Cpu6502::disassemble(char* buffer, size_t size, uint16_t addr)
     {
         return ::disassemble(mState, addr, buffer, size);
+    }
+
+    void Cpu6502::serialize(ISerializer& serializer)
+    {
+        ::serialize(mState, serializer);
     }
 }

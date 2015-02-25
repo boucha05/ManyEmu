@@ -4,6 +4,30 @@
 
 namespace NES
 {
+    void ISerializer::serialize(uint32_t* values, size_t size)
+    {
+        for (size_t index = 0; index < size; ++index)
+            serialize(*values++);
+    }
+
+    void ISerializer::serialize(uint8_t* values, size_t size)
+    {
+        for (size_t index = 0; index < size; ++index)
+            serialize(*values++);
+    }
+
+    void ISerializer::serialize(std::vector<uint8_t>& value)
+    {
+        uint32_t size = value.size();
+        serialize(size);
+        value.resize(size, 0);
+
+        if (size)
+            serialize(&value[0], size * sizeof(uint8_t));
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+
     BinaryReader::BinaryReader(IStream& stream)
         : mStream(&stream)
     {
@@ -18,7 +42,27 @@ namespace NES
         serializeSafe(&data, sizeof(data));
     }
 
+    void BinaryReader::serialize(int32_t& data)
+    {
+        serializeSafe(&data, sizeof(data));
+    }
+
+    void BinaryReader::serialize(uint16_t& data)
+    {
+        serializeSafe(&data, sizeof(data));
+    }
+
     void BinaryReader::serialize(uint8_t& data)
+    {
+        serializeSafe(&data, sizeof(data));
+    }
+
+    void BinaryReader::serialize(int8_t& data)
+    {
+        serializeSafe(&data, sizeof(data));
+    }
+
+    void BinaryReader::serialize(bool& data)
     {
         serializeSafe(&data, sizeof(data));
     }
@@ -49,7 +93,27 @@ namespace NES
         mStream->write(&data, sizeof(data));
     }
 
+    void BinaryWriter::serialize(int32_t& data)
+    {
+        mStream->write(&data, sizeof(data));
+    }
+
+    void BinaryWriter::serialize(uint16_t& data)
+    {
+        mStream->write(&data, sizeof(data));
+    }
+
     void BinaryWriter::serialize(uint8_t& data)
+    {
+        mStream->write(&data, sizeof(data));
+    }
+
+    void BinaryWriter::serialize(int8_t& data)
+    {
+        mStream->write(&data, sizeof(data));
+    }
+
+    void BinaryWriter::serialize(bool& data)
     {
         mStream->write(&data, sizeof(data));
     }

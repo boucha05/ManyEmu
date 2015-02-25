@@ -1,8 +1,9 @@
 #ifndef __SERIALIZATION_H__
 #define __SERIALIZATION_H__
 
-#include <stdint.h>
 #include "nes.h"
+#include <stdint.h>
+#include <vector>
 
 namespace NES
 {
@@ -12,8 +13,15 @@ namespace NES
     {
     public:
         virtual void serialize(uint32_t& value) = 0;
+        virtual void serialize(int32_t& value) = 0;
+        virtual void serialize(uint16_t& data) = 0;
         virtual void serialize(uint8_t& value) = 0;
+        virtual void serialize(int8_t& value) = 0;
+        virtual void serialize(bool& value) = 0;
         virtual void serialize(void* value, size_t size) = 0;
+        void serialize(uint32_t* values, size_t size);
+        void serialize(uint8_t* values, size_t size);
+        void serialize(std::vector<uint8_t>& value);
     };
 
     class IArchive : public ISerializer
@@ -28,7 +36,11 @@ namespace NES
         BinaryReader(IStream& stream);
         ~BinaryReader();
         virtual void serialize(uint32_t& data);
+        virtual void serialize(int32_t& data);
+        virtual void serialize(uint16_t& data);
         virtual void serialize(uint8_t& data);
+        virtual void serialize(int8_t& data);
+        virtual void serialize(bool& value);
         virtual void serialize(void* data, size_t size);
         virtual IStream& getStream()
         {
@@ -47,7 +59,11 @@ namespace NES
         BinaryWriter(IStream& stream);
         ~BinaryWriter();
         virtual void serialize(uint32_t& data);
+        virtual void serialize(int32_t& data);
+        virtual void serialize(uint16_t& data);
         virtual void serialize(uint8_t& data);
+        virtual void serialize(int8_t& data);
+        virtual void serialize(bool& value);
         virtual void serialize(void* data, size_t size);
         virtual IStream& getStream()
         {

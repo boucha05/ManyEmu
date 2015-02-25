@@ -1,5 +1,6 @@
 #include "APU.h"
 #include "MemoryBus.h"
+#include "Serialization.h"
 #include <assert.h>
 #include <vector>
 
@@ -44,7 +45,6 @@ namespace NES
         mSoundBufferSize = 0;
         mSoundBufferOffset = 0;
         mSampleSpeed = 0;
-        mSampleBuffer.clear();
         mBufferTick = 0;
         mSampleTick = 0;
         mSequenceTick = 0;
@@ -86,6 +86,10 @@ namespace NES
         mPulse[1].reset(mMasterClockDivider * 2, 1);
         mTriangle.reset(mMasterClockDivider);
         mNoise.reset(mMasterClockDivider);
+    }
+
+    void APU::beginFrame()
+    {
         mClock->addEvent(onSequenceEvent, this, mSequenceTick);
     }
 
@@ -324,7 +328,7 @@ namespace NES
             mPulse[1].update(updateTicks);
             mTriangle.update(updateTicks);
             mNoise.update(updateTicks);
-            if (mSoundBuffer)
+            if (mSoundBuffer && (mSoundBufferOffset < mSoundBufferSize))
             {
                 union
                 {
@@ -426,6 +430,25 @@ namespace NES
     void APU::onSequenceEvent(void* context, int32_t tick)
     {
         static_cast<APU*>(context)->onSequenceEvent(tick);
+    }
+
+    void APU::serialize(ISerializer& serializer)
+    {
+        uint32_t version = 1;
+        serializer.serialize(version);
+        serializer.serialize(mRegister, APU_REGISTER_COUNT);
+        serializer.serialize(mController, NES_ARRAY_SIZE(mController));
+        serializer.serialize(mShifter, NES_ARRAY_SIZE(mShifter));
+        serializer.serialize(mBufferTick);
+        serializer.serialize(mSampleTick);
+        serializer.serialize(mSequenceTick);
+        serializer.serialize(mSequenceCount);
+        mPulse[0].serialize(serializer);
+        mPulse[1].serialize(serializer);
+        mTriangle.serialize(serializer);
+        mNoise.serialize(serializer);
+        serializer.serialize(mMode5Step);
+        serializer.serialize(mIRQ);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -612,6 +635,32 @@ namespace NES
         }
     }
 
+    void APU::Pulse::serialize(ISerializer& serializer)
+    {
+        uint32_t version = 1;
+        serializer.serialize(version);
+        serializer.serialize(duty);
+        serializer.serialize(loop);
+        serializer.serialize(constant);
+        serializer.serialize(envelope);
+        serializer.serialize(sweepEnable);
+        serializer.serialize(sweepPeriod);
+        serializer.serialize(sweepNegate);
+        serializer.serialize(sweepShift);
+        serializer.serialize(timer);
+        serializer.serialize(length);
+        serializer.serialize(enabled);
+        serializer.serialize(period);
+        serializer.serialize(timerCount);
+        serializer.serialize(cycle);
+        serializer.serialize(level);
+        serializer.serialize(envelopeDivider);
+        serializer.serialize(envelopeCounter);
+        serializer.serialize(envelopeVolume);
+        serializer.serialize(sweepReload);
+        serializer.serialize(sweepDivider);
+    }
+
     ///////////////////////////////////////////////////////////////////////////
 
     void APU::Triangle::reset(uint32_t _masterClockDivider)
@@ -712,6 +761,23 @@ namespace NES
         default:
             assert(false);
         }
+    }
+
+    void APU::Triangle::serialize(ISerializer& serializer)
+    {
+        uint32_t version = 1;
+        serializer.serialize(version);
+        serializer.serialize(control);
+        serializer.serialize(linear);
+        serializer.serialize(timer);
+        serializer.serialize(length);
+        serializer.serialize(reload);
+        serializer.serialize(enabled);
+        serializer.serialize(period);
+        serializer.serialize(timerCount);
+        serializer.serialize(linearCount);
+        serializer.serialize(sequence);
+        serializer.serialize(level);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -843,5 +909,25 @@ namespace NES
         default:
             assert(false);
         }
+    }
+
+    void APU::Noise::serialize(ISerializer& serializer)
+    {
+        uint32_t version = 1;
+        serializer.serialize(version);
+        serializer.serialize(loop);
+        serializer.serialize(constant);
+        serializer.serialize(envelope);
+        serializer.serialize(shiftMode);
+        serializer.serialize(timer);
+        serializer.serialize(length);
+        serializer.serialize(enabled);
+        serializer.serialize(period);
+        serializer.serialize(timerCount);
+        serializer.serialize(generator);
+        serializer.serialize(level);
+        serializer.serialize(envelopeDivider);
+        serializer.serialize(envelopeCounter);
+        serializer.serialize(envelopeVolume);
     }
 }

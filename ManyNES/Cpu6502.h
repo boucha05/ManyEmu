@@ -21,7 +21,6 @@ struct CPU_STATE
     uint8_t             flag_z;
     uint8_t             flag_v;
     uint8_t             flag_n;
-    uint16_t            addr;
     MEMORY_BUS*         bus;
     uint32_t            master_clock_divider;
     uint32_t            insn_ticks[256];
@@ -35,6 +34,8 @@ void cpu_execute(CPU_STATE& cpu);
 
 namespace NES
 {
+    class ISerializer;
+
     class Cpu6502 : public NES::Clock::IListener
     {
     public:
@@ -49,6 +50,7 @@ namespace NES
         void setDesiredTicks(int32_t ticks);
         void execute();
         uint16_t disassemble(char* buffer, size_t size, uint16_t addr);
+        void serialize(ISerializer& serializer);
 
         CPU_STATE& getState()
         {

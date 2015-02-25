@@ -5,6 +5,7 @@
 #include "Mappers.h"
 #include "MemoryBus.h"
 #include "PPU.h"
+#include "Serialization.h"
 #include <assert.h>
 #include <vector>
 
@@ -231,6 +232,8 @@ namespace
 
         virtual void update()
         {
+            ppu.beginFrame();
+            apu.beginFrame();
             clock.setTargetExecution(MASTER_CLOCK_PER_FRAME_NTSC);
             while (clock.canExecute())
             {
@@ -241,6 +244,7 @@ namespace
                 clock.endExecute();
             }
             clock.advance();
+            clock.clearEvents();
         }
 
         virtual uint8_t read8(uint16_t addr)
@@ -257,6 +261,18 @@ namespace
         virtual void serializeGameData(NES::ISerializer& serializer)
         {
             mapper->serializeGameData(serializer);
+        }
+
+        virtual void serializeGameState(NES::ISerializer& serializer)
+        {
+            uint32_t version = 1;
+            clock.serialize(serializer);
+            cpu.serialize(serializer);
+            ppu.serialize(serializer);
+            apu.serialize(serializer);
+            serializer.serialize(cpuRam);
+            serializer.serialize(saveRam);
+            mapper->serializeGameState(serializer);
         }
 
     private:

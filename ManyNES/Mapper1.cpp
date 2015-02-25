@@ -121,6 +121,21 @@ namespace NES
                 serializer.serialize(&mPrgRam[0], mPrgRam.size());
         }
 
+        void serializeGameState(NES::ISerializer& serializer)
+        {
+            uint32_t version = 1;
+            serializer.serialize(version);
+            serializer.serialize(mChrRam);
+            if (!mRom->getDescription().battery)
+                serializer.serialize(mPrgRam);
+            serializer.serialize(mShift);
+            serializer.serialize(mCycle);
+            serializer.serialize(mPrgRomPage, NES_ARRAY_SIZE(mPrgRomPage));
+            serializer.serialize(mChrRomPage, NES_ARRAY_SIZE(mChrRomPage));
+            serializer.serialize(mRegister, NES_ARRAY_SIZE(mRegister));
+            updateMemoryMap();
+        }
+
     private:
         void initialize()
         {
@@ -397,6 +412,11 @@ namespace
         virtual void serializeGameData(NES::ISerializer& serializer)
         {
             mMMC1.serializeGameData(serializer);
+        }
+
+        virtual void serializeGameState(NES::ISerializer& serializer)
+        {
+            mMMC1.serializeGameState(serializer);
         }
 
     private:

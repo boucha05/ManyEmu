@@ -27,6 +27,7 @@ namespace NES
         virtual void reset() { }
         virtual void update() { }
         virtual void serializeGameData(ISerializer& serializer) { }
+        virtual void serializeGameState(ISerializer& serializer) { }
     };
 
     typedef Mapper* (*MapperCreateFunc)();

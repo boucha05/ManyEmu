@@ -35,11 +35,15 @@ public:
         uint32_t        frameSkip;
         bool            playback;
         bool            saveAudio;
+        bool            autoSave;
+        bool            autoLoad;
 
         Config()
             : frameSkip(0)
             , playback(false)
             , saveAudio(false)
+            , autoSave(false)
+            , autoLoad(false)
         {
         }
     };
@@ -52,8 +56,11 @@ public:
 private:
     bool create();
     void destroy();
-    bool loadGameData();
-    bool saveGameData();
+    bool loadGameData(const std::string& path);
+    bool saveGameData(const std::string& path);
+    bool loadGameState(const std::string& path);
+    bool saveGameState(const std::string& path);
+    void serializeGameState(NES::ISerializer& serializer);
     void handleEvents();
     void update();
     void render();
@@ -62,6 +69,7 @@ private:
 
     Config                      mConfig;
     std::string                 mGameDataPath;
+    std::string                 mGameStatePath;
     SDL_Window*                 mWindow;
     SDL_Renderer*               mRenderer;
     SDL_Surface*                mScreen;
@@ -139,8 +147,8 @@ bool Application::create()
     std::string romDirectory;
     Path::split(mConfig.rom, romDirectory, romFilename);
     Path::splitExt(romFilename, romName, romExtension);
-    if (!romName.empty())
-        mGameDataPath = Path::join(mConfig.saveFolder, romName) + ".dat";
+    if (romName.empty())
+        return false;
 
     mWindow = SDL_CreateWindow("ManyNES", 100, 100, 256, 240, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (!mWindow)
@@ -174,7 +182,12 @@ bool Application::create()
     if (!mContext)
         return false;
 
-    loadGameData();
+    mGameDataPath = Path::join(mConfig.saveFolder, romName) + ".dat";
+    loadGameData(mGameDataPath);
+
+    mGameStatePath = Path::join(mConfig.saveFolder, romName) + ".sav";
+    if (mConfig.autoLoad)
+        loadGameState(mGameStatePath);
 
     mPlayer1Controllers = NES::GroupController::create();
     if (!mPlayer1Controllers)
@@ -299,7 +312,9 @@ void Application::destroy()
 
     if (mContext)
     {
-        saveGameData();
+        if (mConfig.autoSave && !mFirst)
+            saveGameState(mGameStatePath);
+        saveGameData(mGameDataPath);
 
         mContext->dispose();
         mContext = nullptr;
@@ -333,12 +348,12 @@ void Application::destroy()
     }
 }
 
-bool Application::loadGameData()
+bool Application::loadGameData(const std::string& path)
 {
-    if (mGameDataPath.empty())
+    if (path.empty())
         return false;
 
-    NES::FileStream stream(mGameDataPath.c_str(), "rb");
+    NES::FileStream stream(path.c_str(), "rb");
     if (!stream.valid())
         return false;
 
@@ -347,9 +362,9 @@ bool Application::loadGameData()
     return true;
 }
 
-bool Application::saveGameData()
+bool Application::saveGameData(const std::string& path)
 {
-    if (mGameDataPath.empty())
+    if (path.empty())
         return false;
 
     NES::MemoryStream streamTemp;
@@ -358,9 +373,46 @@ bool Application::saveGameData()
     if (streamTemp.getSize() <= 0)
         return false;
 
-    NES::FileStream streamFinal(mGameDataPath.c_str(), "wb");
+    NES::FileStream streamFinal(path.c_str(), "wb");
     bool success = streamFinal.write(streamTemp.getBuffer(), streamTemp.getSize());
     return success;
+}
+
+bool Application::loadGameState(const std::string& path)
+{
+    if (path.empty())
+        return false;
+
+    NES::FileStream stream(path.c_str(), "rb");
+    if (!stream.valid())
+        return false;
+
+    NES::BinaryReader reader(stream);
+    serializeGameState(reader);
+    return true;
+}
+
+bool Application::saveGameState(const std::string& path)
+{
+    if (path.empty())
+        return false;
+
+    NES::MemoryStream streamTemp;
+    NES::BinaryWriter writer(streamTemp);
+    serializeGameState(writer);
+    if (streamTemp.getSize() <= 0)
+        return false;
+
+    NES::FileStream streamFinal(path.c_str(), "wb");
+    bool success = streamFinal.write(streamTemp.getBuffer(), streamTemp.getSize());
+    return success;
+}
+
+void Application::serializeGameState(NES::ISerializer& serializer)
+{
+    uint32_t version = 1;
+    serializer.serialize(version);
+    mContext->serializeGameState(serializer);
 }
 
 void Application::handleEvents()
@@ -454,16 +506,18 @@ int main()
     Application::Config config;
     config.saveFolder = "Save";
     config.saveAudio = true;
-    //config.rom = "C:\\Emu\\NES\\roms\\zelda2.nes";
+    config.rom = "C:\\Emu\\NES\\roms\\zelda2.nes";
     //config.rom = "C:\\Emu\\NES\\roms\\cvania2.nes";
     //config.rom = "C:\\Emu\\NES\\roms\\kidicar.nes";
-    config.rom = "ROMs\\exitbike.nes";
+    //config.rom = "ROMs\\exitbike.nes";
     //config.rom = "ROMs\\megaman2.nes";
     //config.rom = "ROMs\\mario.nes";
     //config.rom = "ROMs\\nestest.nes";
     //config.recorded = "ROMs\\recorded.dat";
     //config.playback = true;
     //config.frameSkip = 512;
+    //config.autoSave = true;
+    //config.autoLoad = true;
 
     Application application;
     application.run(config);

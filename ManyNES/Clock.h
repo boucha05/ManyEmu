@@ -7,6 +7,8 @@
 
 namespace NES
 {
+    class ISerializer;
+
     class Clock
     {
     public:
@@ -30,8 +32,10 @@ namespace NES
         void endExecute();
         void advance();
         void addEvent(TimerCallback callback, void* context, int32_t ticks);
+        void clearEvents();
         void addListener(IListener& listener);
         void removeListener(IListener& listener);
+        void serialize(ISerializer& serializer);
 
         int32_t getDesiredTicks() const
         {
