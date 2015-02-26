@@ -165,6 +165,43 @@ namespace NES
             void serialize(ISerializer& serializer);
         };
 
+        struct DMC
+        {
+            // Configuration
+            Clock*      clock;
+            MemoryBus*  memory;
+            uint32_t    masterClockDivider;
+
+            // Register fields
+            bool        loop;
+            uint32_t    period;
+            uint32_t    sampleAddress;
+            uint32_t    sampleLength;
+
+            // State
+            int32_t     updateTick;
+            int32_t     timerTick;
+            uint32_t    samplePos;
+            uint32_t    sampleCount;
+            uint32_t    sampleBuffer;
+            uint32_t    shift;
+            uint32_t    bit;
+            int8_t      level;
+            bool        available;
+            bool        silenced;
+            bool        irq;
+
+            void reset(Clock& _clock, MemoryBus& _memory, uint32_t _masterClockDivider);
+            void enable(uint32_t tick, bool _enabled);
+            void beginFrame();
+            void advanceClock(int32_t ticks);
+            void update(uint32_t ticks);
+            void updateReader(uint32_t tick);
+            void prepareNextReaderTick();
+            void write(uint32_t index, uint32_t value);
+            void serialize(ISerializer& serializer);
+        };
+
         void initialize();
         void updateEnvelopesAndLinearCounter();
         void updateLengthCountersAndSweepUnits();
@@ -192,6 +229,7 @@ namespace NES
         Pulse                   mPulse[2];
         Triangle                mTriangle;
         Noise                   mNoise;
+        DMC                     mDMC;
         bool                    mMode5Step;
         bool                    mIRQ;
     };

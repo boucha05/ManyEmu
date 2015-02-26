@@ -12,6 +12,10 @@ namespace
         //assert(false);
     }
 
+    void dummyTimerCallback(void* context, int32_t ticks)
+    {
+    }
+
     static const uint32_t kLength[] =
     {
         0x0a, 0xfe, 0x14, 0x02, 0x28, 0x04, 0x50, 0x06, 0xa0, 0x08, 0x3c, 0x0a, 0x0e, 0x0c, 0x1a, 0x0e,
@@ -86,11 +90,13 @@ namespace NES
         mPulse[1].reset(mMasterClockDivider * 2, 1);
         mTriangle.reset(mMasterClockDivider);
         mNoise.reset(mMasterClockDivider);
+        mDMC.reset(*mClock, *mMemory, mMasterClockDivider);
     }
 
     void APU::beginFrame()
     {
         mClock->addEvent(onSequenceEvent, this, mSequenceTick);
+        mDMC.beginFrame();
     }
 
     void APU::execute()
@@ -116,6 +122,7 @@ namespace NES
         assert(mBufferTick >= 0);
         assert(mSequenceTick >= 0);
         assert(mSampleTick >= 0);
+        mDMC.advanceClock(ticks);
     }
 
     void APU::setDesiredTicks(int32_t ticks)
@@ -232,10 +239,22 @@ namespace NES
                 mNoise.write(3, value);
                 break;
 
-            case APU_REG_DMC_FREQ: break;
-            case APU_REG_DMC_RAW: break;
-            case APU_REG_DMC_START: break;
-            case APU_REG_DMC_LEN: break;
+            case APU_REG_DMC_FREQ:
+                mDMC.write(0, value);
+                break;
+
+            case APU_REG_DMC_RAW:
+                mDMC.write(1, value);
+                break;
+
+            case APU_REG_DMC_START:
+                mDMC.write(2, value);
+                break;
+
+            case APU_REG_DMC_LEN:
+                mDMC.write(3, value);
+                break;
+
             case APU_REG_OAM_DMA:
             {
                 MEMORY_BUS& memory = mMemory->getState();
@@ -255,6 +274,7 @@ namespace NES
                 mPulse[1].enable((value & 0x02) != 0);
                 mTriangle.enable((value & 0x04) != 0);
                 mNoise.enable((value & 0x08) != 0);
+                mDMC.enable(ticks, (value & 0x10) != 0);
                 break;
 
             case APU_REG_JOY1:
@@ -337,6 +357,7 @@ namespace NES
             mPulse[1].update(updateTicks);
             mTriangle.update(updateTicks);
             mNoise.update(updateTicks);
+            mDMC.update(updateTicks);
             if (mSoundBuffer && (mSoundBufferOffset < mSoundBufferSize))
             {
                 union
@@ -345,8 +366,8 @@ namespace NES
                     int16_t merged;
                 } value;
 
-                value.channel[0] = ((mPulse[0].level + mPulse[1].level) * 2 + mTriangle.level) >> 1;
-                value.channel[1] = mNoise.level;
+                value.channel[0] = ((mPulse[0].level + mPulse[1].level) * 2 + mTriangle.level + mNoise.level) >> 1;
+                value.channel[1] = mDMC.level;
 
                 mSoundBuffer[mSoundBufferOffset++] = value.merged;
             }
@@ -443,7 +464,7 @@ namespace NES
 
     void APU::serialize(ISerializer& serializer)
     {
-        uint32_t version = 1;
+        uint32_t version = 2;
         serializer.serialize(version);
         serializer.serialize(mRegister, APU_REGISTER_COUNT);
         serializer.serialize(mController, NES_ARRAY_SIZE(mController));
@@ -456,6 +477,8 @@ namespace NES
         mPulse[1].serialize(serializer);
         mTriangle.serialize(serializer);
         mNoise.serialize(serializer);
+        if (version >= 2)
+            mDMC.serialize(serializer);
         serializer.serialize(mMode5Step);
         serializer.serialize(mIRQ);
     }
@@ -938,5 +961,188 @@ namespace NES
         serializer.serialize(envelopeDivider);
         serializer.serialize(envelopeCounter);
         serializer.serialize(envelopeVolume);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+
+    void APU::DMC::reset(Clock& _clock, MemoryBus& _memory, uint32_t _masterClockDivider)
+    {
+        clock = &_clock;
+        memory = &_memory;
+        masterClockDivider = _masterClockDivider;
+
+        loop = false;
+        period = 0x1ac * masterClockDivider;    // Initialize at the lowest frequency
+        sampleAddress = 0xc000;
+        sampleLength = 1;
+
+        updateTick = 0;
+        timerTick = 0;
+        samplePos = 0;
+        sampleCount = 0;
+        sampleBuffer = 0;
+        shift = 0;
+        bit = 8;
+        level = 0;
+        available = false;
+        silenced = true;
+        irq = false;
+    }
+
+    void APU::DMC::enable(uint32_t tick, bool _enabled)
+    {
+        if (!_enabled)
+        {
+            sampleCount = 0;
+            level = 0;
+        }
+        else
+        {
+            if (sampleCount == 0)
+            {
+                samplePos = sampleAddress;
+                sampleCount = sampleLength;
+                updateReader(tick);
+            }
+        }
+        irq = false;
+    }
+
+    void APU::DMC::beginFrame()
+    {
+        prepareNextReaderTick();
+    }
+
+    void APU::DMC::advanceClock(int32_t ticks)
+    {
+        timerTick -= ticks;
+        updateTick -= ticks;
+    }
+
+    void APU::DMC::update(uint32_t ticks)
+    {
+        int32_t lastTick = updateTick + ticks;
+        while (lastTick > timerTick)
+        {
+            timerTick += period;
+            if (!silenced)
+            {
+                bool increase = (shift & 1) != 0;
+                if (increase)
+                {
+                    if (level <= 61)
+                        level += 2;
+                }
+                else
+                {
+                    if (level >= -62)
+                        level -= 2;
+                }
+                shift >>= 1;
+            }
+            if (--bit == 0)
+            {
+                bit = 8;
+                silenced = !available;
+                if (available)
+                {
+                    shift = sampleBuffer;
+                    available = false;
+                    updateReader(timerTick);
+                }
+            }
+        }
+        updateTick = lastTick;
+    }
+
+    void APU::DMC::updateReader(uint32_t tick)
+    {
+        if (!sampleCount)
+            return;
+        sampleBuffer = memory_bus_read8(memory->getState(), tick, samplePos);
+        samplePos = ((samplePos + 1) & 0xffff) | 0x8000;
+        available = true;
+        if (--sampleCount == 0)
+        {
+            if (loop)
+            {
+                samplePos = sampleAddress;
+                sampleCount = sampleLength;
+            }
+            else
+            {
+                // TODO: Signal interrupt
+                irq = true;
+            }
+        }
+
+        prepareNextReaderTick();
+    }
+
+    void APU::DMC::prepareNextReaderTick()
+    {
+        // Next reader tick is when the shift buffer will be ready to fetch the next sample
+        if (sampleCount)
+        {
+            uint32_t readerTick = timerTick + period * (bit - 1);
+            //clock->addEvent(dummyTimerCallback, nullptr, readerTick);
+        }
+    }
+
+    void APU::DMC::write(uint32_t index, uint32_t value)
+    {
+        static const uint32_t kTimer[] =
+        {
+            0x1ac, 0x17c, 0x154, 0x140,
+            0x11e, 0x0fe, 0x0e2, 0x0d6,
+            0x0be, 0x0a0, 0x08e, 0x080,
+            0x06a, 0x054, 0x048, 0x036,
+        };
+
+        switch (index)
+        {
+        case 0:
+            irq = (value & 0x40) != 0;
+            loop = (value & 0x20) != 0;
+            period = kTimer[value & 0x0f] * masterClockDivider;
+            prepareNextReaderTick();
+            break;
+
+        case 1:
+            level = (value & 0x7f) - 64;
+            break;
+
+        case 2:
+            sampleAddress = ((value & 0xff) << 6) | 0xc000;
+            break;
+
+        case 3:
+            sampleLength = ((value & 0xff) << 4) | 0x0001;
+            break;
+
+        default:
+            assert(false);
+        }
+    }
+
+    void APU::DMC::serialize(ISerializer& serializer)
+    {
+        uint32_t version = 1;
+        serializer.serialize(version);
+        serializer.serialize(loop);
+        serializer.serialize(period);
+        serializer.serialize(sampleAddress);
+        serializer.serialize(sampleLength);
+        serializer.serialize(updateTick);
+        serializer.serialize(timerTick);
+        serializer.serialize(samplePos);
+        serializer.serialize(sampleCount);
+        serializer.serialize(sampleBuffer);
+        serializer.serialize(shift);
+        serializer.serialize(bit);
+        serializer.serialize(level);
+        serializer.serialize(available);
+        serializer.serialize(silenced);
+        serializer.serialize(irq);
     }
 }
