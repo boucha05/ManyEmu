@@ -145,7 +145,7 @@ namespace NES
             mCycle = 0;
             mPrgRomPage[0] = mPrgRomPage[1] = 0;
             mChrRomPage[0] = mChrRomPage[1] = 0;
-            mRegister[0] = mRegister[1] = mRegister[2] = mRegister[3];
+            mRegister[0] = mRegister[1] = mRegister[2] = mRegister[3] = 0;
         }
 
         static uint32_t clampBank(uint32_t value, uint32_t max)

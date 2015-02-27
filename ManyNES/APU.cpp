@@ -1050,6 +1050,10 @@ namespace NES
                     available = false;
                     updateReader(timerTick);
                 }
+                else
+                {
+                    level = 0;
+                }
             }
         }
         updateTick = lastTick;
