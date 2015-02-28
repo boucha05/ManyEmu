@@ -359,16 +359,12 @@ namespace NES
             mDMC.update(updateTicks);
             if (mSoundBuffer && (mSoundBufferOffset < mSoundBufferSize))
             {
-                union
-                {
-                    int8_t  channel[2];
-                    int16_t merged;
-                } value;
+                float pulseOut = 0.00752f * (mPulse[0].level + mPulse[1].level);
+                float tndOut = 0.00851f * mTriangle.level + 0.00494f * mNoise.level + 0.00355f * mDMC.level;
+                float soundOut = pulseOut + tndOut;
+                uint16_t value = static_cast<int16_t>(soundOut * 32767.0f);
 
-                value.channel[0] = ((mPulse[0].level + mPulse[1].level) * 2 + mTriangle.level + mNoise.level) >> 1;
-                value.channel[1] = mDMC.level;
-
-                mSoundBuffer[mSoundBufferOffset++] = value.merged;
+                mSoundBuffer[mSoundBufferOffset++] = value;
             }
             mBufferTick = mSampleTick;
             mSampleTick += mSampleSpeed;
@@ -739,8 +735,8 @@ namespace NES
         // Update level
         static const uint32_t kLevel[] =
         {
-            -8, -7, -6, -5, -4, -3, -2, -1, +0, +1, +2, +3, +4, +5, +6, +7,
-            +7, +6, +5, +4, +3, +2, +1, +0, -1, -2, -3, -4, -5, -6, -7, -8,
+            -15, -13, -11, -9, -7, -5, -3, -1, +1, +3, +5, +8, +9, +11, +13, +15,
+            +15, +13, +11, +9, +7, +5, +3, +1, -1, -3, -5, -8, -9, -11, -13, -15,
         };
         uint32_t value = kLevel[sequence];
         level = (!linearCount || !length || (timer < 4)) ? 0 : value;
