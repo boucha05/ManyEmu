@@ -506,7 +506,7 @@ int main()
     Application::Config config;
     config.saveFolder = "Save";
     config.saveAudio = true;
-    config.rom = "C:\\Emu\\NES\\roms\\zelda2.nes";
+    config.rom = "D:\\Emu\\NES\\roms\\zelda2.nes";
     //config.rom = "C:\\Emu\\NES\\roms\\cvania2.nes";
     //config.rom = "C:\\Emu\\NES\\roms\\kidicar.nes";
     //config.rom = "ROMs\\exitbike.nes";

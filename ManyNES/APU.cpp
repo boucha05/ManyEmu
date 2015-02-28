@@ -127,7 +127,6 @@ namespace NES
 
     void APU::setDesiredTicks(int32_t ticks)
     {
-        advanceBuffer(ticks);
     }
 
     uint8_t APU::regRead(int32_t ticks, uint32_t addr)
@@ -380,13 +379,12 @@ namespace NES
 
     void APU::advanceBuffer(int32_t tick)
     {
-        if (mBufferTick >= tick)
+        if (tick <= mBufferTick)
             return;
 
         while (mSequenceTick <= tick)
         {
             advanceSamples(mSequenceTick);
-            mBufferTick = mSequenceTick;
             mSequenceTick += mFrameCountTicks;
             if (mMode5Step)
             {
