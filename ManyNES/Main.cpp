@@ -17,7 +17,7 @@ namespace
 {
     bool initSDL()
     {
-        SDL_Init(SDL_INIT_GAMECONTROLLER);
+        SDL_Init(SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO);
         return true;
     }
 
@@ -33,6 +33,8 @@ public:
         std::string     recorded;
         std::string     saveFolder;
         uint32_t        frameSkip;
+        uint32_t        samplingRate;
+        float           soundDelay;
         bool            playback;
         bool            saveAudio;
         bool            autoSave;
@@ -40,6 +42,8 @@ public:
 
         Config()
             : frameSkip(0)
+            , samplingRate(44100)
+            , soundDelay(0.100f)
             , playback(false)
             , saveAudio(false)
             , autoSave(false)
@@ -56,6 +60,8 @@ public:
 private:
     bool create();
     void destroy();
+    bool createSound(const std::string& romName);
+    void destroySound();
     bool loadGameData(const std::string& path);
     bool saveGameData(const std::string& path);
     bool loadGameState(const std::string& path);
@@ -64,6 +70,8 @@ private:
     void handleEvents();
     void update();
     void render();
+    void audioCallback(int16_t* data, uint32_t size);
+    static void audioCallback(void* userData, Uint8* stream, int len);
 
     static const uint32_t BUFFERING = 2;
 
@@ -79,7 +87,16 @@ private:
     uint32_t                    mBufferIndex;
     uint32_t                    mFrameIndex;
     uint32_t                    mBufferCount;
+    SDL_AudioDeviceID           mSoundDevice;
     std::vector<int16_t>        mSoundBuffer;
+    std::vector<int16_t>        mSoundQueue;
+    uint32_t                    mSoundReadPos;
+    uint32_t                    mSoundWritePos;
+    uint32_t                    mSoundBufferedSize;
+    uint32_t                    mSoundStartSize;
+    uint32_t                    mSoundMinSize;
+    uint32_t                    mSoundMaxSize;
+    bool                        mSoundRunning;
     NES::FileStream*            mSoundFile;
     NES::BinaryWriter*          mSoundWriter;
     NES::Rom*                   mRom;
@@ -101,6 +118,14 @@ Application::Application()
     , mBufferIndex(0)
     , mFrameIndex(0)
     , mBufferCount(0)
+    , mSoundDevice(0)
+    , mSoundReadPos(0)
+    , mSoundWritePos(0)
+    , mSoundBufferedSize(0)
+    , mSoundStartSize(0)
+    , mSoundMinSize(0)
+    , mSoundMaxSize(0)
+    , mSoundRunning(false)
     , mSoundFile(nullptr)
     , mSoundWriter(nullptr)
     , mRom(nullptr)
@@ -150,7 +175,7 @@ bool Application::create()
     if (romName.empty())
         return false;
 
-    mWindow = SDL_CreateWindow("ManyNES", 100, 100, 256, 240, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+    mWindow = SDL_CreateWindow("ManyNES", 100, 100, 256 * 3, 240 * 3, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (!mWindow)
         return false;
 
@@ -249,19 +274,8 @@ bool Application::create()
         }
     }
 
-    mSoundBuffer.clear();
-    mSoundBuffer.resize(44100 / 60, 0);
-    if (mConfig.saveAudio)
-    {
-        std::string path = Path::join(mConfig.saveFolder, romName) + ".snd";
-        mSoundFile = new NES::FileStream(path.c_str(), "wb");
-        if (!mSoundFile)
-            return false;
-
-        mSoundWriter = new NES::BinaryWriter(*mSoundFile);
-        if (!mSoundWriter)
-            return false;
-    }
+    if (!createSound(romName))
+        return false;
 
     mFirst = true;
 
@@ -270,19 +284,9 @@ bool Application::create()
 
 void Application::destroy()
 {
-    mPlayer1 = nullptr;
+    destroySound();
 
-    if (mSoundWriter)
-    {
-        delete mSoundWriter;
-        mSoundWriter = nullptr;
-    }
-    if (mSoundFile)
-    {
-        delete mSoundFile;
-        mSoundFile = nullptr;
-    }
-    mSoundBuffer.clear();
+    mPlayer1 = nullptr;
 
     if (mRecorder)
     {
@@ -326,6 +330,15 @@ void Application::destroy()
         mRom = nullptr;
     }
 
+    for (uint32_t n = 0; n < BUFFERING; ++n)
+    {
+        if (mTexture[n])
+        {
+            SDL_DestroyTexture(mTexture[n]);
+            mTexture[n] = nullptr;
+        }
+    }
+
     if (mRenderer)
     {
         SDL_DestroyRenderer(mRenderer);
@@ -337,15 +350,75 @@ void Application::destroy()
         SDL_DestroyWindow(mWindow);
         mWindow = nullptr;
     }
+}
 
-    for (uint32_t n = 0; n < BUFFERING; ++n)
+bool Application::createSound(const std::string& romName)
+{
+    SDL_AudioInit(NULL);
+
+    SDL_AudioSpec audioDesired;
+    SDL_AudioSpec audioObtained;
+    SDL_zero(audioDesired);
+    SDL_zero(audioObtained);
+    audioDesired.freq = mConfig.samplingRate;
+    audioDesired.format = AUDIO_S16;
+    audioDesired.channels = 1;
+    audioDesired.samples = 1024;
+    audioDesired.callback = audioCallback;
+    audioDesired.userdata = this;
+    mSoundDevice = SDL_OpenAudioDevice(NULL, 0, &audioDesired, &audioObtained, 0);
+    if (mSoundDevice <= 0)
+        return false;
+
+    mSoundBuffer.clear();
+    mSoundBuffer.resize(mConfig.samplingRate / 60, 0);
+    if (mConfig.saveAudio)
     {
-        if (mTexture[n])
-        {
-            SDL_DestroyTexture(mTexture[n]);
-            mTexture[n] = nullptr;
-        }
+        std::string path = Path::join(mConfig.saveFolder, romName) + ".snd";
+        mSoundFile = new NES::FileStream(path.c_str(), "wb");
+        if (!mSoundFile)
+            return false;
+
+        mSoundWriter = new NES::BinaryWriter(*mSoundFile);
+        if (!mSoundWriter)
+            return false;
     }
+
+    mSoundReadPos = 0;
+    mSoundWritePos = 0;
+    mSoundBufferedSize = 0;
+    mSoundStartSize = static_cast<uint32_t>(mConfig.samplingRate * mConfig.soundDelay);
+    mSoundMinSize = mSoundStartSize >> 1;
+    mSoundMaxSize = mSoundStartSize + mSoundMinSize;
+    mSoundRunning = false;
+    mSoundQueue.clear();
+    mSoundQueue.resize(((mSoundStartSize + mSoundBuffer.size() + 1023) * 2) & ~1023);
+    SDL_PauseAudioDevice(mSoundDevice, 0);
+
+    return true;
+}
+
+void Application::destroySound()
+{
+    if (mSoundWriter)
+    {
+        delete mSoundWriter;
+        mSoundWriter = nullptr;
+    }
+    if (mSoundFile)
+    {
+        delete mSoundFile;
+        mSoundFile = nullptr;
+    }
+    mSoundBuffer.clear();
+
+    if (mSoundDevice)
+    {
+        SDL_CloseAudioDevice(mSoundDevice);
+        mSoundDevice = 0;
+    }
+
+    SDL_AudioQuit();
 }
 
 bool Application::loadGameData(const std::string& path)
@@ -477,6 +550,29 @@ void Application::update()
         }
         mSoundWriter->serialize(&mSoundBuffer[0], mSoundBuffer.size() * 2);
     }
+    
+    SDL_LockAudioDevice(mSoundDevice);
+    if (mSoundBufferedSize < mSoundMaxSize)
+    {
+        uint32_t soundQueueSize = mSoundQueue.size();
+        uint32_t size = mSoundBuffer.size();
+        const int16_t* data = &mSoundBuffer[0];
+        while (size)
+        {
+            uint32_t currentSize = size;
+            uint32_t maxSize = soundQueueSize - mSoundWritePos;
+            if (currentSize > maxSize)
+                currentSize = maxSize;
+            memcpy(&mSoundQueue[mSoundWritePos], data, currentSize * sizeof(int16_t));
+            mSoundBufferedSize += currentSize;
+            mSoundWritePos += currentSize;
+            data += currentSize;
+            size -= currentSize;
+            if (mSoundWritePos >= soundQueueSize)
+                mSoundWritePos -= soundQueueSize;
+        }
+    }
+    SDL_UnlockAudioDevice(mSoundDevice);
 
     ++mFrameIndex;
 }
@@ -501,14 +597,45 @@ void Application::render()
     }
 }
 
+void Application::audioCallback(int16_t* data, uint32_t size)
+{
+    // Fill with empty sound if we are not ready to run
+    if ((!mSoundRunning && (mSoundBufferedSize < mSoundStartSize)) || (mSoundRunning && (mSoundBufferedSize < mSoundMinSize)))
+    {
+        mSoundRunning = false;
+        memset(data, 0, 2 * size);
+        return;
+    }
+
+    mSoundRunning = true;
+    uint32_t soundQueueSize = mSoundQueue.size();
+    while (size)
+    {
+        uint32_t currentSize = size;
+        uint32_t maxSize = soundQueueSize - mSoundReadPos;
+        if (currentSize > maxSize)
+            currentSize = maxSize;
+        memcpy(data, &mSoundQueue[mSoundReadPos], currentSize * sizeof(int16_t));
+        mSoundBufferedSize -= currentSize;
+        mSoundReadPos += currentSize;
+        data += currentSize;
+        size -= currentSize;
+        if (mSoundReadPos >= soundQueueSize)
+            mSoundReadPos -= soundQueueSize;
+    }
+}
+
+void Application::audioCallback(void* userData, Uint8* stream, int len)
+{
+    static_cast<Application*>(userData)->audioCallback(reinterpret_cast<int16_t*>(stream), len >> 1);
+}
+
 int main()
 {
     Application::Config config;
     config.saveFolder = "Save";
-    config.saveAudio = true;
-    config.rom = "D:\\Emu\\NES\\roms\\zelda2.nes";
-    //config.rom = "C:\\Emu\\NES\\roms\\cvania2.nes";
-    //config.rom = "C:\\Emu\\NES\\roms\\kidicar.nes";
+    //config.saveAudio = true;
+    config.rom = "C:\\Emu\\NES\\roms\\zelda2.nes";
     //config.rom = "ROMs\\exitbike.nes";
     //config.rom = "ROMs\\megaman2.nes";
     //config.rom = "ROMs\\mario.nes";
