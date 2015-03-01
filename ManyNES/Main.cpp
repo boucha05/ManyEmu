@@ -43,7 +43,7 @@ public:
         Config()
             : frameSkip(0)
             , samplingRate(44100)
-            , soundDelay(0.0350f)
+            , soundDelay(0.0400f)
             , playback(false)
             , saveAudio(false)
             , autoSave(false)
@@ -635,7 +635,7 @@ int main()
     Application::Config config;
     config.saveFolder = "Save";
     //config.saveAudio = true;
-    config.rom = "C:\\Emu\\NES\\roms\\megaman2.nes";
+    config.rom = "D:\\Emu\\NES\\roms\\smb3.nes";
     //config.rom = "ROMs\\exitbike.nes";
     //config.rom = "ROMs\\megaman2.nes";
     //config.rom = "ROMs\\mario.nes";

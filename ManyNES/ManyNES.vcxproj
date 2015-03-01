@@ -114,6 +114,7 @@
     <ClCompile Include="InputController.cpp" />
     <ClCompile Include="Mapper1.cpp" />
     <ClCompile Include="Mapper2.cpp" />
+    <ClCompile Include="Mapper4.cpp" />
     <ClCompile Include="MemoryBus.cpp" />
     <ClCompile Include="Context.cpp" />
     <ClCompile Include="Cpu6502.cpp" />

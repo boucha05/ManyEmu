@@ -18,6 +18,7 @@
     <ClCompile Include="Mapper1.cpp" />
     <ClCompile Include="Path.cpp" />
     <ClCompile Include="Mapper2.cpp" />
+    <ClCompile Include="Mapper4.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Palette.h" />

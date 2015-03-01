@@ -53,8 +53,7 @@ namespace
 
         virtual void reset()
         {
-            const auto& romDescription = mRom->getDescription();
-            mRegister = 0x00;// romDescription.prgRomPages - 2;
+            mRegister = 0x00;
             updateMemoryMap();
         }
 
