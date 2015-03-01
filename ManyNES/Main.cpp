@@ -43,7 +43,7 @@ public:
         Config()
             : frameSkip(0)
             , samplingRate(44100)
-            , soundDelay(0.100f)
+            , soundDelay(0.0350f)
             , playback(false)
             , saveAudio(false)
             , autoSave(false)

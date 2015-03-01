@@ -138,23 +138,9 @@
     <ClInclude Include="Palette.h" />
     <ClInclude Include="Path.h" />
     <ClInclude Include="PPU.h" />
-    <ClInclude Include="r6502.h" />
     <ClInclude Include="Serialization.h" />
     <ClInclude Include="Stream.h" />
     <ClInclude Include="Tests.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <MASM Include="io.asm" />
-    <MASM Include="nes.asm" />
-    <MASM Include="nes_io.asm" />
-    <MASM Include="r6502.asm">
-      <EnableMASM51Compatibility Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</EnableMASM51Compatibility>
-    </MASM>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="debug.inc" />
-    <None Include="nes.inc" />
-    <None Include="r6502.inc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -22,7 +22,6 @@
   <ItemGroup>
     <ClInclude Include="Palette.h" />
     <ClInclude Include="nes.h" />
-    <ClInclude Include="r6502.h" />
     <ClInclude Include="Mappers.h" />
     <ClInclude Include="Cpu6502.h" />
     <ClInclude Include="MemoryBus.h" />
@@ -34,16 +33,5 @@
     <ClInclude Include="Serialization.h" />
     <ClInclude Include="Stream.h" />
     <ClInclude Include="Path.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <MASM Include="r6502.asm" />
-    <MASM Include="nes.asm" />
-    <MASM Include="nes_io.asm" />
-    <MASM Include="io.asm" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="r6502.inc" />
-    <None Include="debug.inc" />
-    <None Include="nes.inc" />
   </ItemGroup>
 </Project>
