@@ -106,8 +106,8 @@ namespace NES
     void APU::advanceClock(int32_t ticks)
     {
         advanceBuffer(ticks);
-        mBufferTick -= ticks;
         mSequenceTick -= ticks;
+        mBufferTick = 0;
         mSampleTick = 0;
         if (mSoundBuffer)
         {
@@ -351,7 +351,7 @@ namespace NES
 
         while (mSampleTick <= tick)
         {
-            uint32_t updateTicks = mSampleTick - mBufferTick;
+            int32_t updateTicks = mSampleTick - mBufferTick;
             mPulse[0].update(updateTicks);
             mPulse[1].update(updateTicks);
             mTriangle.update(updateTicks);

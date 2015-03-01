@@ -635,7 +635,7 @@ int main()
     Application::Config config;
     config.saveFolder = "Save";
     //config.saveAudio = true;
-    config.rom = "C:\\Emu\\NES\\roms\\zelda2.nes";
+    config.rom = "C:\\Emu\\NES\\roms\\megaman2.nes";
     //config.rom = "ROMs\\exitbike.nes";
     //config.rom = "ROMs\\megaman2.nes";
     //config.rom = "ROMs\\mario.nes";
@@ -644,7 +644,7 @@ int main()
     //config.playback = true;
     //config.frameSkip = 512;
     //config.autoSave = true;
-    //config.autoLoad = true;
+    config.autoLoad = true;
 
     Application application;
     application.run(config);
