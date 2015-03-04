@@ -21,6 +21,7 @@ struct CPU_STATE
     uint8_t             flag_z;
     uint8_t             flag_v;
     uint8_t             flag_n;
+    bool                irq;
     MEMORY_BUS*         bus;
     uint32_t            master_clock_divider;
     uint32_t            insn_ticks[256];
@@ -44,7 +45,7 @@ namespace NES
         bool create(Clock& clock, MEMORY_BUS& bus, uint32_t master_clock_divider);
         void destroy();
         void reset();
-        void irq();
+        void irq(bool active);
         void nmi();
         void advanceClock(int32_t ticks);
         void setDesiredTicks(int32_t ticks);

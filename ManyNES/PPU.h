@@ -16,6 +16,7 @@ namespace NES
         {
         public:
             virtual void onVBlankStart() {}
+            virtual void onVisibleLineStart(int32_t tick) {}
         };
 
         PPU();
@@ -41,6 +42,7 @@ namespace NES
         void removeListener(IListener& listener);
         void setRenderSurface(void* surface, size_t pitch);
         void startFrame();
+        int32_t getTickCount(uint32_t lines, uint32_t dots);
         void serialize(ISerializer& serializer);
 
         static const uint32_t CREATE_VRAM_ONE_SCREEN = 0x00000001;
@@ -73,6 +75,7 @@ namespace NES
         static uint8_t paletteRead(void* context, int32_t ticks, uint32_t addr);
         static void paletteWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value);
         void signalVBlankStart();
+        void signalVisibleLineStart(int32_t tick);
         void onVBlankStart(int32_t ticks);
         void onVBlankEnd();
         static void onVBlankStart(void* context, int32_t ticks);

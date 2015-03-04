@@ -94,6 +94,10 @@ namespace
             if (!ppu.create(clock, MASTER_CLOCK_PPU_DIVIDER_NTSC, ppuCreateFlags, VISIBLE_LINES_NTSC))
                 return false;
 
+            // IRQ
+            irqApu = false;
+            irqMapper = false;
+
             // APU
             if (!apu.create(clock, cpuMemory, MASTER_CLOCK_APU_DIVIDER_NTSC, MASTER_CLOCK_FREQUENCY_NTSC))
                 return false;
@@ -152,15 +156,20 @@ namespace
             cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, SAVE_RAM_START_ADDR, SAVE_RAM_END_ADDR, accessSaveRamRead);
             cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, SAVE_RAM_START_ADDR, SAVE_RAM_END_ADDR, accessSaveRamWrite);
 
+            // Mapper
+            if (!mapperListener.create(*this))
+                return false;
             mapper = NES::MapperRegistry::getInstance().create(romDesc.mapper);
             if (!mapper)
                 return false;
-            NES::Mapper::Components components;
+            NES::IMapper::Components components;
             components.rom = rom;
+            components.clock = &clock;
             components.memory = &cpuMemory;
             components.cpu = &cpu;
             components.ppu = &ppu;
             components.apu = &apu;
+            components.listener = &mapperListener;
             if (!mapper->initialize(components))
                 return false;
 
@@ -190,6 +199,7 @@ namespace
                 mapper->dispose();
                 mapper = nullptr;
             }
+            mapperListener.destroy();
 
             apu.destroy();
             ppuListener.destroy();
@@ -213,6 +223,9 @@ namespace
             ppu.reset();
             apu.reset();
             mapper->reset();
+            irqApu = false;
+            irqMapper = false;
+            updateIrqStatus();
         }
 
         virtual void setController(uint32_t index, uint32_t buttons)
@@ -235,6 +248,7 @@ namespace
             ppu.beginFrame();
             apu.beginFrame();
             clock.setTargetExecution(MASTER_CLOCK_PER_FRAME_NTSC);
+            mapper->beginFrame();
             while (clock.canExecute())
             {
                 clock.beginExecute();
@@ -265,13 +279,18 @@ namespace
 
         virtual void serializeGameState(NES::ISerializer& serializer)
         {
-            uint32_t version = 1;
+            uint32_t version = 2;
             clock.serialize(serializer);
             cpu.serialize(serializer);
             ppu.serialize(serializer);
             apu.serialize(serializer);
             serializer.serialize(cpuRam);
             serializer.serialize(saveRam);
+            if (version >= 2)
+            {
+                serializer.serialize(irqApu);
+                serializer.serialize(irqMapper);
+            }
             mapper->serializeGameState(serializer);
         }
 
@@ -299,6 +318,24 @@ namespace
         void onVBlankStart()
         {
             cpu.nmi();
+        }
+
+        void updateApuIrq(bool active)
+        {
+            irqApu = active;
+            updateIrqStatus();
+        }
+
+        void updateMapperIrq(bool active)
+        {
+            irqMapper = active;
+            updateIrqStatus();
+        }
+
+        void updateIrqStatus()
+        {
+            bool active = irqApu | irqMapper;
+            cpu.irq(active);
         }
 
         class PPUListener : public NES::PPU::IListener
@@ -333,6 +370,38 @@ namespace
             ContextImpl*    mContext;
         };
 
+        class MapperListener : public NES::IMapper::IListener
+        {
+        public:
+            MapperListener()
+                : mContext(nullptr)
+            {
+            }
+
+            ~MapperListener()
+            {
+                destroy();
+            }
+
+            bool create(ContextImpl& context)
+            {
+                mContext = &context;
+                return true;
+            }
+
+            void destroy()
+            {
+            }
+
+            virtual void onIrqUpdate(bool active)
+            {
+                mContext->updateMapperIrq(active);
+            }
+
+        private:
+            ContextImpl*    mContext;
+        };
+
         const NES::Rom*         rom;
         NES::Clock              clock;
         NES::MemoryBus          cpuMemory;
@@ -346,13 +415,16 @@ namespace
         MEM_ACCESS              accessCpuRamWrite;
         MEM_ACCESS              accessSaveRamRead;
         MEM_ACCESS              accessSaveRamWrite;
+        bool                    irqApu;
+        bool                    irqMapper;
         NES::Cpu6502            cpu;
         NES::PPU                ppu;
         PPUListener             ppuListener;
         NES::APU                apu;
         std::vector<uint8_t>    cpuRam;
         std::vector<uint8_t>    saveRam;
-        NES::Mapper*            mapper;
+        MapperListener          mapperListener;
+        NES::IMapper*           mapper;
     };
 }
 

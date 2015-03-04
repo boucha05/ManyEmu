@@ -24,7 +24,7 @@ namespace
             return item->second->name;
         }
 
-        virtual NES::Mapper* create(uint32_t index)
+        virtual NES::IMapper* create(uint32_t index)
         {
             auto item = mapperInfoTable.find(index);
             if (item == mapperInfoTable.end())

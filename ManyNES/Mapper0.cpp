@@ -2,7 +2,7 @@
 
 namespace
 {
-    class Mapper : public NES::Mapper
+    class Mapper : public NES::IMapper
     {
     public:
         virtual void dispose()

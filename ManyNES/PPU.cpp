@@ -54,7 +54,7 @@ namespace
     static const uint32_t PPU_VISIBLE_START_COLUMN = 4;
     static const uint32_t PPU_VBLANK_START_LINE = PPU_VISIBLE_START_LINE + PPU_VISIBLE_LINES;
     static const uint32_t PPU_VBLANK_END_LINE = 0;
-    static const uint32_t PPU_VBLANK_START_TICKS = PPU_VBLANK_START_LINE * PPU_TICKS_PER_LINE;
+    static const uint32_t PPU_VBLANK_START_TICKS = (PPU_VBLANK_START_LINE + 1) * PPU_TICKS_PER_LINE;
     static const uint32_t PPU_VBLANK_END_TICKS = PPU_VBLANK_END_LINE * PPU_TICKS_PER_LINE;
 
     static const uint32_t SCANLINE_NAME_ALIGNMENT = 8;
@@ -332,6 +332,7 @@ namespace NES
 
     void PPU::execute()
     {
+        advanceFrame(mClock->getDesiredTicks());
     }
 
     NES::MemoryBus& PPU::getMemory()
@@ -389,7 +390,14 @@ namespace NES
             return ppustatus;
         }
             //case PPU_REG_OAMADDR: break;
-            //case PPU_REG_OAMDATA: break;
+
+        case PPU_REG_OAMDATA:
+        {
+            uint8_t addr = mRegister[PPU_REG_OAMADDR]++;
+            return mOAM[addr];
+            break;
+        }
+
             //case PPU_REG_PPUSCROLL: break;
             //case PPU_REG_PPUADDR: break;
         case PPU_REG_PPUDATA:
@@ -566,6 +574,12 @@ namespace NES
         for (auto listener : mListeners)
             listener->onVBlankStart();
         //printf("[VBLANK interrupt]\n");
+    }
+
+    void PPU::signalVisibleLineStart(int32_t tick)
+    {
+        for (auto listener : mListeners)
+            listener->onVisibleLineStart(tick);
     }
 
     void PPU::onVBlankStart(int32_t ticks)
@@ -1097,6 +1111,8 @@ namespace NES
                 break;
 
             case SCANLINE_ACTION_INCR_VERTICAL:
+                if (mRegister[PPU_REG_PPUMASK] & (PPU_MASK_SHOW_BACKGROUND | PPU_MASK_SHOW_SPRITES))
+                    signalVisibleLineStart(mScanlineBaseTick);
                 render(mScanlineBaseTick + mTicksPerLine);
                 if (mRegister[PPU_REG_PPUMASK] & 0x18)
                     mScanlineAddress = incrementY(mScanlineAddress);
@@ -1130,6 +1146,12 @@ namespace NES
 
         // Execute line events
         mLastTickUpdated = tick;
+    }
+
+    int32_t PPU::getTickCount(uint32_t lines, uint32_t dots)
+    {
+        int32_t ticks = lines * mTicksPerLine + dots * mMasterClockDivider;
+        return ticks;
     }
 
     void PPU::addressDirty()

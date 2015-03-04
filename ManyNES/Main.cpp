@@ -43,7 +43,7 @@ public:
         Config()
             : frameSkip(0)
             , samplingRate(44100)
-            , soundDelay(0.0400f)
+            , soundDelay(0.0500f)
             , playback(false)
             , saveAudio(false)
             , autoSave(false)
@@ -175,7 +175,7 @@ bool Application::create()
     if (romName.empty())
         return false;
 
-    mWindow = SDL_CreateWindow("ManyNES", 100, 100, 256 * 3, 240 * 3, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+    mWindow = SDL_CreateWindow("ManyNES", 100, 100, 256 * 2, 240 * 2, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (!mWindow)
         return false;
 
@@ -635,7 +635,7 @@ int main()
     Application::Config config;
     config.saveFolder = "Save";
     //config.saveAudio = true;
-    config.rom = "D:\\Emu\\NES\\roms\\smb3.nes";
+    config.rom = "C:\\Emu\\NES\\roms\\smb3.nes";
     //config.rom = "ROMs\\exitbike.nes";
     //config.rom = "ROMs\\megaman2.nes";
     //config.rom = "ROMs\\mario.nes";

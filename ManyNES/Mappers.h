@@ -7,30 +7,40 @@
 namespace NES
 {
     class APU;
+    class Clock;
     class Cpu6502;
     class MemoryBus;
     class PPU;
     class ISerializer;
 
-    class Mapper : public IDisposable
+    class IMapper : public IDisposable
     {
     public:
+        class IListener
+        {
+        public:
+            virtual void onIrqUpdate(bool active) {}
+        };
+
         struct Components
         {
             const Rom*  rom;
+            Clock*      clock;
             MemoryBus*  memory;
             Cpu6502*    cpu;
             PPU*        ppu;
             APU*        apu;
+            IListener*  listener;
         };
         virtual bool initialize(const Components& components) = 0;
         virtual void reset() { }
+        virtual void beginFrame() { }
         virtual void update() { }
         virtual void serializeGameData(ISerializer& serializer) { }
         virtual void serializeGameState(ISerializer& serializer) { }
     };
 
-    typedef Mapper* (*MapperCreateFunc)();
+    typedef IMapper* (*MapperCreateFunc)();
 
     struct MapperInfo
     {
@@ -45,7 +55,7 @@ namespace NES
         virtual void registerMapper(const MapperInfo& info) = 0;
         virtual void unregisterMapper(const MapperInfo& info) = 0;
         virtual const char* getMapperName(uint32_t index) = 0;
-        virtual Mapper* create(uint32_t index) = 0;
+        virtual IMapper* create(uint32_t index) = 0;
 
         static MapperRegistry& getInstance();
     };
@@ -69,7 +79,7 @@ namespace NES
         }
 
     private:
-        static Mapper* createMapper()
+        static IMapper* createMapper()
         {
             return new T;
         }

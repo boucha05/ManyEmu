@@ -27,7 +27,7 @@ namespace NES
             destroy();
         }
 
-        bool create(const Mapper::Components& components)
+        bool create(const IMapper::Components& components)
         {
             if (!components.memory)
                 return false;
@@ -384,7 +384,7 @@ namespace NES
 
 namespace
 {
-    class Mapper : public NES::Mapper
+    class Mapper : public NES::IMapper
     {
     public:
         virtual void dispose()

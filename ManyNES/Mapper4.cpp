@@ -7,17 +7,21 @@
 
 namespace
 {
-    class Mapper : public NES::Mapper
+    class Mapper : public NES::IMapper
     {
     public:
         Mapper()
             : mRom(nullptr)
+            , mClock(nullptr)
             , mPpu(nullptr)
+            , mMapperListener(nullptr)
         {
         }
 
         virtual void dispose()
         {
+            if (mPpu)
+                mPpu->removeListener(mPpuListener);
             delete this;
         }
 
@@ -26,6 +30,9 @@ namespace
             if (!components.memory)
                 return false;
             auto& cpuMemory = *components.memory;
+
+            // Clock
+            mClock = components.clock;
 
             // PRG ROM
             if (!components.rom)
@@ -38,6 +45,11 @@ namespace
                 return false;
             mPpu = components.ppu;
             auto& ppuMemory = mPpu->getMemory();
+            mPpuListener.initialize(*this);
+            mPpu->addListener(mPpuListener);
+
+            // Mapper listener
+            mMapperListener = components.listener;
 
             // Name table
             const auto& romDescription = mRom->getDescription();
@@ -75,13 +87,24 @@ namespace
             mMirroring = 0;
             mWramEnable = false;
             mWramWriteProtect = true;
+            mIrqCount = 0xff;
+            mIrqReload = 0;
+            mIrqEnable = false;
+            mIrqPending = false;
             updateMemoryMap();
+            updateIrqStatus(0);
+        }
+
+        virtual void beginFrame()
+        {
+            updateIrqStatus(0);
         }
 
         virtual void serializeGameState(NES::ISerializer& serializer)
         {
             uint32_t version = 1;
             serializer.serialize(version);
+            serializer.serialize(mNameTableLocal);
             serializer.serialize(mBankPorts, NES_ARRAY_SIZE(mBankPorts));
             serializer.serialize(mChrMode);
             serializer.serialize(mPrgMode);
@@ -89,7 +112,12 @@ namespace
             serializer.serialize(mMirroring);
             serializer.serialize(mWramEnable);
             serializer.serialize(mWramWriteProtect);
+            serializer.serialize(mIrqCount);
+            serializer.serialize(mIrqReload);
+            serializer.serialize(mIrqEnable);
+            serializer.serialize(mIrqPending);
             updateMemoryMap();
+            updateIrqStatus(0);
         }
 
     private:
@@ -185,7 +213,42 @@ namespace
             }
         }
 
-        void regWrite(uint32_t addr, uint8_t value)
+        void onLineSync(int32_t tick)
+        {
+            if (mIrqCount)
+                setLineSync(tick, mIrqCount);
+        }
+
+        static void onLineSync(void* context, int32_t tick)
+        {
+            static_cast<Mapper*>(context)->onLineSync(tick);
+        }
+
+        void setLineSync(int32_t tick, uint32_t lines)
+        {
+            uint32_t desiredTick = tick + mPpu->getTickCount(lines, 0);
+            mClock->addEvent(onLineSync, this, desiredTick);
+        }
+
+        void updateIrqStatus(int32_t tick)
+        {
+            setLineSync(tick, mIrqCount);
+            static bool irqEnabled = true;
+            if (irqEnabled)
+                mMapperListener->onIrqUpdate(mIrqPending && mIrqEnable);
+        }
+
+        void onVisibleLineStart(int32_t tick)
+        {
+            if (--mIrqCount == 0)
+            {
+                mIrqCount = mIrqReload;
+                mIrqPending = true;
+                updateIrqStatus(tick);
+            }
+        }
+
+        void regWrite(int32_t tick, uint32_t addr, uint8_t value)
         {
             switch (addr & 0x6001)
             {
@@ -209,18 +272,27 @@ namespace
             case 0x2001:
                 mWramEnable = (value & 0x80) != 0;
                 mWramWriteProtect = (value & 0x40) == 0;
+                updateMemoryMap();
                 break;
 
             case 0x4000:
+                mIrqReload = value & 0xff;
                 break;
 
             case 0x4001:
+                mIrqCount = mIrqReload + 1;
+                updateIrqStatus(tick);
                 break;
 
             case 0x6000:
+                mIrqEnable = false;
+                mIrqPending = false;
+                updateIrqStatus(tick);
                 break;
 
             case 0x6001:
+                mIrqEnable = true;
+                updateIrqStatus(tick);
                 break;
 
             default:
@@ -230,22 +302,51 @@ namespace
 
         static void regWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value)
         {
-            static_cast<Mapper*>(context)->regWrite(addr, value);
+            static_cast<Mapper*>(context)->regWrite(ticks, addr, value);
         }
 
-        const NES::Rom*         mRom;
-        NES::PPU*               mPpu;
-        std::vector<uint8_t>    mNameTableLocal;
-        MEM_ACCESS              mMemPrgRomRead[4];
-        MEM_ACCESS              mMemPrgRomWrite;
-        MEM_ACCESS              mMemChrRomRead[8];
-        uint8_t                 mBankPorts[8];
-        uint8_t                 mChrMode;
-        uint8_t                 mPrgMode;
-        uint8_t                 mPort;
-        uint8_t                 mMirroring;
-        bool                    mWramEnable;
-        bool                    mWramWriteProtect;
+        class PPUListener : public NES::PPU::IListener
+        {
+        public:
+            PPUListener()
+                : mMapper(nullptr)
+            {
+            }
+
+            void initialize(Mapper& mapper)
+            {
+                mMapper = &mapper;
+            }
+
+            virtual void onVisibleLineStart(int32_t tick)
+            {
+                mMapper->onVisibleLineStart(tick);
+            }
+
+        private:
+            Mapper*     mMapper;
+        };
+
+        const NES::Rom*             mRom;
+        NES::Clock*                 mClock;
+        NES::PPU*                   mPpu;
+        PPUListener                 mPpuListener;
+        NES::IMapper::IListener*    mMapperListener;
+        std::vector<uint8_t>        mNameTableLocal;
+        MEM_ACCESS                  mMemPrgRomRead[4];
+        MEM_ACCESS                  mMemPrgRomWrite;
+        MEM_ACCESS                  mMemChrRomRead[8];
+        uint8_t                     mBankPorts[8];
+        uint8_t                     mChrMode;
+        uint8_t                     mPrgMode;
+        uint8_t                     mPort;
+        uint8_t                     mMirroring;
+        bool                        mWramEnable;
+        bool                        mWramWriteProtect;
+        uint8_t                     mIrqCount;
+        uint8_t                     mIrqReload;
+        bool                        mIrqEnable;
+        bool                        mIrqPending;
     };
 
     NES::AutoRegisterMapper<Mapper> mapper(4, "MMC3/MMC6");

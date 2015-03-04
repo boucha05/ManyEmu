@@ -419,6 +419,22 @@ namespace
         state.sr = flags;
     }
 
+    void check_irq_pending(CPU_STATE& state)
+    {
+        if (!state.irq || (state.sr & STATUS_I))
+            return;
+
+        //uint8_t dummy = fetch8(state);
+        uint8_t state_sr = state.sr | STATUS_RESERVED1;
+        state_sr &= ~STATUS_RESERVED0;
+        export_flags(state);
+        state.sr = state_sr | STATUS_I;
+        push16(state, state.pc);
+        push8(state, state_sr);
+        state.pc = read16(state, ADDR_VECTOR_IRQ);
+        state.executed_ticks += 7;
+    }
+
     inline void insn_branch(CPU_STATE& state, bool branch)
     {
         int16_t offset = static_cast<int16_t>(static_cast<int8_t>(fetch8(state)));
@@ -539,6 +555,7 @@ namespace
     inline void insn_cli(CPU_STATE& state)
     {
         state.sr &= ~STATUS_I;
+        check_irq_pending(state);
     }
 
     inline void insn_clv(CPU_STATE& state)
@@ -683,6 +700,7 @@ namespace
     {
         state.sr = pop8(state);
         import_flags(state);
+        check_irq_pending(state);
     }
 
     inline void insn_rol(CPU_STATE& state)
@@ -963,7 +981,7 @@ namespace
 
     void serialize(CPU_STATE& state, NES::ISerializer& serializer)
     {
-        uint32_t version = 1;
+        uint32_t version = 2;
         serializer.serialize(version);
         serializer.serialize(state.a);
         serializer.serialize(state.x);
@@ -977,6 +995,8 @@ namespace
         serializer.serialize(state.flag_z);
         serializer.serialize(state.flag_v);
         serializer.serialize(state.flag_n);
+        if (version >= 2)
+            serializer.serialize(state.irq);
     }
 
     void executeDummyTimerEvent(void* context, int32_t ticks)
@@ -990,6 +1010,7 @@ void cpu_initialize(CPU_STATE& cpu)
     cpu.sr = 0x34;
     cpu.a = cpu.x = cpu.y = 0;
     cpu.sp = 0;
+    cpu.irq = false;
 }
 
 bool cpu_create(CPU_STATE& cpu, MEMORY_BUS& bus, uint32_t master_clock_divider)
@@ -1013,6 +1034,7 @@ void cpu_reset(CPU_STATE& state)
     state.sp -= 3;
     state.sr |= 0x04;
     state.pc = read16(state, ADDR_VECTOR_RESET);
+    state.irq = false;
 
 #if 0
     // For debugging purpose only
@@ -1024,16 +1046,10 @@ void cpu_reset(CPU_STATE& state)
     import_flags(state);
 }
 
-void cpu_irq(CPU_STATE& state)
+void cpu_irq(CPU_STATE& state, bool active)
 {
-    export_flags(state);
-    uint8_t state_sr = state.sr | STATUS_RESERVED1;
-    state_sr &= ~STATUS_RESERVED0;
-    state.sr |= STATUS_I;
-    push16(state, state.pc);
-    push8(state, state_sr);
-    state.pc = read16(state, ADDR_VECTOR_IRQ);
-    state.executed_ticks += 7;
+    state.irq = active;
+    check_irq_pending(state);
 }
 
 void cpu_nmi(CPU_STATE& state)
@@ -1294,9 +1310,9 @@ namespace NES
         mState.desired_ticks = 0;
     }
 
-    void Cpu6502::irq()
+    void Cpu6502::irq(bool active)
     {
-        cpu_irq(mState);
+        cpu_irq(mState, active);
     }
 
     void Cpu6502::nmi()
