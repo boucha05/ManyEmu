@@ -73,6 +73,28 @@ namespace NES
     private:
         IStream*    mStream;
     };
+
+    class TextWriter : public IArchive
+    {
+    public:
+        TextWriter(IStream& stream);
+        ~TextWriter();
+        virtual void serialize(uint32_t& data);
+        virtual void serialize(int32_t& data);
+        virtual void serialize(uint16_t& data);
+        virtual void serialize(uint8_t& data);
+        virtual void serialize(int8_t& data);
+        virtual void serialize(bool& value);
+        virtual void serialize(void* data, size_t size);
+        virtual void write(const char* text, ...);
+        virtual IStream& getStream()
+        {
+            return *mStream;
+        }
+
+    private:
+        IStream*    mStream;
+    };
 }
 
 #endif

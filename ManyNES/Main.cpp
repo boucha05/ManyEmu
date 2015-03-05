@@ -39,6 +39,7 @@ public:
         bool            saveAudio;
         bool            autoSave;
         bool            autoLoad;
+        bool            profile;
 
         Config()
             : frameSkip(0)
@@ -48,6 +49,7 @@ public:
             , saveAudio(false)
             , autoSave(false)
             , autoLoad(false)
+            , profile(false)
         {
         }
     };
@@ -99,6 +101,8 @@ private:
     bool                        mSoundRunning;
     NES::FileStream*            mSoundFile;
     NES::BinaryWriter*          mSoundWriter;
+    NES::FileStream*            mTimingFile;
+    NES::TextWriter*            mTimingWriter;
     NES::Rom*                   mRom;
     NES::Context*               mContext;
     NES::GroupController*       mPlayer1Controllers;
@@ -128,6 +132,8 @@ Application::Application()
     , mSoundRunning(false)
     , mSoundFile(nullptr)
     , mSoundWriter(nullptr)
+    , mTimingFile(nullptr)
+    , mTimingWriter(nullptr)
     , mRom(nullptr)
     , mContext(nullptr)
     , mPlayer1Controllers(nullptr)
@@ -175,6 +181,8 @@ bool Application::create()
     if (romName.empty())
         return false;
 
+    std::string saveName = mGameDataPath = Path::join(mConfig.saveFolder, romName);
+
     mWindow = SDL_CreateWindow("ManyNES", 100, 100, 256 * 2, 240 * 2, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (!mWindow)
         return false;
@@ -207,10 +215,10 @@ bool Application::create()
     if (!mContext)
         return false;
 
-    mGameDataPath = Path::join(mConfig.saveFolder, romName) + ".dat";
+    mGameDataPath = saveName + ".dat";
     loadGameData(mGameDataPath);
 
-    mGameStatePath = Path::join(mConfig.saveFolder, romName) + ".sav";
+    mGameStatePath = saveName + ".sav";
     if (mConfig.autoLoad)
         loadGameState(mGameStatePath);
 
@@ -274,6 +282,16 @@ bool Application::create()
         }
     }
 
+    if (mConfig.profile)
+    {
+        std::string path = saveName + ".prof";
+        mTimingFile = new NES::FileStream(path.c_str(), "w");
+        if (!mTimingFile->valid())
+            return false;
+
+        mTimingWriter = new NES::TextWriter(*mTimingFile);
+    }
+
     if (!createSound(romName))
         return false;
 
@@ -287,6 +305,18 @@ void Application::destroy()
     destroySound();
 
     mPlayer1 = nullptr;
+
+    if (mTimingWriter)
+    {
+        delete mTimingWriter;
+        mTimingWriter = nullptr;
+    }
+
+    if (mTimingFile)
+    {
+        delete mTimingFile;
+        mTimingFile = nullptr;
+    }
 
     if (mRecorder)
     {
@@ -376,12 +406,10 @@ bool Application::createSound(const std::string& romName)
     {
         std::string path = Path::join(mConfig.saveFolder, romName) + ".snd";
         mSoundFile = new NES::FileStream(path.c_str(), "wb");
-        if (!mSoundFile)
+        if (!mSoundFile->valid())
             return false;
 
         mSoundWriter = new NES::BinaryWriter(*mSoundFile);
-        if (!mSoundWriter)
-            return false;
     }
 
     mSoundReadPos = 0;
@@ -524,7 +552,7 @@ void Application::update()
         mContext->setRenderSurface(nullptr, 0);
     }
 
-    if (++mFrameIndex == frameTrigger)
+    if (mFrameIndex == frameTrigger)
         frameTrigger = frameTrigger;
 
     if (mPlayer1)
@@ -536,7 +564,10 @@ void Application::update()
         mSoundBuffer.resize(size, 0);
         mContext->setSoundBuffer(&mSoundBuffer[0], mSoundBuffer.size());
     }
+    
+    uint64_t frameStart = SDL_GetPerformanceCounter();
     mContext->update();
+    uint64_t frameEnd = SDL_GetPerformanceCounter();
 
     if (pixels)
         SDL_UnlockTexture(mTexture[mBufferIndex]);
@@ -573,6 +604,12 @@ void Application::update()
         }
     }
     SDL_UnlockAudioDevice(mSoundDevice);
+
+    float frameTime = static_cast<float>(frameEnd - frameStart) / SDL_GetPerformanceFrequency();
+    if (mTimingWriter)
+    {
+        mTimingWriter->write("%7d %6.3f\n", mFrameIndex, frameTime * 1000.0f);
+    }
 
     ++mFrameIndex;
 }
@@ -645,6 +682,7 @@ int main()
     //config.frameSkip = 512;
     //config.autoSave = true;
     config.autoLoad = true;
+    //config.profile = true;
 
     Application application;
     application.run(config);

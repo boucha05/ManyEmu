@@ -122,4 +122,60 @@ namespace NES
     {
         mStream->write(data, size);
     }
+
+    ///////////////////////////////////////////////////////////////////////////
+
+    TextWriter::TextWriter(IStream& stream)
+        : mStream(&stream)
+    {
+    }
+
+    TextWriter::~TextWriter()
+    {
+    }
+
+    void TextWriter::serialize(uint32_t& data)
+    {
+        write("%d", data);
+    }
+
+    void TextWriter::serialize(int32_t& data)
+    {
+        write("%d", data);
+    }
+
+    void TextWriter::serialize(uint16_t& data)
+    {
+        write("%d", data);
+    }
+
+    void TextWriter::serialize(uint8_t& data)
+    {
+        write("%d", data);
+    }
+
+    void TextWriter::serialize(int8_t& data)
+    {
+        write("%d", data);
+    }
+
+    void TextWriter::serialize(bool& data)
+    {
+        write(data ? "true" : "false");
+    }
+
+    void TextWriter::serialize(void* data, size_t size)
+    {
+        mStream->write(data, size);
+    }
+
+    void TextWriter::write(const char* text, ...)
+    {
+        char temp[4096];
+        va_list args;
+        va_start(args, text);
+        size_t size = SDL_vsnprintf(temp, sizeof(temp), text, args);
+        mStream->write(temp, size);
+        va_end(args);
+    }
 }
