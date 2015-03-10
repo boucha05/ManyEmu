@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include "InputController.h"
+#include "InputManager.h"
 #include "Path.h"
 #include "Serialization.h"
 #include "Stream.h"
@@ -22,6 +23,59 @@ namespace
     }
 
     static bool sdlInitialized = initSDL();
+
+    class StandardController : public NES::InputController
+    {
+    public:
+        StandardController(InputManager& inputManager)
+            : mInputManager(&inputManager)
+        {
+        }
+
+        virtual void dispose()
+        {
+            delete this;
+        }
+
+        virtual uint8_t readInput()
+        {
+            uint8_t buttonMask = 0;
+            for (auto mapping : mInputs)
+            {
+                static const float threshold = 0.4f;
+                float value = mInputManager->getInput(mapping.inputId);
+                if (value < -threshold)
+                    buttonMask |= mapping.buttonMaskMin;
+                else if (value > threshold)
+                    buttonMask |= mapping.buttonMaskMax;
+            }
+            return buttonMask;
+        }
+
+        virtual void addInput(uint32_t inputId, uint32_t buttonMaskMax, uint32_t buttonMaskMin = 0)
+        {
+            InputMapping mapping =
+            {
+                inputId,
+                buttonMaskMax,
+                buttonMaskMin,
+            };
+            mInputs.push_back(mapping);
+        }
+
+    private:
+        struct InputMapping
+        {
+            uint32_t    inputId;
+            uint32_t    buttonMaskMax;
+            uint32_t    buttonMaskMin;
+        };
+
+        typedef std::vector<InputMapping> InputMappingTable;
+
+        InputMappingTable   mInputs;
+        InputManager*       mInputManager;
+    };
 }
 
 class Application
@@ -60,6 +114,25 @@ public:
     void terminate();
 
 private:
+    enum
+    {
+        Input_A,
+        Input_B,
+        Input_Select,
+        Input_Start,
+        Input_VerticalAxis,
+        Input_HorizontalAxis,
+        Input_PlayerCount,
+    };
+
+    enum
+    {
+        Input_Exit,
+        Input_Player1,
+        Input_Player2 = Input_Player1 + Input_PlayerCount,
+        Input_Count = Input_Player2 + Input_PlayerCount,
+    };
+
     bool create();
     void destroy();
     bool createSound(const std::string& romName);
@@ -105,9 +178,10 @@ private:
     NES::TextWriter*            mTimingWriter;
     NES::Rom*                   mRom;
     NES::Context*               mContext;
-    NES::GroupController*       mPlayer1Controllers;
-    NES::KeyboardController*    mKeyboard;
-    NES::GameController*        mGameController;
+    InputManager                mInputManager;
+    KeyboardDevice*             mKeyboard;
+    GamepadDevice*              mGamepad;
+    StandardController*         mPlayer1Controller;
     NES::InputRecorder*         mRecorder;
     NES::InputPlayback*         mPlayback;
     NES::InputController*       mPlayer1;
@@ -136,9 +210,9 @@ Application::Application()
     , mTimingWriter(nullptr)
     , mRom(nullptr)
     , mContext(nullptr)
-    , mPlayer1Controllers(nullptr)
     , mKeyboard(nullptr)
-    , mGameController(nullptr)
+    , mGamepad(nullptr)
+    , mPlayer1Controller(nullptr)
     , mRecorder(nullptr)
     , mPlayback(nullptr)
     , mPlayer1(nullptr)
@@ -222,45 +296,52 @@ bool Application::create()
     if (mConfig.autoLoad)
         loadGameState(mGameStatePath);
 
-    mPlayer1Controllers = NES::GroupController::create();
-    if (!mPlayer1Controllers)
-        return false;
-    mPlayer1 = mPlayer1Controllers;
+    mInputManager.create(Input_Count);
 
-    mKeyboard = NES::KeyboardController::create();
+    mKeyboard = KeyboardDevice::create();
     if (!mKeyboard)
         return false;
-    mKeyboard->addKey(SDL_SCANCODE_UP, NES::Context::ButtonUp);
-    mKeyboard->addKey(SDL_SCANCODE_DOWN, NES::Context::ButtonDown);
-    mKeyboard->addKey(SDL_SCANCODE_LEFT, NES::Context::ButtonLeft);
-    mKeyboard->addKey(SDL_SCANCODE_RIGHT, NES::Context::ButtonRight);
-    mKeyboard->addKey(SDL_SCANCODE_KP_8, NES::Context::ButtonUp);
-    mKeyboard->addKey(SDL_SCANCODE_KP_2, NES::Context::ButtonDown);
-    mKeyboard->addKey(SDL_SCANCODE_KP_4, NES::Context::ButtonLeft);
-    mKeyboard->addKey(SDL_SCANCODE_KP_6, NES::Context::ButtonRight);
-    mKeyboard->addKey(SDL_SCANCODE_X, NES::Context::ButtonB);
-    mKeyboard->addKey(SDL_SCANCODE_Z, NES::Context::ButtonA);
-    mKeyboard->addKey(SDL_SCANCODE_A, NES::Context::ButtonSelect);
-    mKeyboard->addKey(SDL_SCANCODE_S, NES::Context::ButtonStart);
-    mPlayer1Controllers->addController(*mKeyboard);
 
-    mGameController = NES::GameController::create(0);
-    if (mGameController)
+    mKeyboard->addKey(SDL_SCANCODE_ESCAPE, Input_Exit);
+
+    mKeyboard->addKey(SDL_SCANCODE_UP, Input_Player1 + Input_VerticalAxis, -1.0f);
+    mKeyboard->addKey(SDL_SCANCODE_DOWN, Input_Player1 + Input_VerticalAxis, +1.0f);
+    mKeyboard->addKey(SDL_SCANCODE_LEFT, Input_Player1 + Input_HorizontalAxis, -1.0f);
+    mKeyboard->addKey(SDL_SCANCODE_RIGHT, Input_Player1 + Input_HorizontalAxis, +1.0f);
+    mKeyboard->addKey(SDL_SCANCODE_KP_8, Input_Player1 + Input_VerticalAxis, -1.0f);
+    mKeyboard->addKey(SDL_SCANCODE_KP_2, Input_Player1 + Input_VerticalAxis, +1.0f);
+    mKeyboard->addKey(SDL_SCANCODE_KP_4, Input_Player1 + Input_HorizontalAxis, -1.0f);
+    mKeyboard->addKey(SDL_SCANCODE_KP_6, Input_Player1 + Input_HorizontalAxis, +1.0f);
+    mKeyboard->addKey(SDL_SCANCODE_X, Input_Player1 + Input_B);
+    mKeyboard->addKey(SDL_SCANCODE_Z, Input_Player1 + Input_A);
+    mKeyboard->addKey(SDL_SCANCODE_A, Input_Player1 + Input_Select);
+    mKeyboard->addKey(SDL_SCANCODE_S, Input_Player1 + Input_Start);
+
+    mGamepad = GamepadDevice::create(0);
+    if (mGamepad)
     {
-        mGameController->addButton(SDL_CONTROLLER_BUTTON_DPAD_UP, NES::Context::ButtonUp);
-        mGameController->addButton(SDL_CONTROLLER_BUTTON_DPAD_DOWN, NES::Context::ButtonDown);
-        mGameController->addButton(SDL_CONTROLLER_BUTTON_DPAD_LEFT, NES::Context::ButtonLeft);
-        mGameController->addButton(SDL_CONTROLLER_BUTTON_DPAD_RIGHT, NES::Context::ButtonRight);
-        mGameController->addAxis(SDL_CONTROLLER_AXIS_LEFTX, NES::Context::ButtonLeft, NES::Context::ButtonRight);
-        mGameController->addAxis(SDL_CONTROLLER_AXIS_LEFTY, NES::Context::ButtonUp, NES::Context::ButtonDown);
-        mGameController->addButton(SDL_CONTROLLER_BUTTON_BACK, NES::Context::ButtonSelect);
-        mGameController->addButton(SDL_CONTROLLER_BUTTON_START, NES::Context::ButtonStart);
-        mGameController->addButton(SDL_CONTROLLER_BUTTON_A, NES::Context::ButtonA);
-        mGameController->addButton(SDL_CONTROLLER_BUTTON_B, NES::Context::ButtonB);
-        mGameController->addButton(SDL_CONTROLLER_BUTTON_X, NES::Context::ButtonB);
-        mGameController->addButton(SDL_CONTROLLER_BUTTON_Y, NES::Context::ButtonA);
-        mPlayer1Controllers->addController(*mGameController);
+        mGamepad->addButton(SDL_CONTROLLER_BUTTON_DPAD_UP, Input_Player1 + Input_VerticalAxis, -1.0f);
+        mGamepad->addButton(SDL_CONTROLLER_BUTTON_DPAD_DOWN, Input_Player1 + Input_VerticalAxis, +1.0f);
+        mGamepad->addButton(SDL_CONTROLLER_BUTTON_DPAD_LEFT, Input_Player1 + Input_HorizontalAxis, -1.0f);
+        mGamepad->addButton(SDL_CONTROLLER_BUTTON_DPAD_RIGHT, Input_Player1 + Input_HorizontalAxis, +1.0f);
+        mGamepad->addAxis(SDL_CONTROLLER_AXIS_LEFTX, Input_Player1 + Input_HorizontalAxis);
+        mGamepad->addAxis(SDL_CONTROLLER_AXIS_LEFTY, Input_Player1 + Input_VerticalAxis);
+        mGamepad->addButton(SDL_CONTROLLER_BUTTON_BACK, Input_Player1 + Input_Select);
+        mGamepad->addButton(SDL_CONTROLLER_BUTTON_START, Input_Player1 + Input_Start);
+        mGamepad->addButton(SDL_CONTROLLER_BUTTON_A, Input_Player1 + Input_A);
+        mGamepad->addButton(SDL_CONTROLLER_BUTTON_B, Input_Player1 + Input_B);
+        mGamepad->addButton(SDL_CONTROLLER_BUTTON_X, Input_Player1 + Input_B);
+        mGamepad->addButton(SDL_CONTROLLER_BUTTON_Y, Input_Player1 + Input_A);
     }
+
+    mPlayer1Controller = new StandardController(mInputManager);
+    mPlayer1Controller->addInput(Input_Player1 + Input_HorizontalAxis, NES::Context::ButtonRight, NES::Context::ButtonLeft);
+    mPlayer1Controller->addInput(Input_Player1 + Input_VerticalAxis, NES::Context::ButtonDown, NES::Context::ButtonUp);
+    mPlayer1Controller->addInput(Input_Player1 + Input_B, NES::Context::ButtonB);
+    mPlayer1Controller->addInput(Input_Player1 + Input_A, NES::Context::ButtonA);
+    mPlayer1Controller->addInput(Input_Player1 + Input_Select, NES::Context::ButtonSelect);
+    mPlayer1Controller->addInput(Input_Player1 + Input_Start, NES::Context::ButtonStart);
+    mPlayer1 = mPlayer1Controller;
 
     if (!mConfig.recorded.empty())
     {
@@ -326,10 +407,16 @@ void Application::destroy()
         mRecorder = nullptr;
     }
 
-    if (mGameController)
+    if (mPlayer1Controller)
     {
-        mGameController->dispose();
-        mGameController = nullptr;
+        delete mPlayer1Controller;
+        mPlayer1Controller = nullptr;
+    }
+
+    if (mGamepad)
+    {
+        mGamepad->dispose();
+        mGamepad = nullptr;
     }
 
     if (mKeyboard)
@@ -338,11 +425,7 @@ void Application::destroy()
         mKeyboard = nullptr;
     }
 
-    if (mPlayer1Controllers)
-    {
-        mPlayer1Controllers->dispose();
-        mPlayer1Controllers = nullptr;
-    }
+    mInputManager.destroy();
 
     if (mContext)
     {
@@ -523,22 +606,20 @@ void Application::handleEvents()
     {
         if (event.type == SDL_QUIT)
             terminate();
-
-        if (event.type == SDL_KEYDOWN)
-        {
-            switch (event.key.keysym.sym)
-            {
-            case SDLK_ESCAPE:
-                terminate();
-                break;
-            }
-        }
     }
 }
 
 void Application::update()
 {
     static uint32_t frameTrigger = 640;
+
+    mInputManager.clearInputs();
+    mKeyboard->update(mInputManager);
+    if (mGamepad)
+        mGamepad->update(mInputManager);
+
+    if (mInputManager.isPressed(Input_Exit))
+        terminate();
 
     void* pixels = nullptr;
     int pitch = 0;
@@ -672,7 +753,7 @@ int main()
     Application::Config config;
     config.saveFolder = "Save";
     //config.saveAudio = true;
-    config.rom = "C:\\Emu\\NES\\roms\\smb3.nes";
+    config.rom = "C:\\Emu\\NES\\roms\\metroid.nes";
     //config.rom = "ROMs\\exitbike.nes";
     //config.rom = "ROMs\\megaman2.nes";
     //config.rom = "ROMs\\mario.nes";

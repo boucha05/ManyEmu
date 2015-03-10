@@ -19,6 +19,7 @@
     <ClCompile Include="Path.cpp" />
     <ClCompile Include="Mapper2.cpp" />
     <ClCompile Include="Mapper4.cpp" />
+    <ClCompile Include="InputManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Palette.h" />
@@ -34,5 +35,6 @@
     <ClInclude Include="Serialization.h" />
     <ClInclude Include="Stream.h" />
     <ClInclude Include="Path.h" />
+    <ClInclude Include="InputManager.h" />
   </ItemGroup>
 </Project>

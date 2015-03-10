@@ -112,6 +112,7 @@
     <ClCompile Include="APU.cpp" />
     <ClCompile Include="Clock.cpp" />
     <ClCompile Include="InputController.cpp" />
+    <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="Mapper1.cpp" />
     <ClCompile Include="Mapper2.cpp" />
     <ClCompile Include="Mapper4.cpp" />
@@ -132,6 +133,7 @@
     <ClInclude Include="APU.h" />
     <ClInclude Include="Clock.h" />
     <ClInclude Include="InputController.h" />
+    <ClInclude Include="InputManager.h" />
     <ClInclude Include="MemoryBus.h" />
     <ClInclude Include="Cpu6502.h" />
     <ClInclude Include="Mappers.h" />
