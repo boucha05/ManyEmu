@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <string>
 #include <vector>
+#include <deque>
 #include "InputController.h"
 #include "InputManager.h"
 #include "Path.h"
@@ -87,6 +88,8 @@ public:
         std::string     recorded;
         std::string     saveFolder;
         uint32_t        frameSkip;
+        uint32_t        replayBufferSize;
+        uint32_t        replayFrameSeek;
         uint32_t        samplingRate;
         float           soundDelay;
         bool            playback;
@@ -97,6 +100,8 @@ public:
 
         Config()
             : frameSkip(0)
+            , replayBufferSize(10 * 1024 * 1024)
+            , replayFrameSeek(5)
             , samplingRate(44100)
             , soundDelay(0.0500f)
             , playback(false)
@@ -128,6 +133,7 @@ private:
     enum
     {
         Input_Exit,
+        Input_TimeDir,
         Input_Player1,
         Input_Player2 = Input_Player1 + Input_PlayerCount,
         Input_Count = Input_Player2 + Input_PlayerCount,
@@ -182,9 +188,27 @@ private:
     KeyboardDevice*             mKeyboard;
     GamepadDevice*              mGamepad;
     StandardController*         mPlayer1Controller;
-    NES::InputRecorder*         mRecorder;
-    NES::InputPlayback*         mPlayback;
+    NES::InputRecorder*         mInputRecorder;
+    NES::InputPlayback*         mInputPlayback;
     NES::InputController*       mPlayer1;
+
+    struct Playback
+    {
+        Playback(size_t size)
+            : elapsedFrames(0)
+            , seekCapacity(0)
+            , stream(size)
+        {
+        }
+
+        typedef std::deque<size_t> SeekQueue;
+
+        uint32_t                    elapsedFrames;
+        uint32_t                    seekCapacity;
+        NES::CircularMemoryStream   stream;
+        SeekQueue                   seekQueue;
+    };
+    Playback*                   mPlayback;
 };
 
 Application::Application()
@@ -213,9 +237,10 @@ Application::Application()
     , mKeyboard(nullptr)
     , mGamepad(nullptr)
     , mPlayer1Controller(nullptr)
-    , mRecorder(nullptr)
-    , mPlayback(nullptr)
+    , mInputRecorder(nullptr)
+    , mInputPlayback(nullptr)
     , mPlayer1(nullptr)
+    , mPlayback(nullptr)
 {
     for (uint32_t n = 0; n < BUFFERING; ++n)
         mTexture[n] = nullptr;
@@ -303,6 +328,7 @@ bool Application::create()
         return false;
 
     mKeyboard->addKey(SDL_SCANCODE_ESCAPE, Input_Exit);
+    mKeyboard->addKey(SDL_SCANCODE_BACKSPACE, Input_TimeDir, -1.0f, +1.0f);
 
     mKeyboard->addKey(SDL_SCANCODE_UP, Input_Player1 + Input_VerticalAxis, -1.0f);
     mKeyboard->addKey(SDL_SCANCODE_DOWN, Input_Player1 + Input_VerticalAxis, +1.0f);
@@ -347,19 +373,19 @@ bool Application::create()
     {
         if (mConfig.playback)
         {
-            mPlayback = NES::InputPlayback::create(*mPlayer1);
-            if (!mPlayback)
+            mInputPlayback = NES::InputPlayback::create(*mPlayer1);
+            if (!mInputPlayback)
                 return false;
-            if (!mPlayback->load(mConfig.recorded.c_str()))
+            if (!mInputPlayback->load(mConfig.recorded.c_str()))
                 return false;
-            mPlayer1 = mPlayback;
+            mPlayer1 = mInputPlayback;
         }
         else
         {
-            mRecorder = NES::InputRecorder::create(*mPlayer1);
-            if (!mRecorder)
+            mInputRecorder = NES::InputRecorder::create(*mPlayer1);
+            if (!mInputRecorder)
                 return false;
-            mPlayer1 = mRecorder;
+            mPlayer1 = mInputRecorder;
         }
     }
 
@@ -372,6 +398,8 @@ bool Application::create()
 
         mTimingWriter = new NES::TextWriter(*mTimingFile);
     }
+
+    mPlayback = new Playback(mConfig.replayBufferSize);
 
     if (!createSound(romName))
         return false;
@@ -387,6 +415,12 @@ void Application::destroy()
 
     mPlayer1 = nullptr;
 
+    if (mPlayback)
+    {
+        delete mPlayback;
+        mPlayback = nullptr;
+    }
+
     if (mTimingWriter)
     {
         delete mTimingWriter;
@@ -399,12 +433,12 @@ void Application::destroy()
         mTimingFile = nullptr;
     }
 
-    if (mRecorder)
+    if (mInputRecorder)
     {
         if (!mConfig.recorded.empty())
-            mRecorder->save(mConfig.recorded.c_str());
-        mRecorder->dispose();
-        mRecorder = nullptr;
+            mInputRecorder->save(mConfig.recorded.c_str());
+        mInputRecorder->dispose();
+        mInputRecorder = nullptr;
     }
 
     if (mPlayer1Controller)
@@ -692,6 +726,45 @@ void Application::update()
         mTimingWriter->write("%7d %6.3f\n", mFrameIndex, frameTime * 1000.0f);
     }
 
+    float timeDir = mInputManager.getInput(Input_TimeDir);
+    if (timeDir < -0.0001f)
+    {
+        if (!mPlayback->seekQueue.empty())
+        {
+            size_t size = mPlayback->seekQueue.back();
+            mPlayback->seekQueue.pop_back();
+            mPlayback->seekCapacity -= size;
+            assert(mPlayback->seekCapacity >= 0);
+            bool valid = mPlayback->stream.setReadOffset(size);
+            if (valid)
+            {
+                NES::BinaryReader reader(mPlayback->stream);
+                mContext->reset();
+                mContext->serializeGameState(reader);
+                mPlayback->stream.rewind(size);
+            }
+        }
+    }
+
+    if (++mPlayback->elapsedFrames >= mConfig.replayFrameSeek)
+    {
+        NES::BinaryWriter writer(mPlayback->stream);
+        mPlayback->stream.setReadOffset(0);
+        mContext->serializeGameState(writer);
+        size_t size = mPlayback->stream.getReadOffset();
+        mPlayback->seekQueue.push_back(size);
+        mPlayback->seekCapacity += size;
+        while (mPlayback->seekCapacity > mConfig.replayBufferSize)
+        {
+            assert(!mPlayback->seekQueue.empty());
+            size_t size = mPlayback->seekQueue.front();
+            mPlayback->seekQueue.pop_front();
+            mPlayback->seekCapacity -= size;
+            assert(mPlayback->seekCapacity >= 0);
+        }
+        mPlayback->elapsedFrames = 0;
+    }
+
     ++mFrameIndex;
 }
 
@@ -753,7 +826,7 @@ int main()
     Application::Config config;
     config.saveFolder = "Save";
     //config.saveAudio = true;
-    config.rom = "C:\\Emu\\NES\\roms\\metroid.nes";
+    config.rom = "C:\\Emu\\NES\\roms\\rygar.nes";
     //config.rom = "ROMs\\exitbike.nes";
     //config.rom = "ROMs\\megaman2.nes";
     //config.rom = "ROMs\\mario.nes";

@@ -123,10 +123,10 @@ namespace NES
 
         void serializeGameState(NES::ISerializer& serializer)
         {
-            uint32_t version = 1;
+            uint32_t version = 2;
             serializer.serialize(version);
             serializer.serialize(mChrRam);
-            if (!mRom->getDescription().battery)
+            if ((version >= 2) || !mRom->getDescription().battery)
                 serializer.serialize(mPrgRam);
             serializer.serialize(mShift);
             serializer.serialize(mCycle);

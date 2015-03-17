@@ -162,6 +162,7 @@ namespace NES
         , mSurface(nullptr)
         , mPitch(0)
     {
+        initialize();
     }
 
     PPU::~PPU()
@@ -174,7 +175,8 @@ namespace NES
         memset(mRegister, 0, sizeof(mRegister));
         mSprite0StartTick = 0;
         mSprite0EndTick = 0;
-        memset(&mOAM[0], 0, mOAM.size());
+        mOAM.clear();
+        mOAM.resize(OAM_SIZE, 0);
         memset(mRegister, 0, sizeof(mRegister));
         mRegister[PPU_REG_PPUSTATUS] |= PPU_STATUS_VBLANK;
         mVisibleArea = false;
@@ -317,6 +319,7 @@ namespace NES
         if (mClock)
             mClock->removeListener(*this);
         mClock = nullptr;
+        initialize();
     }
 
     void PPU::reset()

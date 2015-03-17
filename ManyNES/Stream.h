@@ -21,6 +21,7 @@ namespace NES
     public:
         MemoryStream();
         virtual ~MemoryStream();
+        void clear();
         virtual bool read(void* data, size_t size);
         virtual bool write(const void* data, size_t size);
         void* getBuffer();
@@ -29,6 +30,27 @@ namespace NES
     private:
         std::vector<uint8_t>    mBuffer;
         size_t                  mReadPos;
+        size_t                  mWritePos;
+    };
+
+    class CircularMemoryStream : public IStream
+    {
+    public:
+        CircularMemoryStream(size_t size);
+        virtual ~CircularMemoryStream();
+        void clear();
+        size_t getReadOffset() const;
+        size_t getWritePos() const;
+        bool setReadOffset(size_t offset);
+        bool rewind(size_t offset);
+        virtual bool read(void* data, size_t size);
+        virtual bool write(const void* data, size_t size);
+
+    private:
+        std::vector<uint8_t>    mBuffer;
+        bool                    mOverflow;
+        size_t                  mAvailable;
+        size_t                  mReadOffset;
         size_t                  mWritePos;
     };
 

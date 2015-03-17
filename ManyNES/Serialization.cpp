@@ -37,6 +37,11 @@ namespace NES
     {
     }
 
+    bool BinaryReader::isReading() const
+    {
+        return true;
+    }
+
     void BinaryReader::serialize(uint32_t& data)
     {
         serializeSafe(&data, sizeof(data));
@@ -88,6 +93,11 @@ namespace NES
     {
     }
 
+    bool BinaryWriter::isReading() const
+    {
+        return false;
+    }
+
     void BinaryWriter::serialize(uint32_t& data)
     {
         mStream->write(&data, sizeof(data));
@@ -132,6 +142,11 @@ namespace NES
 
     TextWriter::~TextWriter()
     {
+    }
+
+    bool TextWriter::isReading() const
+    {
+        return false;
     }
 
     void TextWriter::serialize(uint32_t& data)

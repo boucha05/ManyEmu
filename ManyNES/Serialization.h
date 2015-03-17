@@ -12,6 +12,7 @@ namespace NES
     class ISerializer
     {
     public:
+        virtual bool isReading() const = 0;
         virtual void serialize(uint32_t& value) = 0;
         virtual void serialize(int32_t& value) = 0;
         virtual void serialize(uint16_t& data) = 0;
@@ -22,6 +23,11 @@ namespace NES
         void serialize(uint32_t* values, size_t size);
         void serialize(uint8_t* values, size_t size);
         void serialize(std::vector<uint8_t>& value);
+
+        bool isWriting() const
+        {
+            return !isReading();
+        }
     };
 
     class IArchive : public ISerializer
@@ -35,6 +41,7 @@ namespace NES
     public:
         BinaryReader(IStream& stream);
         ~BinaryReader();
+        virtual bool isReading() const;
         virtual void serialize(uint32_t& data);
         virtual void serialize(int32_t& data);
         virtual void serialize(uint16_t& data);
@@ -58,6 +65,7 @@ namespace NES
     public:
         BinaryWriter(IStream& stream);
         ~BinaryWriter();
+        virtual bool isReading() const;
         virtual void serialize(uint32_t& data);
         virtual void serialize(int32_t& data);
         virtual void serialize(uint16_t& data);
@@ -79,6 +87,7 @@ namespace NES
     public:
         TextWriter(IStream& stream);
         ~TextWriter();
+        virtual bool isReading() const;
         virtual void serialize(uint32_t& data);
         virtual void serialize(int32_t& data);
         virtual void serialize(uint16_t& data);
