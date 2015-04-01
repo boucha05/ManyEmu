@@ -826,7 +826,7 @@ int main()
     Application::Config config;
     config.saveFolder = "Save";
     //config.saveAudio = true;
-    config.rom = "C:\\Emu\\NES\\roms\\rygar.nes";
+    config.rom = "C:\\Emu\\NES\\roms\\smb3.nes";
     //config.rom = "ROMs\\exitbike.nes";
     //config.rom = "ROMs\\megaman2.nes";
     //config.rom = "ROMs\\mario.nes";

@@ -133,8 +133,8 @@ namespace NES
 
     void Clock::serialize(ISerializer& serializer)
     {
-        // Can't serialize properly if we have timers queued
-        assert(mTimers.empty());
+        // TODO: Can't serialize properly if we have timers queued
+        //assert(mTimers.empty());
 
         uint32_t version = 1;
         serializer.serialize(mTargetTicks);

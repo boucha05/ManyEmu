@@ -756,28 +756,34 @@ namespace NES
                     continue;
                 uint32_t srcPos = bit ^ flipX;
                 uint8_t src = dest[dstPos];
+
+                uint8_t value = 0;
+                value |= patternMask0[srcPos] & 1;
+                value |= patternMask1[srcPos] & 2;
+
                 if (mCheckHitTest && (index == 0) && (src & 3))
                 {
-                    uint8_t value = patternMask0[srcPos] | patternMask1[srcPos];
                     if (value)
                     {
                         mCheckHitTest = false;
                         mRegister[PPU_REG_PPUSTATUS] |= PPU_STATUS_HIT_TEST;
                     }
                 }
-                if ((src & 0x10) || ((src & 3) && (attributes & 0x20)))
+
+                // Handle sprite priority
+                if (((src & 0x20) != 0) || !value)
                     continue;
-                uint8_t value = 0;
-                value |= patternMask0[srcPos] & 1;
-                value |= patternMask1[srcPos] & 2;
-                if (!value)
-                    continue;
+
+                // Merge with background
+                bool hidden = (src & 3) && (attributes & 0x20);
                 value |= palette;
-                dest[dstPos] = value;
+                value = hidden ? src : value;
+
+                dest[dstPos] = value | 0x20;
             }
 
-            if (++rendered == 8)
-                break;
+            if (++rendered >= 8)
+                return;
         }
     }
 
@@ -825,35 +831,41 @@ namespace NES
                     continue;
                 uint32_t srcPos = bit ^ flipX;
                 uint8_t src = dest[dstPos];
+
+                uint8_t value = 0;
+                value |= patternMask0[srcPos] & 1;
+                value |= patternMask1[srcPos] & 2;
+
                 if (mCheckHitTest && (index == 0) && (src & 3))
                 {
-                    uint8_t value = patternMask0[srcPos] | patternMask1[srcPos];
                     if (value)
                     {
                         mCheckHitTest = false;
                         mRegister[PPU_REG_PPUSTATUS] |= PPU_STATUS_HIT_TEST;
                     }
                 }
-                if ((src & 0x10) || ((src & 3) && (attributes & 0x20)))
+
+                // Handle sprite priority
+                if (((src & 0x20) != 0) || !value)
                     continue;
-                uint8_t value = 0;
-                value |= patternMask0[srcPos] & 1;
-                value |= patternMask1[srcPos] & 2;
-                if (!value)
-                    continue;
+
+                // Merge with background
+                bool hidden = (src & 3) && (attributes & 0x20);
                 value |= palette;
-                dest[dstPos] = value;
+                value = hidden ? src : value;
+
+                dest[dstPos] = value | 0x20;
             }
 
-            if (++rendered == 8)
-                break;
+            if (++rendered >= 8)
+                return;
         }
     }
 
     void PPU::applyPalette(uint8_t* dest, const uint8_t* palette, uint32_t count)
     {
         for (uint32_t index = 0; index < count; ++index)
-            dest[index] = palette[dest[index]];
+            dest[index] = palette[dest[index] & 0x1f];
     }
 
     void PPU::blitSurface(uint32_t* dest, const uint8_t* src, uint32_t count)
