@@ -1,8 +1,8 @@
 #include "Mappers.h"
 #include "MemoryBus.h"
+#include "nes.h"
 #include "PPU.h"
 #include "Serialization.h"
-#include <assert.h>
 #include <vector>
 
 namespace
@@ -234,8 +234,8 @@ namespace NES
 
             if (romDescription.chrRomPages == 0)
             {
-                assert(chrBank0 < 2);
-                assert(chrBank1 < 2);
+                NES_ASSERT(chrBank0 < 2);
+                NES_ASSERT(chrBank1 < 2);
                 mMemChrRomRead[0].setReadMemory(&mChrRam[4 * 1024 * chrBank0]);
                 mMemChrRomRead[1].setReadMemory(&mChrRam[4 * 1024 * chrBank1]);
                 mMemChrRomWrite[0].setWriteMemory(&mChrRam[4 * 1024 * chrBank0]);
@@ -243,8 +243,8 @@ namespace NES
             }
             else
             {
-                assert(chrBank0 < romDescription.chrRomPages * 2);
-                assert(chrBank1 < romDescription.chrRomPages * 2);
+                NES_ASSERT(chrBank0 < romDescription.chrRomPages * 2);
+                NES_ASSERT(chrBank1 < romDescription.chrRomPages * 2);
                 mMemChrRomRead[0].setReadMemory(&romContent.chrRom[4 * 1024 * chrBank0]);
                 mMemChrRomRead[1].setReadMemory(&romContent.chrRom[4 * 1024 * chrBank1]);
                 mMemChrRomWrite[0].setWriteMethod(unsupportedWrite, nullptr);
@@ -272,11 +272,11 @@ namespace NES
                 break;
 
             default:
-                assert(false);
+                NES_ASSERT(false);
             }
 
-            assert(mPrgRomPage[0] < romDescription.prgRomPages);
-            assert(mPrgRomPage[1] < romDescription.prgRomPages);
+            NES_ASSERT(mPrgRomPage[0] < romDescription.prgRomPages);
+            NES_ASSERT(mPrgRomPage[1] < romDescription.prgRomPages);
             mMemPrgRomRead[0].setReadMemory(&romContent.prgRom[16 * 1024 * mPrgRomPage[0]]);
             mMemPrgRomRead[1].setReadMemory(&romContent.prgRom[16 * 1024 * mPrgRomPage[1]]);
         }
@@ -310,13 +310,13 @@ namespace NES
 
         static uint8_t unsupportedRead(void* context, int32_t ticks, uint32_t addr)
         {
-            assert(0);
+            NES_ASSERT(0);
             return 0;
         }
 
         static void unsupportedWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value)
         {
-            assert(0);
+            NES_ASSERT(0);
         }
 
         void enablePrgRam()
@@ -359,7 +359,7 @@ namespace NES
                 break;
 
             default:
-                assert(false);
+                NES_ASSERT(false);
             }
             updateMemoryMap();
         }

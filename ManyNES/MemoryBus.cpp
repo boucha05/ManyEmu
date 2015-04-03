@@ -1,11 +1,11 @@
 #include "MemoryBus.h"
-#include <assert.h>
+#include "NES.h"
 #include <memory.h>
 #include <stdio.h>
 #include <algorithm>
 
 #if _DEBUG
-#define ASSERT(expr)    assert(expr)
+#define ASSERT(expr)    NES_ASSERT(expr)
 #else
 #define ASSERT(expr)    (expr)
 #endif
@@ -15,7 +15,7 @@ namespace
     void NOT_IMPLEMENTED(const char* func)
     {
         printf("%s(): function not implemented\n", func);
-        assert(false);
+        NES_ASSERT(false);
     }
 }
 

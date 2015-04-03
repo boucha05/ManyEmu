@@ -3,7 +3,6 @@
 
 #include <SDL.h>
 #include <gl/glew.h>
-#include <assert.h>
 #include <string>
 #include <vector>
 #include <deque>
@@ -14,6 +13,7 @@
 #include "Stream.h"
 #include "Tests.h"
 #include "nes.h"
+#include <Windows.h>
 
 namespace
 {
@@ -149,6 +149,7 @@ private:
     bool saveGameState(const std::string& path);
     void serializeGameState(NES::ISerializer& serializer);
     void handleEvents();
+    void tryExecute();
     void update();
     void render();
     void audioCallback(int16_t* data, uint32_t size);
@@ -191,6 +192,7 @@ private:
     NES::InputRecorder*         mInputRecorder;
     NES::InputPlayback*         mInputPlayback;
     NES::InputController*       mPlayer1;
+    bool                        mDead;
 
     struct Playback
     {
@@ -241,6 +243,7 @@ Application::Application()
     , mInputPlayback(nullptr)
     , mPlayer1(nullptr)
     , mPlayback(nullptr)
+    , mDead(false)
 {
     for (uint32_t n = 0; n < BUFFERING; ++n)
         mTexture[n] = nullptr;
@@ -643,6 +646,27 @@ void Application::handleEvents()
     }
 }
 
+int getExceptionFilter(void* context)
+{
+    return EXCEPTION_EXECUTE_HANDLER;
+}
+
+void Application::tryExecute()
+{
+    if (!mDead)
+    {
+        __try
+        {
+            mContext->update();
+        }
+        __except (getExceptionFilter(GetExceptionInformation()))
+        {
+            printf("Dead!\n");
+            mDead = true;
+        }
+    }
+}
+
 void Application::update()
 {
     static uint32_t frameTrigger = 640;
@@ -654,6 +678,9 @@ void Application::update()
 
     if (mInputManager.isPressed(Input_Exit))
         terminate();
+
+    if (mDead)
+        return;
 
     void* pixels = nullptr;
     int pitch = 0;
@@ -681,7 +708,7 @@ void Application::update()
     }
     
     uint64_t frameStart = SDL_GetPerformanceCounter();
-    mContext->update();
+    tryExecute();
     uint64_t frameEnd = SDL_GetPerformanceCounter();
 
     if (pixels)
@@ -734,7 +761,7 @@ void Application::update()
             size_t size = mPlayback->seekQueue.back();
             mPlayback->seekQueue.pop_back();
             mPlayback->seekCapacity -= size;
-            assert(mPlayback->seekCapacity >= 0);
+            NES_ASSERT(mPlayback->seekCapacity >= 0);
             bool valid = mPlayback->stream.setReadOffset(size);
             if (valid)
             {
@@ -756,11 +783,11 @@ void Application::update()
         mPlayback->seekCapacity += size;
         while (mPlayback->seekCapacity > mConfig.replayBufferSize)
         {
-            assert(!mPlayback->seekQueue.empty());
+            NES_ASSERT(!mPlayback->seekQueue.empty());
             size_t size = mPlayback->seekQueue.front();
             mPlayback->seekQueue.pop_front();
             mPlayback->seekCapacity -= size;
-            assert(mPlayback->seekCapacity >= 0);
+            NES_ASSERT(mPlayback->seekCapacity >= 0);
         }
         mPlayback->elapsedFrames = 0;
     }

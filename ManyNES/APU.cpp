@@ -1,15 +1,15 @@
 #include "APU.h"
 #include "MemoryBus.h"
+#include "nes.h"
 #include "Serialization.h"
-#include <assert.h>
 #include <vector>
 
 namespace
 {
     void NOT_IMPLEMENTED(const char* feature)
     {
-        //printf("APU: feature not implemented: %s\n", feature);
-        //assert(false);
+        printf("APU: feature not implemented: %s\n", feature);
+        NES_ASSERT(false);
     }
 
     void dummyTimerCallback(void* context, int32_t ticks)
@@ -111,7 +111,7 @@ namespace NES
         mSampleTick = 0;
         if (mSoundBuffer)
         {
-            assert(mSoundBufferOffset == mSoundBufferSize - 1);
+            NES_ASSERT(mSoundBufferOffset == mSoundBufferSize - 1);
             while (mSoundBufferOffset < mSoundBufferSize)
             {
                 mSoundBuffer[mSoundBufferOffset] = mSoundBuffer[mSoundBufferOffset - 1];
@@ -119,9 +119,9 @@ namespace NES
             }
             mSoundBufferOffset -= mSoundBufferSize;
         }
-        assert(mBufferTick >= 0);
-        assert(mSequenceTick >= 0);
-        assert(mSampleTick >= 0);
+        NES_ASSERT(mBufferTick >= 0);
+        NES_ASSERT(mSequenceTick >= 0);
+        NES_ASSERT(mSampleTick >= 0);
         mDMC.advanceClock(ticks);
     }
 
@@ -409,7 +409,7 @@ namespace NES
                     break;
 
                 default:
-                    assert(false);
+                    NES_ASSERT(false);
                 }
             }
             else
@@ -437,7 +437,7 @@ namespace NES
                     break;
 
                 default:
-                    assert(false);
+                    NES_ASSERT(false);
                 }
             }
             mClock->addEvent(onSequenceEvent, this, mSequenceTick);
@@ -657,7 +657,7 @@ namespace NES
             break;
 
         default:
-            assert(false);
+            NES_ASSERT(false);
         }
     }
 
@@ -768,7 +768,7 @@ namespace NES
             break;
 
         case 1:
-            assert(false);
+            NES_ASSERT(false);
             break;
 
         case 2:
@@ -785,7 +785,7 @@ namespace NES
             break;
 
         default:
-            assert(false);
+            NES_ASSERT(false);
         }
     }
 
@@ -917,7 +917,7 @@ namespace NES
             break;
 
         case 1:
-            assert(false);
+            NES_ASSERT(false);
             break;
 
         case 2:
@@ -933,7 +933,7 @@ namespace NES
             break;
 
         default:
-            assert(false);
+            NES_ASSERT(false);
         }
     }
 
@@ -1119,7 +1119,7 @@ namespace NES
             break;
 
         default:
-            assert(false);
+            NES_ASSERT(false);
         }
     }
 

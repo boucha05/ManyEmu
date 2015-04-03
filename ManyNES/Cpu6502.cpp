@@ -1,7 +1,7 @@
 #include "Cpu6502.h"
 #include "MemoryBus.h"
+#include "nes.h"
 #include "Serialization.h"
-#include <assert.h>
 #include <memory.h>
 #include <stdio.h>
 
@@ -147,13 +147,13 @@ namespace
     void NOT_IMPLEMENTED_ADDR_MODE(const char* mode)
     {
         printf("Address mode %s not implemented\n", mode);
-        assert(false);
+        NES_ASSERT(false);
     }
 
     void NOT_IMPLEMENTED(const char* insn)
     {
         printf("Instruction %s not implemented\n", insn);
-        assert(false);
+        NES_ASSERT(false);
     }
 
     inline uint8_t read8(CPU_STATE& state, uint16_t addr)
@@ -225,7 +225,7 @@ namespace
         case ADDR_INDX: sprintf(temp, "%s ($%02X,X)", opcode, peek8(state, pc)); break;
         case ADDR_INDY: sprintf(temp, "%s ($%02X),Y", opcode, peek8(state, pc)); break;
         default:
-            assert(0);
+            NES_ASSERT(0);
         }
         if (size-- > 0)
             strncpy(dest, temp, size);

@@ -1,6 +1,6 @@
+#include "nes.h"
 #include "PPU.h"
 #include "Serialization.h"
-#include <assert.h>
 #include <vector>
 
 namespace
@@ -95,7 +95,7 @@ namespace
     void NOT_IMPLEMENTED()
     {
         printf("Feature not implemented\n");
-        assert(false);
+        NES_ASSERT(false);
     }
 
     uint8_t patternTableNotImplementedRead(void* contex, int32_t ticks, uint32_t addr)
@@ -918,8 +918,8 @@ namespace NES
         uint32_t scrollY = ((mScanlineAddress & 0x03e0) >> 2) | ((mScanlineAddress & 0x7000) >> 12);
         scrollX += ((mScanlineAddress & 0x0400) ? 256 : 0);
         scrollY += ((mScanlineAddress & 0x0800) ? 240 : 0);
-        assert(scrollX < 512);
-        assert(scrollY < 240 + 256);
+        NES_ASSERT(scrollX < 512);
+        NES_ASSERT(scrollY < 240 + 256);
         if (scrollY >= 480)
             scrollY -= 480;
 
@@ -1155,7 +1155,7 @@ namespace NES
                 break;
 
             default:
-                assert(false);
+                NES_ASSERT(false);
             }
         }
 

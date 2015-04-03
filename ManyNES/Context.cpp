@@ -4,9 +4,9 @@
 #include "Cpu6502.h"
 #include "Mappers.h"
 #include "MemoryBus.h"
+#include "nes.h"
 #include "PPU.h"
 #include "Serialization.h"
-#include <assert.h>
 #include <vector>
 
 namespace
@@ -44,7 +44,7 @@ namespace
     void NOT_IMPLEMENTED()
     {
         printf("Feature not implemented\n");
-        assert(false);
+        NES_ASSERT(false);
     }
 }
 
@@ -439,5 +439,11 @@ namespace NES
             context = nullptr;
         }
         return context;
+    }
+
+    void Assert(bool valid, const char* msg)
+    {
+        if (!valid)
+            printf("Assertion failed: %s\n", msg);
     }
 }

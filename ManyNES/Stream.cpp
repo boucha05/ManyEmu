@@ -140,7 +140,7 @@ namespace NES
             dst += copySize;
 
             mReadOffset -= copySize;
-            assert((uint32_t)mReadOffset < bufferSize);
+            NES_ASSERT((uint32_t)mReadOffset < bufferSize);
         }
         return true;
     }

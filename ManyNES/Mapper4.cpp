@@ -1,8 +1,8 @@
 #include "Mappers.h"
 #include "MemoryBus.h"
+#include "nes.h"
 #include "PPU.h"
 #include "Serialization.h"
-#include <assert.h>
 #include <vector>
 
 namespace
@@ -145,7 +145,7 @@ namespace
             }
             for (uint32_t bank = 0; bank < 4; ++bank)
             {
-                assert(prgBank[bank] < prgBankCount);
+                NES_ASSERT(prgBank[bank] < prgBankCount);
                 mMemPrgRomRead[bank].setReadMemory(&romContent.prgRom[0x2000 * prgBank[bank]]);
             }
 
@@ -176,7 +176,7 @@ namespace
             }
             for (uint32_t bank = 0; bank < 8; ++bank)
             {
-                assert(chrBank[bank] < chrBankCount);
+                NES_ASSERT(chrBank[bank] < chrBankCount);
                 mMemChrRomRead[bank].setReadMemory(&romContent.chrRom[0x0400 * chrBank[bank]]);
             }
 
@@ -296,7 +296,7 @@ namespace
                 break;
 
             default:
-                assert(false);
+                NES_ASSERT(false);
             }
         }
 

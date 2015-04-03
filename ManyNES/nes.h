@@ -2,11 +2,21 @@
 #define __NES_H__
 
 #include <stdint.h>
+#if defined(DEBUG) || defined(_DEBUG)
+#include <assert.h>
+#define NES_ASSERT(e)   NES::Assert(!!(e), #e)
+#define NES_VERIFY(e)   NES::Assert(!!(e), #e)
+#else
+#define NES_ASSERT(e)
+#define NES_VERIFY(e)   (e)
+#endif
 
 #define NES_ARRAY_SIZE(a)  (sizeof(a) / sizeof((a)[0]))
 
 namespace NES
 {
+    void Assert(bool valid, const char* msg);
+
     class ISerializer;
 
     class IDisposable
