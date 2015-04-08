@@ -20,6 +20,9 @@
     <ClCompile Include="Mapper2.cpp" />
     <ClCompile Include="Mapper4.cpp" />
     <ClCompile Include="InputManager.cpp" />
+    <ClCompile Include="Job.cpp" />
+    <ClCompile Include="Thread.cpp" />
+    <ClCompile Include="GameSession.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Palette.h" />
@@ -36,5 +39,8 @@
     <ClInclude Include="Stream.h" />
     <ClInclude Include="Path.h" />
     <ClInclude Include="InputManager.h" />
+    <ClInclude Include="Job.h" />
+    <ClInclude Include="Thread.h" />
+    <ClInclude Include="GameSession.h" />
   </ItemGroup>
 </Project>

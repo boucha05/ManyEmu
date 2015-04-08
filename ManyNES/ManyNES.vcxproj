@@ -113,8 +113,10 @@
   <ItemGroup>
     <ClCompile Include="APU.cpp" />
     <ClCompile Include="Clock.cpp" />
+    <ClCompile Include="GameSession.cpp" />
     <ClCompile Include="InputController.cpp" />
     <ClCompile Include="InputManager.cpp" />
+    <ClCompile Include="Job.cpp" />
     <ClCompile Include="Mapper1.cpp" />
     <ClCompile Include="Mapper2.cpp" />
     <ClCompile Include="Mapper4.cpp" />
@@ -130,12 +132,15 @@
     <ClCompile Include="Serialization.cpp" />
     <ClCompile Include="Stream.cpp" />
     <ClCompile Include="Tests.cpp" />
+    <ClCompile Include="Thread.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="APU.h" />
     <ClInclude Include="Clock.h" />
+    <ClInclude Include="GameSession.h" />
     <ClInclude Include="InputController.h" />
     <ClInclude Include="InputManager.h" />
+    <ClInclude Include="Job.h" />
     <ClInclude Include="MemoryBus.h" />
     <ClInclude Include="Cpu6502.h" />
     <ClInclude Include="Mappers.h" />
@@ -146,6 +151,7 @@
     <ClInclude Include="Serialization.h" />
     <ClInclude Include="Stream.h" />
     <ClInclude Include="Tests.h" />
+    <ClInclude Include="Thread.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

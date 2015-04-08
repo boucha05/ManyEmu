@@ -6,8 +6,10 @@
 #include <string>
 #include <vector>
 #include <deque>
+#include "GameSession.h"
 #include "InputController.h"
 #include "InputManager.h"
+#include "Job.h"
 #include "Path.h"
 #include "Serialization.h"
 #include "Stream.h"
@@ -141,15 +143,11 @@ private:
 
     bool create();
     void destroy();
-    bool createSound(const std::string& romName);
+    bool createSound();
     void destroySound();
-    bool loadGameData(const std::string& path);
-    bool saveGameData(const std::string& path);
-    bool loadGameState(const std::string& path);
-    bool saveGameState(const std::string& path);
-    void serializeGameState(NES::ISerializer& serializer);
+    bool createGameSession(const std::string& path, const std::string& saveDirectory);
+    void destroyGameSession();
     void handleEvents();
-    void tryExecute();
     void update();
     void render();
     void audioCallback(int16_t* data, uint32_t size);
@@ -158,8 +156,7 @@ private:
     static const uint32_t BUFFERING = 2;
 
     Config                      mConfig;
-    std::string                 mGameDataPath;
-    std::string                 mGameStatePath;
+    JobScheduler                mJobScheduler;
     SDL_Window*                 mWindow;
     SDL_Renderer*               mRenderer;
     SDL_Surface*                mScreen;
@@ -183,8 +180,6 @@ private:
     NES::BinaryWriter*          mSoundWriter;
     NES::FileStream*            mTimingFile;
     NES::TextWriter*            mTimingWriter;
-    NES::Rom*                   mRom;
-    NES::Context*               mContext;
     InputManager                mInputManager;
     KeyboardDevice*             mKeyboard;
     GamepadDevice*              mGamepad;
@@ -192,7 +187,8 @@ private:
     NES::InputRecorder*         mInputRecorder;
     NES::InputPlayback*         mInputPlayback;
     NES::InputController*       mPlayer1;
-    bool                        mDead;
+
+    GameSession                 mGameSession;
 
     struct Playback
     {
@@ -234,8 +230,6 @@ Application::Application()
     , mSoundWriter(nullptr)
     , mTimingFile(nullptr)
     , mTimingWriter(nullptr)
-    , mRom(nullptr)
-    , mContext(nullptr)
     , mKeyboard(nullptr)
     , mGamepad(nullptr)
     , mPlayer1Controller(nullptr)
@@ -243,7 +237,6 @@ Application::Application()
     , mInputPlayback(nullptr)
     , mPlayer1(nullptr)
     , mPlayback(nullptr)
-    , mDead(false)
 {
     for (uint32_t n = 0; n < BUFFERING; ++n)
         mTexture[n] = nullptr;
@@ -274,16 +267,7 @@ void Application::terminate()
 
 bool Application::create()
 {
-    std::string romName;
-    std::string romExtension;
-    std::string romFilename;
-    std::string romDirectory;
-    Path::split(mConfig.rom, romDirectory, romFilename);
-    Path::splitExt(romFilename, romName, romExtension);
-    if (romName.empty())
-        return false;
-
-    std::string saveName = mGameDataPath = Path::join(mConfig.saveFolder, romName);
+    mJobScheduler.create(SDL_GetCPUCount());
 
     mWindow = SDL_CreateWindow("ManyNES", 100, 100, 256 * 2, 240 * 2, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (!mWindow)
@@ -308,21 +292,6 @@ bool Application::create()
     if (!runTestRoms())
         return false;
 #endif
-
-    mRom = NES::Rom::load(mConfig.rom.c_str());
-    if (!mRom)
-        return false;
-
-    mContext = NES::Context::create(*mRom);
-    if (!mContext)
-        return false;
-
-    mGameDataPath = saveName + ".dat";
-    loadGameData(mGameDataPath);
-
-    mGameStatePath = saveName + ".sav";
-    if (mConfig.autoLoad)
-        loadGameState(mGameStatePath);
 
     mInputManager.create(Input_Count);
 
@@ -394,7 +363,7 @@ bool Application::create()
 
     if (mConfig.profile)
     {
-        std::string path = saveName + ".prof";
+        std::string path = Path::join(mConfig.saveFolder, "timings.prof");
         mTimingFile = new NES::FileStream(path.c_str(), "w");
         if (!mTimingFile->valid())
             return false;
@@ -404,16 +373,21 @@ bool Application::create()
 
     mPlayback = new Playback(mConfig.replayBufferSize);
 
-    if (!createSound(romName))
+    if (!createSound())
         return false;
 
     mFirst = true;
+
+    if (!createGameSession(mConfig.rom, mConfig.saveFolder))
+        return false;
 
     return true;
 }
 
 void Application::destroy()
 {
+    destroyGameSession();
+
     destroySound();
 
     mPlayer1 = nullptr;
@@ -464,22 +438,6 @@ void Application::destroy()
 
     mInputManager.destroy();
 
-    if (mContext)
-    {
-        if (mConfig.autoSave && !mFirst)
-            saveGameState(mGameStatePath);
-        saveGameData(mGameDataPath);
-
-        mContext->dispose();
-        mContext = nullptr;
-    }
-
-    if (mRom)
-    {
-        mRom->dispose();
-        mRom = nullptr;
-    }
-
     for (uint32_t n = 0; n < BUFFERING; ++n)
     {
         if (mTexture[n])
@@ -500,9 +458,11 @@ void Application::destroy()
         SDL_DestroyWindow(mWindow);
         mWindow = nullptr;
     }
+
+    mJobScheduler.destroy();
 }
 
-bool Application::createSound(const std::string& romName)
+bool Application::createSound()
 {
     SDL_AudioInit(NULL);
 
@@ -524,7 +484,7 @@ bool Application::createSound(const std::string& romName)
     mSoundBuffer.resize(mConfig.samplingRate / 60, 0);
     if (mConfig.saveAudio)
     {
-        std::string path = Path::join(mConfig.saveFolder, romName) + ".snd";
+        std::string path = Path::join(mConfig.saveFolder, "audio.snd");
         mSoundFile = new NES::FileStream(path.c_str(), "wb");
         if (!mSoundFile->valid())
             return false;
@@ -569,71 +529,22 @@ void Application::destroySound()
     SDL_AudioQuit();
 }
 
-bool Application::loadGameData(const std::string& path)
+bool Application::createGameSession(const std::string& path, const std::string& saveDirectory)
 {
-    if (path.empty())
+    if (!mGameSession.loadRom(path, saveDirectory))
         return false;
-
-    NES::FileStream stream(path.c_str(), "rb");
-    if (!stream.valid())
-        return false;
-
-    NES::BinaryReader reader(stream);
-    mContext->serializeGameData(reader);
+    mGameSession.loadGameData();
+    if (mConfig.autoLoad)
+        mGameSession.loadGameState();
     return true;
 }
 
-bool Application::saveGameData(const std::string& path)
+void Application::destroyGameSession()
 {
-    if (path.empty())
-        return false;
-
-    NES::MemoryStream streamTemp;
-    NES::BinaryWriter writer(streamTemp);
-    mContext->serializeGameData(writer);
-    if (streamTemp.getSize() <= 0)
-        return false;
-
-    NES::FileStream streamFinal(path.c_str(), "wb");
-    bool success = streamFinal.write(streamTemp.getBuffer(), streamTemp.getSize());
-    return success;
-}
-
-bool Application::loadGameState(const std::string& path)
-{
-    if (path.empty())
-        return false;
-
-    NES::FileStream stream(path.c_str(), "rb");
-    if (!stream.valid())
-        return false;
-
-    NES::BinaryReader reader(stream);
-    serializeGameState(reader);
-    return true;
-}
-
-bool Application::saveGameState(const std::string& path)
-{
-    if (path.empty())
-        return false;
-
-    NES::MemoryStream streamTemp;
-    NES::BinaryWriter writer(streamTemp);
-    serializeGameState(writer);
-    if (streamTemp.getSize() <= 0)
-        return false;
-
-    NES::FileStream streamFinal(path.c_str(), "wb");
-    bool success = streamFinal.write(streamTemp.getBuffer(), streamTemp.getSize());
-    return success;
-}
-
-void Application::serializeGameState(NES::ISerializer& serializer)
-{
-    uint32_t version = 1;
-    serializer.serialize(version);
-    mContext->serializeGameState(serializer);
+    if (mConfig.autoSave && !mFirst)
+        mGameSession.saveGameState();
+    mGameSession.saveGameData();
+    mGameSession.unloadRom();
 }
 
 void Application::handleEvents()
@@ -643,27 +554,6 @@ void Application::handleEvents()
     {
         if (event.type == SDL_QUIT)
             terminate();
-    }
-}
-
-int getExceptionFilter(void* context)
-{
-    return EXCEPTION_EXECUTE_HANDLER;
-}
-
-void Application::tryExecute()
-{
-    if (!mDead)
-    {
-        __try
-        {
-            mContext->update();
-        }
-        __except (getExceptionFilter(GetExceptionInformation()))
-        {
-            printf("Dead!\n");
-            mDead = true;
-        }
     }
 }
 
@@ -679,7 +569,7 @@ void Application::update()
     if (mInputManager.isPressed(Input_Exit))
         terminate();
 
-    if (mDead)
+    if (!mGameSession.isValid())
         return;
 
     void* pixels = nullptr;
@@ -687,28 +577,28 @@ void Application::update()
     if (!mConfig.frameSkip)
     {
         if (!SDL_LockTexture(mTexture[mBufferIndex], nullptr, &pixels, &pitch))
-            mContext->setRenderSurface(pixels, pitch);
+            mGameSession.setRenderBuffer(pixels, pitch);
     }
     else
     {
-        mContext->setRenderSurface(nullptr, 0);
+        mGameSession.setRenderBuffer(nullptr, 0);
     }
 
     if (mFrameIndex == frameTrigger)
         frameTrigger = frameTrigger;
 
     if (mPlayer1)
-        mContext->setController(0, mPlayer1->readInput());
+        mGameSession.setController(0, mPlayer1->readInput());
     if (mSoundBuffer.size())
     {
         size_t size = mSoundBuffer.size();
         mSoundBuffer.clear();
         mSoundBuffer.resize(size, 0);
-        mContext->setSoundBuffer(&mSoundBuffer[0], mSoundBuffer.size());
+        mGameSession.setSoundBuffer(&mSoundBuffer[0], mSoundBuffer.size());
     }
     
     uint64_t frameStart = SDL_GetPerformanceCounter();
-    tryExecute();
+    mGameSession.execute();
     uint64_t frameEnd = SDL_GetPerformanceCounter();
 
     if (pixels)
@@ -766,8 +656,7 @@ void Application::update()
             if (valid)
             {
                 NES::BinaryReader reader(mPlayback->stream);
-                mContext->reset();
-                mContext->serializeGameState(reader);
+                mGameSession.serializeGameState(reader);
                 mPlayback->stream.rewind(size);
             }
         }
@@ -777,7 +666,7 @@ void Application::update()
     {
         NES::BinaryWriter writer(mPlayback->stream);
         mPlayback->stream.setReadOffset(0);
-        mContext->serializeGameState(writer);
+        mGameSession.serializeGameState(writer);
         size_t size = mPlayback->stream.getReadOffset();
         mPlayback->seekQueue.push_back(size);
         mPlayback->seekCapacity += size;
@@ -853,7 +742,7 @@ int main()
     Application::Config config;
     config.saveFolder = "Save";
     //config.saveAudio = true;
-    config.rom = "C:\\Emu\\NES\\roms\\smb3.nes";
+    config.rom = "D:\\Emu\\NES\\roms\\smb3.nes";
     //config.rom = "ROMs\\exitbike.nes";
     //config.rom = "ROMs\\megaman2.nes";
     //config.rom = "ROMs\\mario.nes";
