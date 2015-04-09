@@ -321,9 +321,9 @@ namespace NES
     void APU::setSoundBuffer(int16_t* buffer, size_t size)
     {
         mSoundBuffer = buffer;
-        mSoundBufferSize = size;
+        mSoundBufferSize = static_cast<uint32_t>(size);
         mSoundBufferOffset = 0;
-        mSampleSpeed = mMasterClockFrequency / (60 * size);
+        mSampleSpeed = mMasterClockFrequency / (60 * static_cast<uint32_t>(size));
     }
 
     void APU::updateEnvelopesAndLinearCounter()

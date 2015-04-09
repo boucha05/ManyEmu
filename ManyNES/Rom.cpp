@@ -175,7 +175,7 @@ namespace NES
             return nullptr;
 
         RomImpl* rom = new RomImpl;
-        if (!rom->create(&buffer[0], buffer.size()))
+        if (!rom->create(&buffer[0], static_cast<uint32_t>(buffer.size())))
         {
             rom->dispose();
             rom = nullptr;

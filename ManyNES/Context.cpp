@@ -238,7 +238,7 @@ namespace
             apu.setSoundBuffer(buffer, size);
         }
 
-        virtual void setRenderSurface(void* surface, uint32_t pitch)
+        virtual void setRenderSurface(void* surface, size_t pitch)
         {
             ppu.setRenderSurface(surface, pitch);
         }

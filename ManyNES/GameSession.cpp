@@ -152,7 +152,7 @@ void GameSession::setRenderBuffer(void* buffer, uint32_t pitch)
     mContext->setRenderSurface(buffer, pitch);
 }
 
-void GameSession::setSoundBuffer(void* buffer, uint32_t size)
+void GameSession::setSoundBuffer(void* buffer, size_t size)
 {
     if (!mValid)
         return;

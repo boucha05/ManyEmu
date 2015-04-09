@@ -174,9 +174,9 @@ private:
     SDL_AudioDeviceID           mSoundDevice;
     std::vector<int16_t>        mSoundBuffer;
     std::vector<int16_t>        mSoundQueue;
-    uint32_t                    mSoundReadPos;
-    uint32_t                    mSoundWritePos;
-    uint32_t                    mSoundBufferedSize;
+    size_t                      mSoundReadPos;
+    size_t                      mSoundWritePos;
+    size_t                      mSoundBufferedSize;
     uint32_t                    mSoundStartSize;
     uint32_t                    mSoundMinSize;
     uint32_t                    mSoundMaxSize;
@@ -208,7 +208,7 @@ private:
         typedef std::deque<size_t> SeekQueue;
 
         uint32_t                    elapsedFrames;
-        uint32_t                    seekCapacity;
+        size_t                      seekCapacity;
         NES::CircularMemoryStream   stream;
         SeekQueue                   seekQueue;
     };
@@ -274,6 +274,8 @@ void Application::terminate()
 
 bool Application::create()
 {
+    Path::makeDirs(mConfig.saveFolder);
+
     mJobScheduler.create(SDL_GetCPUCount());
 
     mWindow = SDL_CreateWindow("ManyNES", 100, 100, 256 * 2, 240 * 2, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
@@ -639,13 +641,13 @@ void Application::update()
     SDL_LockAudioDevice(mSoundDevice);
     if (mSoundBufferedSize < mSoundMaxSize)
     {
-        uint32_t soundQueueSize = mSoundQueue.size();
-        uint32_t size = mSoundBuffer.size();
+        auto soundQueueSize = mSoundQueue.size();
+        auto size = mSoundBuffer.size();
         const int16_t* data = &mSoundBuffer[0];
         while (size)
         {
-            uint32_t currentSize = size;
-            uint32_t maxSize = soundQueueSize - mSoundWritePos;
+            auto currentSize = size;
+            auto maxSize = soundQueueSize - mSoundWritePos;
             if (currentSize > maxSize)
                 currentSize = maxSize;
             memcpy(&mSoundQueue[mSoundWritePos], data, currentSize * sizeof(int16_t));
@@ -737,18 +739,18 @@ void Application::audioCallback(int16_t* data, uint32_t size)
     }
 
     mSoundRunning = true;
-    uint32_t soundQueueSize = mSoundQueue.size();
+    size_t soundQueueSize = mSoundQueue.size();
     while (size)
     {
-        uint32_t currentSize = size;
-        uint32_t maxSize = soundQueueSize - mSoundReadPos;
+        size_t currentSize = size;
+        size_t maxSize = soundQueueSize - mSoundReadPos;
         if (currentSize > maxSize)
             currentSize = maxSize;
         memcpy(data, &mSoundQueue[mSoundReadPos], currentSize * sizeof(int16_t));
         mSoundBufferedSize -= currentSize;
         mSoundReadPos += currentSize;
         data += currentSize;
-        size -= currentSize;
+        size -= static_cast<uint32_t>(currentSize);
         if (mSoundReadPos >= soundQueueSize)
             mSoundReadPos -= soundQueueSize;
     }
@@ -762,9 +764,9 @@ void Application::audioCallback(void* userData, Uint8* stream, int len)
 int main()
 {
     Application::Config config;
-    config.saveFolder = "Save";
+    config.saveFolder = "C:\\Emu\\NES\\save";
     //config.saveAudio = true;
-    config.romFolder = "D:\\Emu\\NES\\roms";
+    config.romFolder = "C:\\Emu\\NES\\roms";
     config.roms.push_back("smb3.nes");
     config.roms.push_back("exitbike.nes");
     config.roms.push_back("megaman2.nes");

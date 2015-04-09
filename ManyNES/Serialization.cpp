@@ -18,7 +18,7 @@ namespace NES
 
     void ISerializer::serialize(std::vector<uint8_t>& value)
     {
-        uint32_t size = value.size();
+        uint32_t size = static_cast<uint32_t>(value.size());
         serialize(size);
         value.resize(size, 0);
 

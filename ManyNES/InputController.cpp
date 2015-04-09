@@ -80,7 +80,7 @@ namespace
             serializer.serialize(version);
 
             // Serialize size
-            uint32_t size = repeat.size();
+            uint32_t size = static_cast<uint32_t>(repeat.size());
             serializer.serialize(size);
             repeat.resize(size);
             value.resize(size);
