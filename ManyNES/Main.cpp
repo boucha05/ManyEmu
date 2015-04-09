@@ -86,7 +86,10 @@ class Application
 public:
     struct Config
     {
-        std::string     rom;
+        typedef std::vector<std::string> StringArray;
+
+        StringArray     roms;
+        std::string     romFolder;
         std::string     recorded;
         std::string     saveFolder;
         uint32_t        frameSkip;
@@ -145,8 +148,8 @@ private:
     void destroy();
     bool createSound();
     void destroySound();
-    bool createGameSession(const std::string& path, const std::string& saveDirectory);
-    void destroyGameSession();
+    GameSession* createGameSession(const std::string& path, const std::string& saveDirectory);
+    void destroyGameSession(GameSession& gameSession);
     void handleEvents();
     void update();
     void render();
@@ -154,6 +157,8 @@ private:
     static void audioCallback(void* userData, Uint8* stream, int len);
 
     static const uint32_t BUFFERING = 2;
+
+    typedef std::vector<GameSession*> GameSessionArray;
 
     Config                      mConfig;
     JobScheduler                mJobScheduler;
@@ -188,7 +193,8 @@ private:
     NES::InputPlayback*         mInputPlayback;
     NES::InputController*       mPlayer1;
 
-    GameSession                 mGameSession;
+    GameSessionArray            mGameSessions;
+    uint32_t                    mActiveGameSession;
 
     struct Playback
     {
@@ -236,6 +242,7 @@ Application::Application()
     , mInputRecorder(nullptr)
     , mInputPlayback(nullptr)
     , mPlayer1(nullptr)
+    , mActiveGameSession(0)
     , mPlayback(nullptr)
 {
     for (uint32_t n = 0; n < BUFFERING; ++n)
@@ -378,15 +385,21 @@ bool Application::create()
 
     mFirst = true;
 
-    if (!createGameSession(mConfig.rom, mConfig.saveFolder))
-        return false;
+    for (auto rom : mConfig.roms)
+    {
+        auto gameSession = createGameSession(Path::join(mConfig.romFolder, rom), mConfig.saveFolder);
+        if (gameSession)
+            mGameSessions.push_back(gameSession);
+    }
 
     return true;
 }
 
 void Application::destroy()
 {
-    destroyGameSession();
+    for (auto gameSession : mGameSessions)
+        destroyGameSession(*gameSession);
+    mGameSessions.clear();
 
     destroySound();
 
@@ -529,22 +542,27 @@ void Application::destroySound()
     SDL_AudioQuit();
 }
 
-bool Application::createGameSession(const std::string& path, const std::string& saveDirectory)
+GameSession* Application::createGameSession(const std::string& path, const std::string& saveDirectory)
 {
-    if (!mGameSession.loadRom(path, saveDirectory))
-        return false;
-    mGameSession.loadGameData();
+    auto& gameSession = *new GameSession();
+    if (!gameSession.loadRom(path, saveDirectory))
+    {
+        delete &gameSession;
+        return nullptr;
+    }
+    gameSession.loadGameData();
     if (mConfig.autoLoad)
-        mGameSession.loadGameState();
-    return true;
+        gameSession.loadGameState();
+    return &gameSession;
 }
 
-void Application::destroyGameSession()
+void Application::destroyGameSession(GameSession& gameSession)
 {
     if (mConfig.autoSave && !mFirst)
-        mGameSession.saveGameState();
-    mGameSession.saveGameData();
-    mGameSession.unloadRom();
+        gameSession.saveGameState();
+    gameSession.saveGameData();
+    gameSession.unloadRom();
+    delete &gameSession;
 }
 
 void Application::handleEvents()
@@ -569,7 +587,11 @@ void Application::update()
     if (mInputManager.isPressed(Input_Exit))
         terminate();
 
-    if (!mGameSession.isValid())
+    if (mActiveGameSession >= mGameSessions.size())
+        return;
+
+    auto& gameSession = *mGameSessions[mActiveGameSession];
+    if (!gameSession.isValid())
         return;
 
     void* pixels = nullptr;
@@ -577,28 +599,28 @@ void Application::update()
     if (!mConfig.frameSkip)
     {
         if (!SDL_LockTexture(mTexture[mBufferIndex], nullptr, &pixels, &pitch))
-            mGameSession.setRenderBuffer(pixels, pitch);
+            gameSession.setRenderBuffer(pixels, pitch);
     }
     else
     {
-        mGameSession.setRenderBuffer(nullptr, 0);
+        gameSession.setRenderBuffer(nullptr, 0);
     }
 
     if (mFrameIndex == frameTrigger)
         frameTrigger = frameTrigger;
 
     if (mPlayer1)
-        mGameSession.setController(0, mPlayer1->readInput());
+        gameSession.setController(0, mPlayer1->readInput());
     if (mSoundBuffer.size())
     {
         size_t size = mSoundBuffer.size();
         mSoundBuffer.clear();
         mSoundBuffer.resize(size, 0);
-        mGameSession.setSoundBuffer(&mSoundBuffer[0], mSoundBuffer.size());
+        gameSession.setSoundBuffer(&mSoundBuffer[0], mSoundBuffer.size());
     }
     
     uint64_t frameStart = SDL_GetPerformanceCounter();
-    mGameSession.execute();
+    gameSession.execute();
     uint64_t frameEnd = SDL_GetPerformanceCounter();
 
     if (pixels)
@@ -656,7 +678,7 @@ void Application::update()
             if (valid)
             {
                 NES::BinaryReader reader(mPlayback->stream);
-                mGameSession.serializeGameState(reader);
+                gameSession.serializeGameState(reader);
                 mPlayback->stream.rewind(size);
             }
         }
@@ -666,7 +688,7 @@ void Application::update()
     {
         NES::BinaryWriter writer(mPlayback->stream);
         mPlayback->stream.setReadOffset(0);
-        mGameSession.serializeGameState(writer);
+        gameSession.serializeGameState(writer);
         size_t size = mPlayback->stream.getReadOffset();
         mPlayback->seekQueue.push_back(size);
         mPlayback->seekCapacity += size;
@@ -742,11 +764,12 @@ int main()
     Application::Config config;
     config.saveFolder = "Save";
     //config.saveAudio = true;
-    config.rom = "D:\\Emu\\NES\\roms\\smb3.nes";
-    //config.rom = "ROMs\\exitbike.nes";
-    //config.rom = "ROMs\\megaman2.nes";
-    //config.rom = "ROMs\\mario.nes";
-    //config.rom = "ROMs\\nestest.nes";
+    config.romFolder = "D:\\Emu\\NES\\roms";
+    config.roms.push_back("smb3.nes");
+    config.roms.push_back("exitbike.nes");
+    config.roms.push_back("megaman2.nes");
+    config.roms.push_back("mario.nes");
+    config.roms.push_back("zelda2.nes");
     //config.recorded = "ROMs\\recorded.dat";
     //config.playback = true;
     //config.frameSkip = 512;
