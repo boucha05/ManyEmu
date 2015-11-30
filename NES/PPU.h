@@ -1,8 +1,8 @@
 #ifndef __PPU_H__
 #define __PPU_H__
 
-#include "Clock.h"
-#include "MemoryBus.h"
+#include <Core/Clock.h>
+#include <Core/MemoryBus.h>
 #include <stdint.h>
 
 namespace NES

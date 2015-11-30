@@ -1,7 +1,7 @@
 #ifndef __APU_H__
 #define __APU_H__
 
-#include "Clock.h"
+#include <Core/Clock.h>
 #include <stdint.h>
 
 namespace NES

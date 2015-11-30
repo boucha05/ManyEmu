@@ -1,5 +1,5 @@
 #include "Clock.h"
-#include "nes.h"
+#include "Core.h"
 #include "Serialization.h"
 
 namespace
@@ -134,7 +134,7 @@ namespace NES
     void Clock::serialize(ISerializer& serializer)
     {
         // TODO: Can't serialize properly if we have timers queued
-        //NES_ASSERT(mTimers.empty());
+        //EMU_ASSERT(mTimers.empty());
 
         uint32_t version = 1;
         serializer.serialize(mTargetTicks);

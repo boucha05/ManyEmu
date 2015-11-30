@@ -140,7 +140,7 @@ namespace NES
             dst += copySize;
 
             mReadOffset -= copySize;
-            NES_ASSERT((uint32_t)mReadOffset < bufferSize);
+            EMU_ASSERT((uint32_t)mReadOffset < bufferSize);
         }
         return true;
     }

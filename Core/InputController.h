@@ -2,7 +2,7 @@
 #define __INPUT_CONTROLLER_H__
 
 #include <stdint.h>
-#include "nes.h"
+#include "Core.h"
 
 namespace NES
 {

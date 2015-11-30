@@ -1,12 +1,12 @@
+#include <Core/Clock.h>
+#include <Core/MemoryBus.h>
+#include <Core/Serialization.h>
 #include "nes.h"
 #include "APU.h"
-#include "Clock.h"
 #include "Cpu6502.h"
 #include "Mappers.h"
-#include "MemoryBus.h"
 #include "nes.h"
 #include "PPU.h"
-#include "Serialization.h"
 #include <vector>
 
 namespace
@@ -44,7 +44,7 @@ namespace
     void NOT_IMPLEMENTED()
     {
         printf("Feature not implemented\n");
-        NES_ASSERT(false);
+        EMU_ASSERT(false);
     }
 }
 

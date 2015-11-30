@@ -1,7 +1,7 @@
+#include <Core/MemoryBus.h>
+#include <Core/Serialization.h>
 #include "APU.h"
-#include "MemoryBus.h"
 #include "nes.h"
-#include "Serialization.h"
 #include <vector>
 
 namespace
@@ -9,7 +9,7 @@ namespace
     void NOT_IMPLEMENTED(const char* feature)
     {
         printf("APU: feature not implemented: %s\n", feature);
-        NES_ASSERT(false);
+        EMU_ASSERT(false);
     }
 
     void dummyTimerCallback(void* context, int32_t ticks)
@@ -111,7 +111,7 @@ namespace NES
         mSampleTick = 0;
         if (mSoundBuffer)
         {
-            NES_ASSERT(mSoundBufferOffset == mSoundBufferSize - 1);
+            EMU_ASSERT(mSoundBufferOffset == mSoundBufferSize - 1);
             while (mSoundBufferOffset < mSoundBufferSize)
             {
                 mSoundBuffer[mSoundBufferOffset] = mSoundBuffer[mSoundBufferOffset - 1];
@@ -119,9 +119,9 @@ namespace NES
             }
             mSoundBufferOffset -= mSoundBufferSize;
         }
-        NES_ASSERT(mBufferTick >= 0);
-        NES_ASSERT(mSequenceTick >= 0);
-        NES_ASSERT(mSampleTick >= 0);
+        EMU_ASSERT(mBufferTick >= 0);
+        EMU_ASSERT(mSequenceTick >= 0);
+        EMU_ASSERT(mSampleTick >= 0);
         mDMC.advanceClock(ticks);
     }
 
@@ -409,7 +409,7 @@ namespace NES
                     break;
 
                 default:
-                    NES_ASSERT(false);
+                    EMU_ASSERT(false);
                 }
             }
             else
@@ -437,7 +437,7 @@ namespace NES
                     break;
 
                 default:
-                    NES_ASSERT(false);
+                    EMU_ASSERT(false);
                 }
             }
             mClock->addEvent(onSequenceEvent, this, mSequenceTick);
@@ -461,8 +461,8 @@ namespace NES
         uint32_t version = 2;
         serializer.serialize(version);
         serializer.serialize(mRegister, APU_REGISTER_COUNT);
-        serializer.serialize(mController, NES_ARRAY_SIZE(mController));
-        serializer.serialize(mShifter, NES_ARRAY_SIZE(mShifter));
+        serializer.serialize(mController, EMU_ARRAY_SIZE(mController));
+        serializer.serialize(mShifter, EMU_ARRAY_SIZE(mShifter));
         serializer.serialize(mBufferTick);
         serializer.serialize(mSampleTick);
         serializer.serialize(mSequenceTick);
@@ -657,7 +657,7 @@ namespace NES
             break;
 
         default:
-            NES_ASSERT(false);
+            EMU_ASSERT(false);
         }
     }
 
@@ -768,7 +768,7 @@ namespace NES
             break;
 
         case 1:
-            NES_ASSERT(false);
+            EMU_ASSERT(false);
             break;
 
         case 2:
@@ -785,7 +785,7 @@ namespace NES
             break;
 
         default:
-            NES_ASSERT(false);
+            EMU_ASSERT(false);
         }
     }
 
@@ -917,7 +917,7 @@ namespace NES
             break;
 
         case 1:
-            NES_ASSERT(false);
+            EMU_ASSERT(false);
             break;
 
         case 2:
@@ -933,7 +933,7 @@ namespace NES
             break;
 
         default:
-            NES_ASSERT(false);
+            EMU_ASSERT(false);
         }
     }
 
@@ -1119,7 +1119,7 @@ namespace NES
             break;
 
         default:
-            NES_ASSERT(false);
+            EMU_ASSERT(false);
         }
     }
 

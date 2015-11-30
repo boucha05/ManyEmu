@@ -23,7 +23,7 @@ function addlibrary(location, libname)
     links { "" .. libname }
 end
 
-solution "ManyNES"
+solution "ManyEmu"
     location "build"
     configurations { "Debug", "Release" }
     platforms { "x32", "x64" }
@@ -54,12 +54,17 @@ solution "ManyNES"
     configuration "vs2013"
         defines { "_USING_V110_SDK71_" }
 
-project "ManyNES"
+project "ManyEmu"
     kind "ConsoleApp"
     language "C++"
     
     addlibrary("Contrib/SDL2", "SDL2")
     addlibrary("Contrib/glew", "glew32s")
     adddll("Contrib/SDL2/lib", "SDL2")
+    
+    includedirs { "." }
 
-    files { "ManyNES/**.h", "ManyNES/**.cpp" }
+    files { "Core/**.h", "Core/**.cpp" }
+    files { "NES/**.h", "NES/**.cpp" }
+    files { "ManyEmu/**.h", "ManyEmu/**.cpp" }
+

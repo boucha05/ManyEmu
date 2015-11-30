@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <SDL.h>
 #include <stdio.h>
-#include "nes.h"
+#include "Core.h"
 #include <vector>
 
 namespace NES

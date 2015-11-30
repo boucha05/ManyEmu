@@ -1,11 +1,11 @@
+#include "Core.h"
 #include "MemoryBus.h"
-#include "NES.h"
 #include <memory.h>
 #include <stdio.h>
 #include <algorithm>
 
 #if _DEBUG
-#define ASSERT(expr)    NES_ASSERT(expr)
+#define ASSERT(expr)    EMU_ASSERT(expr)
 #else
 #define ASSERT(expr)    (expr)
 #endif
@@ -15,7 +15,7 @@ namespace
     void NOT_IMPLEMENTED(const char* func)
     {
         printf("%s(): function not implemented\n", func);
-        NES_ASSERT(false);
+        EMU_ASSERT(false);
     }
 }
 

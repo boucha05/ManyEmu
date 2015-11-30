@@ -1,7 +1,7 @@
 #ifndef __INPUT_MANAGER_H__
 #define __INPUT_MANAGER_H__
 
-#include "nes.h"
+#include "Core.h"
 #include <SDL.h>
 #include <stdint.h>
 #include <vector>

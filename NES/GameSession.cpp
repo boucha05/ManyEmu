@@ -1,7 +1,7 @@
+#include <Core/Path.h>
+#include <Core/Serialization.h>
+#include <Core/Stream.h>
 #include "GameSession.h"
-#include "Path.h"
-#include "Serialization.h"
-#include "Stream.h"
 #include <Windows.h>
 
 namespace

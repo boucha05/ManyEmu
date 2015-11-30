@@ -1,8 +1,8 @@
+#include <Core/MemoryBus.h>
+#include <Core/Serialization.h>
 #include "Mappers.h"
-#include "MemoryBus.h"
 #include "nes.h"
 #include "PPU.h"
-#include "Serialization.h"
 #include <vector>
 
 namespace
@@ -82,7 +82,7 @@ namespace
             uint32_t prgBank0 = mRegister & 0xff;
             uint32_t prgBank1 = romDescription.prgRomPages - 1;
 
-            NES_ASSERT(prgBank0 < romDescription.prgRomPages);
+            EMU_ASSERT(prgBank0 < romDescription.prgRomPages);
             mMemPrgRomRead[0].setReadMemory(&romContent.prgRom[16 * 1024 * prgBank0]);
             mMemPrgRomRead[1].setReadMemory(&romContent.prgRom[16 * 1024 * prgBank1]);
         }

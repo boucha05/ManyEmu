@@ -6,15 +6,15 @@
 #include <string>
 #include <vector>
 #include <deque>
-#include "GameSession.h"
-#include "InputController.h"
-#include "InputManager.h"
-#include "Job.h"
-#include "Path.h"
-#include "Serialization.h"
-#include "Stream.h"
-#include "Tests.h"
-#include "nes.h"
+#include <Core/InputController.h>
+#include <Core/InputManager.h>
+#include <Core/Job.h>
+#include <Core/Path.h>
+#include <Core/Serialization.h>
+#include <Core/Stream.h>
+#include <NES/GameSession.h>
+#include <NES/Tests.h>
+#include <NES/nes.h>
 #include <Windows.h>
 
 namespace
@@ -675,7 +675,7 @@ void Application::update()
             size_t size = mPlayback->seekQueue.back();
             mPlayback->seekQueue.pop_back();
             mPlayback->seekCapacity -= size;
-            NES_ASSERT(mPlayback->seekCapacity >= 0);
+            EMU_ASSERT(mPlayback->seekCapacity >= 0);
             bool valid = mPlayback->stream.setReadOffset(size);
             if (valid)
             {
@@ -696,11 +696,11 @@ void Application::update()
         mPlayback->seekCapacity += size;
         while (mPlayback->seekCapacity > mConfig.replayBufferSize)
         {
-            NES_ASSERT(!mPlayback->seekQueue.empty());
+            EMU_ASSERT(!mPlayback->seekQueue.empty());
             size_t size = mPlayback->seekQueue.front();
             mPlayback->seekQueue.pop_front();
             mPlayback->seekCapacity -= size;
-            NES_ASSERT(mPlayback->seekCapacity >= 0);
+            EMU_ASSERT(mPlayback->seekCapacity >= 0);
         }
         mPlayback->elapsedFrames = 0;
     }

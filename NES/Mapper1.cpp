@@ -1,8 +1,8 @@
+#include <Core/MemoryBus.h>
+#include <Core/Serialization.h>
 #include "Mappers.h"
-#include "MemoryBus.h"
 #include "nes.h"
 #include "PPU.h"
-#include "Serialization.h"
 #include <vector>
 
 namespace
@@ -130,9 +130,9 @@ namespace NES
                 serializer.serialize(mPrgRam);
             serializer.serialize(mShift);
             serializer.serialize(mCycle);
-            serializer.serialize(mPrgRomPage, NES_ARRAY_SIZE(mPrgRomPage));
-            serializer.serialize(mChrRomPage, NES_ARRAY_SIZE(mChrRomPage));
-            serializer.serialize(mRegister, NES_ARRAY_SIZE(mRegister));
+            serializer.serialize(mPrgRomPage, EMU_ARRAY_SIZE(mPrgRomPage));
+            serializer.serialize(mChrRomPage, EMU_ARRAY_SIZE(mChrRomPage));
+            serializer.serialize(mRegister, EMU_ARRAY_SIZE(mRegister));
             updateMemoryMap();
         }
 
@@ -234,8 +234,8 @@ namespace NES
 
             if (romDescription.chrRomPages == 0)
             {
-                NES_ASSERT(chrBank0 < 2);
-                NES_ASSERT(chrBank1 < 2);
+                EMU_ASSERT(chrBank0 < 2);
+                EMU_ASSERT(chrBank1 < 2);
                 mMemChrRomRead[0].setReadMemory(&mChrRam[4 * 1024 * chrBank0]);
                 mMemChrRomRead[1].setReadMemory(&mChrRam[4 * 1024 * chrBank1]);
                 mMemChrRomWrite[0].setWriteMemory(&mChrRam[4 * 1024 * chrBank0]);
@@ -243,8 +243,8 @@ namespace NES
             }
             else
             {
-                NES_ASSERT(chrBank0 < romDescription.chrRomPages * 2);
-                NES_ASSERT(chrBank1 < romDescription.chrRomPages * 2);
+                EMU_ASSERT(chrBank0 < romDescription.chrRomPages * 2);
+                EMU_ASSERT(chrBank1 < romDescription.chrRomPages * 2);
                 mMemChrRomRead[0].setReadMemory(&romContent.chrRom[4 * 1024 * chrBank0]);
                 mMemChrRomRead[1].setReadMemory(&romContent.chrRom[4 * 1024 * chrBank1]);
                 mMemChrRomWrite[0].setWriteMethod(unsupportedWrite, nullptr);
@@ -272,11 +272,11 @@ namespace NES
                 break;
 
             default:
-                NES_ASSERT(false);
+                EMU_ASSERT(false);
             }
 
-            NES_ASSERT(mPrgRomPage[0] < romDescription.prgRomPages);
-            NES_ASSERT(mPrgRomPage[1] < romDescription.prgRomPages);
+            EMU_ASSERT(mPrgRomPage[0] < romDescription.prgRomPages);
+            EMU_ASSERT(mPrgRomPage[1] < romDescription.prgRomPages);
             mMemPrgRomRead[0].setReadMemory(&romContent.prgRom[16 * 1024 * mPrgRomPage[0]]);
             mMemPrgRomRead[1].setReadMemory(&romContent.prgRom[16 * 1024 * mPrgRomPage[1]]);
         }
@@ -310,13 +310,13 @@ namespace NES
 
         static uint8_t unsupportedRead(void* context, int32_t ticks, uint32_t addr)
         {
-            NES_ASSERT(0);
+            EMU_ASSERT(0);
             return 0;
         }
 
         static void unsupportedWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value)
         {
-            NES_ASSERT(0);
+            EMU_ASSERT(0);
         }
 
         void enablePrgRam()
@@ -359,7 +359,7 @@ namespace NES
                 break;
 
             default:
-                NES_ASSERT(false);
+                EMU_ASSERT(false);
             }
             updateMemoryMap();
         }

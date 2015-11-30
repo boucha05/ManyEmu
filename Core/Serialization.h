@@ -1,7 +1,7 @@
 #ifndef __SERIALIZATION_H__
 #define __SERIALIZATION_H__
 
-#include "nes.h"
+#include "Core.h"
 #include <stdint.h>
 #include <vector>
 

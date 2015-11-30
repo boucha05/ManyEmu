@@ -1,7 +1,7 @@
 #ifndef __CPU_6502_H__
 #define __CPU_6502_H__
 
-#include "Clock.h"
+#include <Core/Clock.h>
 #include <stdint.h>
 #include <map>
 

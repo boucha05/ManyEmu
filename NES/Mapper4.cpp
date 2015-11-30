@@ -1,8 +1,8 @@
+#include <Core/MemoryBus.h>
+#include <Core/Serialization.h>
 #include "Mappers.h"
-#include "MemoryBus.h"
 #include "nes.h"
 #include "PPU.h"
-#include "Serialization.h"
 #include <vector>
 
 namespace
@@ -105,7 +105,7 @@ namespace
             uint32_t version = 1;
             serializer.serialize(version);
             serializer.serialize(mNameTableLocal);
-            serializer.serialize(mBankPorts, NES_ARRAY_SIZE(mBankPorts));
+            serializer.serialize(mBankPorts, EMU_ARRAY_SIZE(mBankPorts));
             serializer.serialize(mChrMode);
             serializer.serialize(mPrgMode);
             serializer.serialize(mPort);
@@ -145,7 +145,7 @@ namespace
             }
             for (uint32_t bank = 0; bank < 4; ++bank)
             {
-                NES_ASSERT(prgBank[bank] < prgBankCount);
+                EMU_ASSERT(prgBank[bank] < prgBankCount);
                 mMemPrgRomRead[bank].setReadMemory(&romContent.prgRom[0x2000 * prgBank[bank]]);
             }
 
@@ -176,7 +176,7 @@ namespace
             }
             for (uint32_t bank = 0; bank < 8; ++bank)
             {
-                NES_ASSERT(chrBank[bank] < chrBankCount);
+                EMU_ASSERT(chrBank[bank] < chrBankCount);
                 mMemChrRomRead[bank].setReadMemory(&romContent.chrRom[0x0400 * chrBank[bank]]);
             }
 
@@ -296,7 +296,7 @@ namespace
                 break;
 
             default:
-                NES_ASSERT(false);
+                EMU_ASSERT(false);
             }
         }
 
