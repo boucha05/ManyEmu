@@ -2,7 +2,7 @@
 #include <vector>
 #include <cassert>
 
-namespace NES
+namespace emu
 {
     MemoryStream::MemoryStream()
         : mReadPos(0)

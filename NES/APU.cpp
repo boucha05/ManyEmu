@@ -61,7 +61,7 @@ namespace NES
         mIRQ = false;
     }
 
-    bool APU::create(Clock& clock, MemoryBus& memory, uint32_t masterClockDivider, uint32_t masterClockFrequency)
+    bool APU::create(emu::Clock& clock, emu::MemoryBus& memory, uint32_t masterClockDivider, uint32_t masterClockFrequency)
     {
         mClock = &clock;
         mClock->addListener(*this);
@@ -456,7 +456,7 @@ namespace NES
         static_cast<APU*>(context)->onSequenceEvent(tick);
     }
 
-    void APU::serialize(ISerializer& serializer)
+    void APU::serialize(emu::ISerializer& serializer)
     {
         uint32_t version = 2;
         serializer.serialize(version);
@@ -661,7 +661,7 @@ namespace NES
         }
     }
 
-    void APU::Pulse::serialize(ISerializer& serializer)
+    void APU::Pulse::serialize(emu::ISerializer& serializer)
     {
         uint32_t version = 1;
         serializer.serialize(version);
@@ -789,7 +789,7 @@ namespace NES
         }
     }
 
-    void APU::Triangle::serialize(ISerializer& serializer)
+    void APU::Triangle::serialize(emu::ISerializer& serializer)
     {
         uint32_t version = 1;
         serializer.serialize(version);
@@ -937,7 +937,7 @@ namespace NES
         }
     }
 
-    void APU::Noise::serialize(ISerializer& serializer)
+    void APU::Noise::serialize(emu::ISerializer& serializer)
     {
         uint32_t version = 1;
         serializer.serialize(version);
@@ -959,7 +959,7 @@ namespace NES
 
     ///////////////////////////////////////////////////////////////////////////
 
-    void APU::DMC::reset(Clock& _clock, MemoryBus& _memory, uint32_t _masterClockDivider)
+    void APU::DMC::reset(emu::Clock& _clock, emu::MemoryBus& _memory, uint32_t _masterClockDivider)
     {
         clock = &_clock;
         memory = &_memory;
@@ -1123,7 +1123,7 @@ namespace NES
         }
     }
 
-    void APU::DMC::serialize(ISerializer& serializer)
+    void APU::DMC::serialize(emu::ISerializer& serializer)
     {
         uint32_t version = 1;
         serializer.serialize(version);

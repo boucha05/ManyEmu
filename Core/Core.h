@@ -4,8 +4,8 @@
 #include <stdint.h>
 #if defined(DEBUG) || defined(_DEBUG)
 #include <assert.h>
-#define EMU_ASSERT(e)   NES::Assert(!!(e), #e)
-#define EMU_VERIFY(e)   NES::Assert(!!(e), #e)
+#define EMU_ASSERT(e)   emu::Assert(!!(e), #e)
+#define EMU_VERIFY(e)   emu::Assert(!!(e), #e)
 #else
 #define EMU_ASSERT(e)
 #define EMU_VERIFY(e)   (e)
@@ -13,7 +13,7 @@
 
 #define EMU_ARRAY_SIZE(a)  (sizeof(a) / sizeof((a)[0]))
 
-namespace NES
+namespace emu
 {
     void Assert(bool valid, const char* msg);
 

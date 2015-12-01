@@ -77,11 +77,11 @@ bool GameSession::loadGameData()
     if (!mValid)
         return false;
 
-    NES::FileStream stream(mGameDataPath.c_str(), "rb");
+    emu::FileStream stream(mGameDataPath.c_str(), "rb");
     if (!stream.valid())
         return false;
 
-    NES::BinaryReader reader(stream);
+    emu::BinaryReader reader(stream);
     mContext->serializeGameData(reader);
     return true;
 }
@@ -91,13 +91,13 @@ bool GameSession::saveGameData()
     if (!mValid)
         return false;
 
-    NES::MemoryStream streamTemp;
-    NES::BinaryWriter writer(streamTemp);
+    emu::MemoryStream streamTemp;
+    emu::BinaryWriter writer(streamTemp);
     mContext->serializeGameData(writer);
     if (streamTemp.getSize() <= 0)
         return false;
 
-    NES::FileStream streamFinal(mGameDataPath.c_str(), "wb");
+    emu::FileStream streamFinal(mGameDataPath.c_str(), "wb");
     bool success = streamFinal.write(streamTemp.getBuffer(), streamTemp.getSize());
     return success;
 }
@@ -107,11 +107,11 @@ bool GameSession::loadGameState()
     if (!mValid)
         return false;
 
-    NES::FileStream stream(mGameStatePath.c_str(), "rb");
+    emu::FileStream stream(mGameStatePath.c_str(), "rb");
     if (!stream.valid())
         return false;
 
-    NES::BinaryReader reader(stream);
+    emu::BinaryReader reader(stream);
     serializeGameState(reader);
     return true;
 }
@@ -121,18 +121,18 @@ bool GameSession::saveGameState()
     if (!mValid)
         return false;
 
-    NES::MemoryStream streamTemp;
-    NES::BinaryWriter writer(streamTemp);
+    emu::MemoryStream streamTemp;
+    emu::BinaryWriter writer(streamTemp);
     serializeGameState(writer);
     if (streamTemp.getSize() <= 0)
         return false;
 
-    NES::FileStream streamFinal(mGameStatePath.c_str(), "wb");
+    emu::FileStream streamFinal(mGameStatePath.c_str(), "wb");
     bool success = streamFinal.write(streamTemp.getBuffer(), streamTemp.getSize());
     return success;
 }
 
-void GameSession::serializeGameState(NES::ISerializer& serializer)
+void GameSession::serializeGameState(emu::ISerializer& serializer)
 {
     if (!mValid)
         return;

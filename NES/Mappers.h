@@ -4,16 +4,20 @@
 #include "nes.h"
 #include <stdint.h>
 
+namespace emu
+{
+    class Clock;
+    class MemoryBus;
+    class ISerializer;
+}
+
 namespace NES
 {
     class APU;
-    class Clock;
     class Cpu6502;
-    class MemoryBus;
     class PPU;
-    class ISerializer;
 
-    class IMapper : public IDisposable
+    class IMapper : public emu::IDisposable
     {
     public:
         class IListener
@@ -24,20 +28,20 @@ namespace NES
 
         struct Components
         {
-            const Rom*  rom;
-            Clock*      clock;
-            MemoryBus*  memory;
-            Cpu6502*    cpu;
-            PPU*        ppu;
-            APU*        apu;
-            IListener*  listener;
+            const Rom*          rom;
+            emu::Clock*         clock;
+            emu::MemoryBus*     memory;
+            Cpu6502*            cpu;
+            PPU*                ppu;
+            APU*                apu;
+            IListener*          listener;
         };
         virtual bool initialize(const Components& components) = 0;
         virtual void reset() { }
         virtual void beginFrame() { }
         virtual void update() { }
-        virtual void serializeGameData(ISerializer& serializer) { }
-        virtual void serializeGameState(ISerializer& serializer) { }
+        virtual void serializeGameData(emu::ISerializer& serializer) { }
+        virtual void serializeGameState(emu::ISerializer& serializer) { }
     };
 
     typedef IMapper* (*MapperCreateFunc)();

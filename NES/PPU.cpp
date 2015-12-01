@@ -195,7 +195,7 @@ namespace NES
         mScanlineEventIndex = 0;
     }
 
-    bool PPU::create(Clock& clock, uint32_t masterClockDivider, uint32_t createFlags, uint32_t visibleLines)
+    bool PPU::create(emu::Clock& clock, uint32_t masterClockDivider, uint32_t createFlags, uint32_t visibleLines)
     {
         mClock = &clock;
         mClock->addListener(*this);
@@ -338,7 +338,7 @@ namespace NES
         advanceFrame(mClock->getDesiredTicks());
     }
 
-    NES::MemoryBus& PPU::getMemory()
+    emu::MemoryBus& PPU::getMemory()
     {
         return mMemory;
     }
@@ -1173,7 +1173,7 @@ namespace NES
     {
     }
 
-    void PPU::serialize(ISerializer& serializer)
+    void PPU::serialize(emu::ISerializer& serializer)
     {
         uint32_t version = 1;
         serializer.serialize(version);

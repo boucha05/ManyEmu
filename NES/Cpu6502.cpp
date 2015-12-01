@@ -979,7 +979,7 @@ namespace
     |  Implied       |   TYA                 |    98   |    1    |    2     |
     */
 
-    void serialize(CPU_STATE& state, NES::ISerializer& serializer)
+void serialize(CPU_STATE& state, emu::ISerializer& serializer)
     {
         uint32_t version = 2;
         serializer.serialize(version);
@@ -1284,7 +1284,7 @@ namespace NES
         destroy();
     }
 
-    bool Cpu6502::create(Clock& clock, MEMORY_BUS& bus, uint32_t master_clock_divider)
+    bool Cpu6502::create(emu::Clock& clock, MEMORY_BUS& bus, uint32_t master_clock_divider)
     {
         if (!cpu_create(mState, bus, master_clock_divider))
             return false;
@@ -1341,7 +1341,7 @@ namespace NES
         return ::disassemble(mState, addr, buffer, size);
     }
 
-    void Cpu6502::serialize(ISerializer& serializer)
+    void Cpu6502::serialize(emu::ISerializer& serializer)
     {
         ::serialize(mState, serializer);
     }

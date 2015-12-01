@@ -112,7 +112,7 @@ void MEM_ACCESS::setWriteMethod(Write8Func _func, void* _context, uint32_t _base
 
 ///////////////////////////////////////////////////////////////////////////////
 
-namespace NES
+namespace emu
 {
     MemoryBus::MemoryBus()
     {

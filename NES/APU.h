@@ -4,18 +4,21 @@
 #include <Core/Clock.h>
 #include <stdint.h>
 
-namespace NES
+namespace emu
 {
     class Clock;
     class MemoryBus;
     class ISerializer;
+}
 
-    class APU : public Clock::IListener
+namespace NES
+{
+    class APU : public emu::Clock::IListener
     {
     public:
         APU();
         ~APU();
-        bool create(Clock& clock, MemoryBus& memoryBus, uint32_t masterClockDivider, uint32_t masterClockFrequency);
+        bool create(emu::Clock& clock, emu::MemoryBus& memoryBus, uint32_t masterClockDivider, uint32_t masterClockFrequency);
         void destroy();
         void reset();
         void beginFrame();
@@ -26,7 +29,7 @@ namespace NES
         void regWrite(int32_t ticks, uint32_t addr, uint8_t value);
         void setController(uint32_t index, uint8_t buttons);
         void setSoundBuffer(int16_t* buffer, size_t size);
-        void serialize(ISerializer& serializer);
+        void serialize(emu::ISerializer& serializer);
 
         static const uint32_t APU_REGISTER_COUNT = 0x20;
 
@@ -97,7 +100,7 @@ namespace NES
             void updateLengthCounter();
             void updateSweep();
             void write(uint32_t index, uint32_t value);
-            void serialize(ISerializer& serializer);
+            void serialize(emu::ISerializer& serializer);
         };
 
         struct Triangle
@@ -126,7 +129,7 @@ namespace NES
             void updateLengthCounter();
             void updateLinearCounter();
             void write(uint32_t index, uint32_t value);
-            void serialize(ISerializer& serializer);
+            void serialize(emu::ISerializer& serializer);
         };
 
         struct Noise
@@ -162,36 +165,36 @@ namespace NES
             void updateEnvelope();
             void updateLengthCounter();
             void write(uint32_t index, uint32_t value);
-            void serialize(ISerializer& serializer);
+            void serialize(emu::ISerializer& serializer);
         };
 
         struct DMC
         {
             // Configuration
-            Clock*      clock;
-            MemoryBus*  memory;
-            uint32_t    masterClockDivider;
+            emu::Clock*         clock;
+            emu::MemoryBus*     memory;
+            uint32_t            masterClockDivider;
 
             // Register fields
-            bool        loop;
-            uint32_t    period;
-            uint32_t    sampleAddress;
-            uint32_t    sampleLength;
+            bool                loop;
+            uint32_t            period;
+            uint32_t            sampleAddress;
+            uint32_t            sampleLength;
 
             // State
-            int32_t     updateTick;
-            int32_t     timerTick;
-            uint32_t    samplePos;
-            uint32_t    sampleCount;
-            uint32_t    sampleBuffer;
-            uint32_t    shift;
-            uint32_t    bit;
-            int8_t      level;
-            bool        available;
-            bool        silenced;
-            bool        irq;
+            int32_t             updateTick;
+            int32_t             timerTick;
+            uint32_t            samplePos;
+            uint32_t            sampleCount;
+            uint32_t            sampleBuffer;
+            uint32_t            shift;
+            uint32_t            bit;
+            int8_t              level;
+            bool                available;
+            bool                silenced;
+            bool                irq;
 
-            void reset(Clock& _clock, MemoryBus& _memory, uint32_t _masterClockDivider);
+            void reset(emu::Clock& _clock, emu::MemoryBus& _memory, uint32_t _masterClockDivider);
             void enable(uint32_t tick, bool _enabled);
             void beginFrame();
             void advanceClock(int32_t ticks);
@@ -199,7 +202,7 @@ namespace NES
             void updateReader(uint32_t tick);
             void prepareNextReaderTick();
             void write(uint32_t index, uint32_t value);
-            void serialize(ISerializer& serializer);
+            void serialize(emu::ISerializer& serializer);
         };
 
         void initialize();
@@ -210,8 +213,8 @@ namespace NES
         void onSequenceEvent(int32_t tick);
         static void onSequenceEvent(void* context, int32_t tick);
 
-        Clock*                  mClock;
-        MemoryBus*              mMemory;
+        emu::Clock*             mClock;
+        emu::MemoryBus*         mMemory;
         uint32_t                mMasterClockDivider;
         uint32_t                mMasterClockFrequency;
         uint32_t                mFrameCountTicks;

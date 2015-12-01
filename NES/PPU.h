@@ -5,11 +5,14 @@
 #include <Core/MemoryBus.h>
 #include <stdint.h>
 
-namespace NES
+namespace emu
 {
     class ISerializer;
+}
 
-    class PPU : public Clock::IListener
+namespace NES
+{
+    class PPU : public emu::Clock::IListener
     {
     public:
         class IListener
@@ -21,12 +24,12 @@ namespace NES
 
         PPU();
         ~PPU();
-        bool create(NES::Clock& clock, uint32_t masterClockDivider, uint32_t createFlags, uint32_t visibleLines);
+        bool create(emu::Clock& clock, uint32_t masterClockDivider, uint32_t createFlags, uint32_t visibleLines);
         void destroy();
         void reset();
         void beginFrame();
         void execute();
-        MemoryBus& getMemory();
+        emu::MemoryBus& getMemory();
         uint8_t* getNameTableMemory();
         MEM_ACCESS* getPatternTableRead(uint32_t index);
         MEM_ACCESS* getPatternTableWrite(uint32_t index);
@@ -43,7 +46,7 @@ namespace NES
         void setRenderSurface(void* surface, size_t pitch);
         void startFrame();
         int32_t getTickCount(uint32_t lines, uint32_t dots);
-        void serialize(ISerializer& serializer);
+        void serialize(emu::ISerializer& serializer);
 
         static const uint32_t CREATE_VRAM_ONE_SCREEN = 0x00000001;
         static const uint32_t CREATE_VRAM_HORIZONTAL_MIRROR = 0x00000002;
@@ -116,7 +119,7 @@ namespace NES
         static const uint32_t SCANLINE_TYPE_VBLANK = 2;
         static const uint32_t SCANLINE_TYPE_COUNT = 3;
 
-        NES::Clock*             mClock;
+        emu::Clock*             mClock;
         uint32_t                mMasterClockDivider;
         int32_t                 mVBlankStartTicks;
         int32_t                 mVBlankEndTicks;
@@ -133,7 +136,7 @@ namespace NES
         bool                    mVisibleArea;
         bool                    mCheckHitTest;
         ListenerQueue           mListeners;
-        NES::MemoryBus          mMemory;
+        emu::MemoryBus          mMemory;
         MEM_ACCESS              mPatternTableRead[PATTERN_TABLE_COUNT];
         MEM_ACCESS              mPatternTableWrite[PATTERN_TABLE_COUNT];
         MEM_ACCESS              mNameTableRead[NAME_TABLE_COUNT];

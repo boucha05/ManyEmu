@@ -7,7 +7,7 @@
 #include "Core.h"
 #include <vector>
 
-namespace NES
+namespace emu
 {
     class IStream
     {

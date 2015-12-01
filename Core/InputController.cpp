@@ -5,7 +5,7 @@
 
 namespace
 {
-    class GroupControllerImpl : public NES::GroupController
+    class GroupControllerImpl : public emu::GroupController
     {
     public:
         GroupControllerImpl()
@@ -73,7 +73,7 @@ namespace
             value.clear();
         }
 
-        void serialize(NES::ISerializer& serializer)
+        void serialize(emu::ISerializer& serializer)
         {
             // Version
             uint32_t version = 1;
@@ -93,7 +93,7 @@ namespace
         }
     };
 
-    class InputRecorderImpl : public NES::InputRecorder
+    class InputRecorderImpl : public emu::InputRecorder
     {
     public:
         InputRecorderImpl()
@@ -129,11 +129,11 @@ namespace
 
         virtual bool save(const char* path)
         {
-            NES::FileStream stream(path, "wb");
+            emu::FileStream stream(path, "wb");
             if (!stream.valid())
                 return false;
 
-            NES::BinaryWriter writer(stream);
+            emu::BinaryWriter writer(stream);
             mData.serialize(writer);
             return true;
         }
@@ -160,7 +160,7 @@ namespace
         InputStreamData     mData;
     };
 
-    class InputPlaybackImpl : public NES::InputPlayback
+    class InputPlaybackImpl : public emu::InputPlayback
     {
     public:
         InputPlaybackImpl()
@@ -198,11 +198,11 @@ namespace
 
         virtual bool load(const char* path)
         {
-            NES::FileStream stream(path, "rb");
+            emu::FileStream stream(path, "rb");
             if (!stream.valid())
                 return false;
 
-            NES::BinaryReader reader(stream);
+            emu::BinaryReader reader(stream);
             mData.serialize(reader);
             mPos = 0;
             mCount = 0;
@@ -234,7 +234,7 @@ namespace
     };
 }
 
-namespace NES
+namespace emu
 {
     GroupController* GroupController::create()
     {

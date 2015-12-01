@@ -29,7 +29,7 @@ private:
     InputTable      mInputs;
 };
 
-class InputDevice : public NES::IDisposable
+class InputDevice : public emu::IDisposable
 {
 public:
     virtual void update(InputManager& inputManager) = 0;

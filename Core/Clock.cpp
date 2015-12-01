@@ -9,7 +9,7 @@ namespace
     }
 }
 
-namespace NES
+namespace emu
 {
     Clock::Clock()
         : mTargetTicks(0)

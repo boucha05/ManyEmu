@@ -33,16 +33,19 @@ void cpu_destroy(CPU_STATE& cpu);
 void cpu_reset(CPU_STATE& cpu);
 void cpu_execute(CPU_STATE& cpu);
 
-namespace NES
+namespace emu
 {
     class ISerializer;
+}
 
-    class Cpu6502 : public NES::Clock::IListener
+namespace NES
+{
+    class Cpu6502 : public emu::Clock::IListener
     {
     public:
         Cpu6502();
         ~Cpu6502();
-        bool create(Clock& clock, MEMORY_BUS& bus, uint32_t master_clock_divider);
+        bool create(emu::Clock& clock, MEMORY_BUS& bus, uint32_t master_clock_divider);
         void destroy();
         void reset();
         void irq(bool active);
@@ -51,7 +54,7 @@ namespace NES
         void setDesiredTicks(int32_t ticks);
         void execute();
         uint16_t disassemble(char* buffer, size_t size, uint16_t addr);
-        void serialize(ISerializer& serializer);
+        void serialize(emu::ISerializer& serializer);
 
         CPU_STATE& getState()
         {
@@ -60,7 +63,7 @@ namespace NES
 
     private:
         CPU_STATE               mState;
-        Clock*                  mClock;
+        emu::Clock*             mClock;
     };
 }
 

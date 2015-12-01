@@ -5,7 +5,7 @@
 
 namespace NES
 {
-    class Rom : public IDisposable
+    class Rom : public emu::IDisposable
     {
     public:
         enum Mirroring
@@ -41,7 +41,7 @@ namespace NES
         static Rom* load(const char* path);
     };
 
-    class Context : public IDisposable
+    class Context : public emu::IDisposable
     {
     public:
         static const uint32_t ButtonA = 0x01;
@@ -60,8 +60,8 @@ namespace NES
         virtual void update() = 0;
         virtual uint8_t read8(uint16_t addr) = 0;
         virtual void write8(uint16_t addr, uint8_t value) = 0;
-        virtual void serializeGameData(ISerializer& serializer) = 0;
-        virtual void serializeGameState(ISerializer& serializer) = 0;
+        virtual void serializeGameData(emu::ISerializer& serializer) = 0;
+        virtual void serializeGameState(emu::ISerializer& serializer) = 0;
 
         static Context* create(const Rom& rom);
     };

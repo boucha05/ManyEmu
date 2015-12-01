@@ -27,7 +27,7 @@ namespace
 
     static bool sdlInitialized = initSDL();
 
-    class StandardController : public NES::InputController
+    class StandardController : public emu::InputController
     {
     public:
         StandardController(InputManager& inputManager)
@@ -181,17 +181,17 @@ private:
     uint32_t                    mSoundMinSize;
     uint32_t                    mSoundMaxSize;
     bool                        mSoundRunning;
-    NES::FileStream*            mSoundFile;
-    NES::BinaryWriter*          mSoundWriter;
-    NES::FileStream*            mTimingFile;
-    NES::TextWriter*            mTimingWriter;
+    emu::FileStream*            mSoundFile;
+    emu::BinaryWriter*          mSoundWriter;
+    emu::FileStream*            mTimingFile;
+    emu::TextWriter*            mTimingWriter;
     InputManager                mInputManager;
     KeyboardDevice*             mKeyboard;
     GamepadDevice*              mGamepad;
     StandardController*         mPlayer1Controller;
-    NES::InputRecorder*         mInputRecorder;
-    NES::InputPlayback*         mInputPlayback;
-    NES::InputController*       mPlayer1;
+    emu::InputRecorder*         mInputRecorder;
+    emu::InputPlayback*         mInputPlayback;
+    emu::InputController*       mPlayer1;
 
     GameSessionArray            mGameSessions;
     uint32_t                    mActiveGameSession;
@@ -209,7 +209,7 @@ private:
 
         uint32_t                    elapsedFrames;
         size_t                      seekCapacity;
-        NES::CircularMemoryStream   stream;
+        emu::CircularMemoryStream   stream;
         SeekQueue                   seekQueue;
     };
     Playback*                   mPlayback;
@@ -354,7 +354,7 @@ bool Application::create()
     {
         if (mConfig.playback)
         {
-            mInputPlayback = NES::InputPlayback::create(*mPlayer1);
+            mInputPlayback = emu::InputPlayback::create(*mPlayer1);
             if (!mInputPlayback)
                 return false;
             if (!mInputPlayback->load(mConfig.recorded.c_str()))
@@ -363,7 +363,7 @@ bool Application::create()
         }
         else
         {
-            mInputRecorder = NES::InputRecorder::create(*mPlayer1);
+            mInputRecorder = emu::InputRecorder::create(*mPlayer1);
             if (!mInputRecorder)
                 return false;
             mPlayer1 = mInputRecorder;
@@ -373,11 +373,11 @@ bool Application::create()
     if (mConfig.profile)
     {
         std::string path = Path::join(mConfig.saveFolder, "timings.prof");
-        mTimingFile = new NES::FileStream(path.c_str(), "w");
+        mTimingFile = new emu::FileStream(path.c_str(), "w");
         if (!mTimingFile->valid())
             return false;
 
-        mTimingWriter = new NES::TextWriter(*mTimingFile);
+        mTimingWriter = new emu::TextWriter(*mTimingFile);
     }
 
     mPlayback = new Playback(mConfig.replayBufferSize);
@@ -500,11 +500,11 @@ bool Application::createSound()
     if (mConfig.saveAudio)
     {
         std::string path = Path::join(mConfig.saveFolder, "audio.snd");
-        mSoundFile = new NES::FileStream(path.c_str(), "wb");
+        mSoundFile = new emu::FileStream(path.c_str(), "wb");
         if (!mSoundFile->valid())
             return false;
 
-        mSoundWriter = new NES::BinaryWriter(*mSoundFile);
+        mSoundWriter = new emu::BinaryWriter(*mSoundFile);
     }
 
     mSoundReadPos = 0;
@@ -679,7 +679,7 @@ void Application::update()
             bool valid = mPlayback->stream.setReadOffset(size);
             if (valid)
             {
-                NES::BinaryReader reader(mPlayback->stream);
+                emu::BinaryReader reader(mPlayback->stream);
                 gameSession.serializeGameState(reader);
                 mPlayback->stream.rewind(size);
             }
@@ -688,7 +688,7 @@ void Application::update()
 
     if (++mPlayback->elapsedFrames >= mConfig.replayFrameSeek)
     {
-        NES::BinaryWriter writer(mPlayback->stream);
+        emu::BinaryWriter writer(mPlayback->stream);
         mPlayback->stream.setReadOffset(0);
         gameSession.serializeGameState(writer);
         size_t size = mPlayback->stream.getReadOffset();

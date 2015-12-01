@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "Core.h"
 
-namespace NES
+namespace emu
 {
     class InputController : public IDisposable
     {

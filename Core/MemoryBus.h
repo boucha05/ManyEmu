@@ -57,7 +57,7 @@ struct MEMORY_BUS
 uint8_t memory_bus_read8(const MEMORY_BUS& bus, int32_t ticks, uint16_t addr);
 void memory_bus_write8(const MEMORY_BUS& bus, int32_t ticks, uint16_t addr, uint8_t value);
 
-namespace NES
+namespace emu
 {
     class MemoryBus
     {

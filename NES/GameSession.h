@@ -16,7 +16,7 @@ public:
     bool saveGameData();
     bool loadGameState();
     bool saveGameState();
-    void serializeGameState(NES::ISerializer& serializer);
+    void serializeGameState(emu::ISerializer& serializer);
     void setRenderBuffer(void* buffer, uint32_t pitch);
     void setSoundBuffer(void* buffer, size_t size);
     void setController(uint32_t index, uint8_t value);

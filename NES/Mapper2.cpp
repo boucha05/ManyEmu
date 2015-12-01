@@ -57,7 +57,7 @@ namespace
             updateMemoryMap();
         }
 
-        virtual void serializeGameState(NES::ISerializer& serializer)
+        virtual void serializeGameState(emu::ISerializer& serializer)
         {
             uint32_t version = 1;
             serializer.serialize(version);

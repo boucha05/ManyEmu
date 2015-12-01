@@ -2,7 +2,7 @@
 #include "Stream.h"
 #include <vector>
 
-namespace NES
+namespace emu
 {
     void ISerializer::serialize(uint32_t* values, size_t size)
     {

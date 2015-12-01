@@ -100,7 +100,7 @@ namespace
             updateIrqStatus(0);
         }
 
-        virtual void serializeGameState(NES::ISerializer& serializer)
+        virtual void serializeGameState(emu::ISerializer& serializer)
         {
             uint32_t version = 1;
             serializer.serialize(version);
@@ -328,7 +328,7 @@ namespace
         };
 
         const NES::Rom*             mRom;
-        NES::Clock*                 mClock;
+        emu::Clock*                 mClock;
         NES::PPU*                   mPpu;
         PPUListener                 mPpuListener;
         NES::IMapper::IListener*    mMapperListener;

@@ -115,13 +115,13 @@ namespace NES
             updateMemoryMap();
         }
 
-        void serializeGameData(NES::ISerializer& serializer)
+        void serializeGameData(emu::ISerializer& serializer)
         {
             if (mRom->getDescription().battery)
                 serializer.serialize(&mPrgRam[0], mPrgRam.size());
         }
 
-        void serializeGameState(NES::ISerializer& serializer)
+        void serializeGameState(emu::ISerializer& serializer)
         {
             uint32_t version = 2;
             serializer.serialize(version);
@@ -409,12 +409,12 @@ namespace
             mMMC1.reset();
         }
 
-        virtual void serializeGameData(NES::ISerializer& serializer)
+        virtual void serializeGameData(emu::ISerializer& serializer)
         {
             mMMC1.serializeGameData(serializer);
         }
 
-        virtual void serializeGameState(NES::ISerializer& serializer)
+        virtual void serializeGameState(emu::ISerializer& serializer)
         {
             mMMC1.serializeGameState(serializer);
         }

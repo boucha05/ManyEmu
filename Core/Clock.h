@@ -5,7 +5,7 @@
 #include <map>
 #include <vector>
 
-namespace NES
+namespace emu
 {
     class ISerializer;
 

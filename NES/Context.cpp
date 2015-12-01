@@ -272,12 +272,12 @@ namespace
             memory_bus_write8(cpuMemory.getState(), clock.getDesiredTicks(), addr, value);
         }
 
-        virtual void serializeGameData(NES::ISerializer& serializer)
+        virtual void serializeGameData(emu::ISerializer& serializer)
         {
             mapper->serializeGameData(serializer);
         }
 
-        virtual void serializeGameState(NES::ISerializer& serializer)
+        virtual void serializeGameState(emu::ISerializer& serializer)
         {
             uint32_t version = 2;
             clock.serialize(serializer);
@@ -403,8 +403,8 @@ namespace
         };
 
         const NES::Rom*         rom;
-        NES::Clock              clock;
-        NES::MemoryBus          cpuMemory;
+        emu::Clock              clock;
+        emu::MemoryBus          cpuMemory;
         MEM_ACCESS              accessPrgRom1;
         MEM_ACCESS              accessPrgRom2;
         MEM_ACCESS              accessPpuRegsRead;
@@ -439,11 +439,5 @@ namespace NES
             context = nullptr;
         }
         return context;
-    }
-
-    void Assert(bool valid, const char* msg)
-    {
-        if (!valid)
-            printf("Assertion failed: %s\n", msg);
     }
 }
