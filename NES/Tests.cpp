@@ -5,10 +5,10 @@
 bool runTestRom(const char* path)
 {
     bool success = false;
-    auto rom = NES::Rom::load(path);
+    auto rom = nes::Rom::load(path);
     if (rom)
     {
-        auto context = NES::Context::create(*rom);
+        auto context = nes::Context::create(*rom);
         if (context)
         {
             context->update();

@@ -32,8 +32,8 @@ private:
     std::string     mSavePath;
     std::string     mGameDataPath;
     std::string     mGameStatePath;
-    NES::Rom*       mRom;
-    NES::Context*   mContext;
+    nes::Rom*       mRom;
+    nes::Context*   mContext;
     bool            mValid;
 };
 

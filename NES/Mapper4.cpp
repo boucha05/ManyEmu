@@ -7,7 +7,7 @@
 
 namespace
 {
-    class Mapper : public NES::IMapper
+    class Mapper : public nes::IMapper
     {
     public:
         Mapper()
@@ -53,7 +53,7 @@ namespace
 
             // Name table
             const auto& romDescription = mRom->getDescription();
-            if (romDescription.mirroring == NES::Rom::Mirroring_FourScreen)
+            if (romDescription.mirroring == nes::Rom::Mirroring_FourScreen)
                 mNameTableLocal.resize(0x0800);
 
             // Load banks
@@ -183,7 +183,7 @@ namespace
             // Name tables
             uint8_t* nameTable[4];
             uint8_t* nameTableVRAM = mPpu->getNameTableMemory();
-            if (romDescription.mirroring == NES::Rom::Mirroring_FourScreen)
+            if (romDescription.mirroring == nes::Rom::Mirroring_FourScreen)
             {
                 uint8_t* nameTableLocal = mNameTableLocal.empty() ? nameTableVRAM : &mNameTableLocal[0];
                 nameTable[0] = &nameTableVRAM[0x0000];
@@ -305,7 +305,7 @@ namespace
             static_cast<Mapper*>(context)->regWrite(ticks, addr, value);
         }
 
-        class PPUListener : public NES::PPU::IListener
+        class PPUListener : public nes::PPU::IListener
         {
         public:
             PPUListener()
@@ -327,11 +327,11 @@ namespace
             Mapper*     mMapper;
         };
 
-        const NES::Rom*             mRom;
+        const nes::Rom*             mRom;
         emu::Clock*                 mClock;
-        NES::PPU*                   mPpu;
+        nes::PPU*                   mPpu;
         PPUListener                 mPpuListener;
-        NES::IMapper::IListener*    mMapperListener;
+        nes::IMapper::IListener*    mMapperListener;
         std::vector<uint8_t>        mNameTableLocal;
         MEM_ACCESS                  mMemPrgRomRead[4];
         MEM_ACCESS                  mMemPrgRomWrite;
@@ -349,5 +349,5 @@ namespace
         bool                        mIrqPending;
     };
 
-    NES::AutoRegisterMapper<Mapper> mapper(4, "MMC3/MMC6");
+    nes::AutoRegisterMapper<Mapper> mapper(4, "MMC3/MMC6");
 }

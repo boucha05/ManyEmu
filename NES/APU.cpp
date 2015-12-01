@@ -23,7 +23,7 @@ namespace
     };
 }
 
-namespace NES
+namespace nes
 {
     APU::APU()
     {
@@ -308,8 +308,8 @@ namespace NES
             return;
 
         // Filter out invalid button combinations
-        static const uint32_t leftRight = NES::Context::ButtonLeft | NES::Context::ButtonRight;
-        static const uint32_t upDown = NES::Context::ButtonUp | NES::Context::ButtonDown;
+        static const uint32_t leftRight = nes::Context::ButtonLeft | nes::Context::ButtonRight;
+        static const uint32_t upDown = nes::Context::ButtonUp | nes::Context::ButtonDown;
         if ((buttons & leftRight) == leftRight)
             buttons &= ~leftRight;
         if ((buttons & upDown) == upDown)

@@ -12,7 +12,7 @@ namespace
     static const size_t PRG_RAM_SIZE = 8 * 1024;
 }
 
-namespace NES
+namespace nes
 {
     class MMC1
     {
@@ -103,11 +103,11 @@ namespace NES
 
             switch (romDescription.mirroring)
             {
-            case NES::Rom::Mirroring_Vertical:
+            case nes::Rom::Mirroring_Vertical:
                 mRegister[0] |= 2;
                 break;
 
-            case NES::Rom::Mirroring_Horizontal:
+            case nes::Rom::Mirroring_Horizontal:
                 mRegister[0] |= 3;
                 break;
             }
@@ -364,8 +364,8 @@ namespace NES
             updateMemoryMap();
         }
 
-        const NES::Rom*         mRom;
-        NES::PPU*               mPpu;
+        const nes::Rom*         mRom;
+        nes::PPU*               mPpu;
         MEM_ACCESS              mMemPrgRomRead[2];
         MEM_ACCESS              mMemPrgRomWrite;
         MEM_ACCESS              mMemPrgRamRead;
@@ -384,7 +384,7 @@ namespace NES
 
 namespace
 {
-    class Mapper : public NES::IMapper
+    class Mapper : public nes::IMapper
     {
     public:
         virtual void dispose()
@@ -420,8 +420,8 @@ namespace
         }
 
     private:
-        NES::MMC1   mMMC1;
+        nes::MMC1   mMMC1;
     };
 
-    NES::AutoRegisterMapper<Mapper> mapper(1, "SxROM");
+    nes::AutoRegisterMapper<Mapper> mapper(1, "SxROM");
 }

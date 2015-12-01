@@ -43,11 +43,11 @@ bool GameSession::loadRom(const std::string& path, const std::string& saveDirect
     mGameDataPath = mSavePath + FileExtensionData;
     mGameStatePath = mSavePath + FileExtensionState;
 
-    mRom = NES::Rom::load(path.c_str());
+    mRom = nes::Rom::load(path.c_str());
     if (!mRom)
         return false;
 
-    mContext = NES::Context::create(*mRom);
+    mContext = nes::Context::create(*mRom);
     if (!mContext)
         return false;
 

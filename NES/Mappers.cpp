@@ -3,15 +3,15 @@
 
 namespace
 {
-    class MapperRegistryImpl : public NES::MapperRegistry
+    class MapperRegistryImpl : public nes::MapperRegistry
     {
     public:
-        virtual void registerMapper(const NES::MapperInfo& info)
+        virtual void registerMapper(const nes::MapperInfo& info)
         {
             mapperInfoTable[info.index] = &info;
         }
 
-        virtual void unregisterMapper(const NES::MapperInfo& info)
+        virtual void unregisterMapper(const nes::MapperInfo& info)
         {
             mapperInfoTable.erase(info.index);
         }
@@ -24,7 +24,7 @@ namespace
             return item->second->name;
         }
 
-        virtual NES::IMapper* create(uint32_t index)
+        virtual nes::IMapper* create(uint32_t index)
         {
             auto item = mapperInfoTable.find(index);
             if (item == mapperInfoTable.end())
@@ -33,13 +33,13 @@ namespace
         }
 
     private:
-        typedef std::map<uint32_t, const NES::MapperInfo*> MapperInfoTable;
+        typedef std::map<uint32_t, const nes::MapperInfo*> MapperInfoTable;
 
         MapperInfoTable     mapperInfoTable;
     };
 }
 
-namespace NES
+namespace nes
 {
     MapperRegistry& MapperRegistry::getInstance()
     {

@@ -11,7 +11,7 @@ namespace emu
     class ISerializer;
 }
 
-namespace NES
+namespace nes
 {
     class APU;
     class Cpu6502;

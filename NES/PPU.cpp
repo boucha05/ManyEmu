@@ -151,7 +151,7 @@ namespace
     }
 }
 
-namespace NES
+namespace nes
 {
     PPU::PPU()
         : mClock(nullptr)

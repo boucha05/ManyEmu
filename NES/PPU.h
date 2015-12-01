@@ -10,7 +10,7 @@ namespace emu
     class ISerializer;
 }
 
-namespace NES
+namespace nes
 {
     class PPU : public emu::Clock::IListener
     {

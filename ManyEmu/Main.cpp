@@ -342,12 +342,12 @@ bool Application::create()
     }
 
     mPlayer1Controller = new StandardController(mInputManager);
-    mPlayer1Controller->addInput(Input_Player1 + Input_HorizontalAxis, NES::Context::ButtonRight, NES::Context::ButtonLeft);
-    mPlayer1Controller->addInput(Input_Player1 + Input_VerticalAxis, NES::Context::ButtonDown, NES::Context::ButtonUp);
-    mPlayer1Controller->addInput(Input_Player1 + Input_B, NES::Context::ButtonB);
-    mPlayer1Controller->addInput(Input_Player1 + Input_A, NES::Context::ButtonA);
-    mPlayer1Controller->addInput(Input_Player1 + Input_Select, NES::Context::ButtonSelect);
-    mPlayer1Controller->addInput(Input_Player1 + Input_Start, NES::Context::ButtonStart);
+    mPlayer1Controller->addInput(Input_Player1 + Input_HorizontalAxis, nes::Context::ButtonRight, nes::Context::ButtonLeft);
+    mPlayer1Controller->addInput(Input_Player1 + Input_VerticalAxis, nes::Context::ButtonDown, nes::Context::ButtonUp);
+    mPlayer1Controller->addInput(Input_Player1 + Input_B, nes::Context::ButtonB);
+    mPlayer1Controller->addInput(Input_Player1 + Input_A, nes::Context::ButtonA);
+    mPlayer1Controller->addInput(Input_Player1 + Input_Select, nes::Context::ButtonSelect);
+    mPlayer1Controller->addInput(Input_Player1 + Input_Start, nes::Context::ButtonStart);
     mPlayer1 = mPlayer1Controller;
 
     if (!mConfig.recorded.empty())

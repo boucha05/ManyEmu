@@ -44,7 +44,7 @@ namespace
         return size > 0;
     }
 
-    class RomImpl : public NES::Rom
+    class RomImpl : public nes::Rom
     {
     public:
         RomImpl()
@@ -157,7 +157,7 @@ namespace
     };
 }
 
-namespace NES
+namespace nes
 {
     bool Rom::readDescription(Rom::Description& description, const char* path)
     {

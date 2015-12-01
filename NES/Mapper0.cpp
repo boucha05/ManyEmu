@@ -2,7 +2,7 @@
 
 namespace
 {
-    class Mapper : public NES::IMapper
+    class Mapper : public nes::IMapper
     {
     public:
         virtual void dispose()
@@ -16,5 +16,5 @@ namespace
         }
     };
 
-    NES::AutoRegisterMapper<Mapper> mapper(0, "NROM");
+    nes::AutoRegisterMapper<Mapper> mapper(0, "NROM");
 }

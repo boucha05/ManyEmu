@@ -7,7 +7,7 @@
 
 namespace
 {
-    class Mapper : public NES::IMapper
+    class Mapper : public nes::IMapper
     {
     public:
         virtual void dispose()
@@ -98,8 +98,8 @@ namespace
             static_cast<Mapper*>(context)->regWrite(addr, value);
         }
 
-        const NES::Rom*         mRom;
-        NES::PPU*               mPpu;
+        const nes::Rom*         mRom;
+        nes::PPU*               mPpu;
         MEM_ACCESS              mMemPrgRomRead[2];
         MEM_ACCESS              mMemPrgRomWrite;
         MEM_ACCESS              mMemChrRamRead;
@@ -108,5 +108,5 @@ namespace
         uint8_t                 mRegister;
     };
 
-    NES::AutoRegisterMapper<Mapper> mapper(2, "UxROM");
+    nes::AutoRegisterMapper<Mapper> mapper(2, "UxROM");
 }

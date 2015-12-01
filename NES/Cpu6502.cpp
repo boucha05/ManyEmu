@@ -1271,7 +1271,7 @@ void cpu_execute(CPU_STATE& state)
     }
 }
 
-namespace NES
+namespace nes
 {
     Cpu6502::Cpu6502()
         : mClock(nullptr)

@@ -50,7 +50,7 @@ namespace
 
 namespace
 {
-    class ContextImpl : public NES::Context
+    class ContextImpl : public nes::Context
     {
     public:
         ContextImpl()
@@ -64,7 +64,7 @@ namespace
             destroy();
         }
 
-        bool create(const NES::Rom& _rom)
+        bool create(const nes::Rom& _rom)
         {
             rom = &_rom;
 
@@ -83,14 +83,14 @@ namespace
 
             // PPU
             uint32_t ppuCreateFlags = 0;
-            if (romDesc.mirroring == NES::Rom::Mirroring_Horizontal)
-                ppuCreateFlags |= NES::PPU::CREATE_VRAM_HORIZONTAL_MIRROR;
-            else if (romDesc.mirroring == NES::Rom::Mirroring_Vertical)
-                ppuCreateFlags |= NES::PPU::CREATE_VRAM_VERTICAL_MIRROR;
-            else if (romDesc.mirroring == NES::Rom::Mirroring_FourScreen)
-                ppuCreateFlags |= NES::PPU::CREATE_VRAM_FOUR_SCREEN;
+            if (romDesc.mirroring == nes::Rom::Mirroring_Horizontal)
+                ppuCreateFlags |= nes::PPU::CREATE_VRAM_HORIZONTAL_MIRROR;
+            else if (romDesc.mirroring == nes::Rom::Mirroring_Vertical)
+                ppuCreateFlags |= nes::PPU::CREATE_VRAM_VERTICAL_MIRROR;
+            else if (romDesc.mirroring == nes::Rom::Mirroring_FourScreen)
+                ppuCreateFlags |= nes::PPU::CREATE_VRAM_FOUR_SCREEN;
             else
-                ppuCreateFlags |= NES::PPU::CREATE_VRAM_ONE_SCREEN;
+                ppuCreateFlags |= nes::PPU::CREATE_VRAM_ONE_SCREEN;
             if (!ppu.create(clock, MASTER_CLOCK_PPU_DIVIDER_NTSC, ppuCreateFlags, VISIBLE_LINES_NTSC))
                 return false;
 
@@ -128,7 +128,7 @@ namespace
 
             // APU registers
             static const uint16_t APU_START_ADDR = 0x4000;
-            static const uint16_t APU_END_ADDR = APU_START_ADDR + NES::APU::APU_REGISTER_COUNT - 1;
+            static const uint16_t APU_END_ADDR = APU_START_ADDR + nes::APU::APU_REGISTER_COUNT - 1;
             accessApuRegsRead.setReadMethod(apuRegsRead, this, APU_START_ADDR);
             accessApuRegsWrite.setWriteMethod(apuRegsWrite, this, APU_START_ADDR);
             cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, APU_START_ADDR, APU_END_ADDR, accessApuRegsRead);
@@ -159,10 +159,10 @@ namespace
             // Mapper
             if (!mapperListener.create(*this))
                 return false;
-            mapper = NES::MapperRegistry::getInstance().create(romDesc.mapper);
+            mapper = nes::MapperRegistry::getInstance().create(romDesc.mapper);
             if (!mapper)
                 return false;
-            NES::IMapper::Components components;
+            nes::IMapper::Components components;
             components.rom = rom;
             components.clock = &clock;
             components.memory = &cpuMemory;
@@ -338,7 +338,7 @@ namespace
             cpu.irq(active);
         }
 
-        class PPUListener : public NES::PPU::IListener
+        class PPUListener : public nes::PPU::IListener
         {
         public:
             PPUListener()
@@ -370,7 +370,7 @@ namespace
             ContextImpl*    mContext;
         };
 
-        class MapperListener : public NES::IMapper::IListener
+        class MapperListener : public nes::IMapper::IListener
         {
         public:
             MapperListener()
@@ -402,7 +402,7 @@ namespace
             ContextImpl*    mContext;
         };
 
-        const NES::Rom*         rom;
+        const nes::Rom*         rom;
         emu::Clock              clock;
         emu::MemoryBus          cpuMemory;
         MEM_ACCESS              accessPrgRom1;
@@ -417,18 +417,18 @@ namespace
         MEM_ACCESS              accessSaveRamWrite;
         bool                    irqApu;
         bool                    irqMapper;
-        NES::Cpu6502            cpu;
-        NES::PPU                ppu;
+        nes::Cpu6502            cpu;
+        nes::PPU                ppu;
         PPUListener             ppuListener;
-        NES::APU                apu;
+        nes::APU                apu;
         std::vector<uint8_t>    cpuRam;
         std::vector<uint8_t>    saveRam;
         MapperListener          mapperListener;
-        NES::IMapper*           mapper;
+        nes::IMapper*           mapper;
     };
 }
 
-namespace NES
+namespace nes
 {
     Context* Context::create(const Rom& rom)
     {

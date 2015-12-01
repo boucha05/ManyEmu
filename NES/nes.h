@@ -3,7 +3,7 @@
 
 #include <Core/Core.h>
 
-namespace NES
+namespace nes
 {
     class Rom : public emu::IDisposable
     {
