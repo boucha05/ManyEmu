@@ -15,8 +15,9 @@ namespace
     }
 }
 
-GameSession::GameSession()
-    : mRom(nullptr)
+GameSession::GameSession(emu::IEmulator& emulator)
+    : mEmulator(emulator)
+    , mRom(nullptr)
     , mContext(nullptr)
     , mValid(false)
 {
@@ -43,11 +44,11 @@ bool GameSession::loadRom(const std::string& path, const std::string& saveDirect
     mGameDataPath = mSavePath + FileExtensionData;
     mGameStatePath = mSavePath + FileExtensionState;
 
-    mRom = nes::Rom::load(path.c_str());
+    mRom = mEmulator.loadRom(path.c_str());
     if (!mRom)
         return false;
 
-    mContext = nes::Context::create(*mRom);
+    mContext = mEmulator.createContext(*mRom);
     if (!mContext)
         return false;
 
@@ -61,13 +62,13 @@ void GameSession::unloadRom()
 
     if (mContext)
     {
-        mContext->dispose();
+        mEmulator.destroyContext(*mContext);
         mContext = nullptr;
     }
 
     if (mRom)
     {
-        mRom->dispose();
+        mEmulator.unloadRom(*mRom);
         mRom = nullptr;
     }
 }
@@ -82,8 +83,7 @@ bool GameSession::loadGameData()
         return false;
 
     emu::BinaryReader reader(stream);
-    mContext->serializeGameData(reader);
-    return true;
+    return mEmulator.serializeGameData(*mContext, reader);
 }
 
 bool GameSession::saveGameData()
@@ -93,7 +93,8 @@ bool GameSession::saveGameData()
 
     emu::MemoryStream streamTemp;
     emu::BinaryWriter writer(streamTemp);
-    mContext->serializeGameData(writer);
+    if (!mEmulator.serializeGameData(*mContext, writer))
+        return false;
     if (streamTemp.getSize() <= 0)
         return false;
 
@@ -112,8 +113,7 @@ bool GameSession::loadGameState()
         return false;
 
     emu::BinaryReader reader(stream);
-    serializeGameState(reader);
-    return true;
+    return serializeGameState(reader);
 }
 
 bool GameSession::saveGameState()
@@ -123,7 +123,8 @@ bool GameSession::saveGameState()
 
     emu::MemoryStream streamTemp;
     emu::BinaryWriter writer(streamTemp);
-    serializeGameState(writer);
+    if (!serializeGameState(writer))
+        return false;
     if (streamTemp.getSize() <= 0)
         return false;
 
@@ -132,54 +133,67 @@ bool GameSession::saveGameState()
     return success;
 }
 
-void GameSession::serializeGameState(emu::ISerializer& serializer)
+bool GameSession::serializeGameState(emu::ISerializer& serializer)
 {
     if (!mValid)
-        return;
+        return false;
 
     uint32_t version = 1;
     serializer.serialize(version);
     if (serializer.isReading())
-        mContext->reset();
-    mContext->serializeGameState(serializer);
+    {
+        if (!reset())
+            return false;
+    }
+    return mEmulator.serializeGameState(*mContext, serializer);
 }
 
-void GameSession::setRenderBuffer(void* buffer, uint32_t pitch)
+bool GameSession::setRenderBuffer(void* buffer, size_t pitch)
 {
     if (!mValid)
-        return;
+        return false;
 
-    mContext->setRenderSurface(buffer, pitch);
+    return mEmulator.setRenderBuffer(*mContext, buffer, pitch);
 }
 
-void GameSession::setSoundBuffer(void* buffer, size_t size)
+bool GameSession::setSoundBuffer(void* buffer, size_t size)
 {
     if (!mValid)
-        return;
+        return false;
 
-    mContext->setSoundBuffer(static_cast<int16_t*>(buffer), size);
+    return mEmulator.setSoundBuffer(*mContext, static_cast<int16_t*>(buffer), size);
 }
 
-void GameSession::setController(uint32_t index, uint8_t value)
+bool GameSession::setController(uint32_t index, uint32_t value)
 {
     if (!mValid)
-        return;
+        return false;
 
-    mContext->setController(index, value);
+    return mEmulator.setController(*mContext, index, value);
 }
 
-void GameSession::execute()
+bool GameSession::reset()
 {
     if (!mValid)
-        return;
+        return false;
 
+    return mEmulator.reset(*mContext);
+}
+
+bool GameSession::execute()
+{
+    if (!mValid)
+        return false;
+
+    bool success = true;
     __try
     {
-        mContext->update();
+        success = mEmulator.execute(*mContext);
     }
     __except (getExceptionFilter(GetExceptionInformation()))
     {
         printf("Dead!\n");
         mValid = false;
     }
+    return success;
 }

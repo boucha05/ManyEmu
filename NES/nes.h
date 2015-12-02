@@ -5,7 +5,7 @@
 
 namespace nes
 {
-    class Rom : public emu::IDisposable
+    class Rom : public emu::Rom, public emu::IDisposable
     {
     public:
         enum Mirroring
@@ -41,7 +41,7 @@ namespace nes
         static Rom* load(const char* path);
     };
 
-    class Context : public emu::IDisposable
+    class Context : public emu::Context, public emu::IDisposable
     {
     public:
         static const uint32_t ButtonA = 0x01;

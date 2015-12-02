@@ -12,9 +12,10 @@
 #include <Core/Path.h>
 #include <Core/Serialization.h>
 #include <Core/Stream.h>
-#include <NES/GameSession.h>
+#include <NES/NESEmulator.h>
 #include <NES/Tests.h>
 #include <NES/nes.h>
+#include "GameSession.h"
 #include <Windows.h>
 
 namespace
@@ -278,7 +279,7 @@ bool Application::create()
 
     mJobScheduler.create(SDL_GetCPUCount());
 
-    mWindow = SDL_CreateWindow("ManyNES", 100, 100, 256 * 2, 240 * 2, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+    mWindow = SDL_CreateWindow("ManyEmu", 100, 100, 256 * 2, 240 * 2, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (!mWindow)
         return false;
 
@@ -546,7 +547,7 @@ void Application::destroySound()
 
 GameSession* Application::createGameSession(const std::string& path, const std::string& saveDirectory)
 {
-    auto& gameSession = *new GameSession();
+    auto& gameSession = *new GameSession(nes::Emulator::getInstance());
     if (!gameSession.loadRom(path, saveDirectory))
     {
         delete &gameSession;
