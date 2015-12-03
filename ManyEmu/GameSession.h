@@ -4,13 +4,15 @@
 #include <stdint.h>
 #include <string>
 #include <Core/Core.h>
+#include "Backend.h"
 
 class GameSession
 {
 public:
-    GameSession(emu::IEmulator& emulator);
+    GameSession();
     ~GameSession();
-    bool loadRom(const std::string& path, const std::string& saveDirectory);
+    IBackend* getBackend() { return mBackend; }
+    bool loadRom(IBackend& backend, const std::string& path, const std::string& saveDirectory);
     void unloadRom();
     bool loadGameData();
     bool saveGameData();
@@ -29,7 +31,8 @@ public:
     }
 
 private:
-    emu::IEmulator&     mEmulator;
+    IBackend*           mBackend;
+    emu::IEmulator*     mEmulator;
     std::string         mRomPath;
     std::string         mSavePath;
     std::string         mGameDataPath;

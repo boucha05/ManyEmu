@@ -49,7 +49,7 @@ solution "ManyEmu"
         flags { "Optimize" }
 
     configuration "vs*"
-        defines { "_CRT_SECURE_NO_WARNINGS" }
+        defines { "_CRT_SECURE_NO_WARNINGS", "_CRT_NONSTDC_NO_WARNINGS" }
 
     configuration "vs2013"
         defines { "_USING_V110_SDK71_" }

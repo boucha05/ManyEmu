@@ -15,8 +15,9 @@ namespace
     }
 }
 
-GameSession::GameSession(emu::IEmulator& emulator)
-    : mEmulator(emulator)
+GameSession::GameSession()
+    : mBackend(nullptr)
+    , mEmulator(nullptr)
     , mRom(nullptr)
     , mContext(nullptr)
     , mValid(false)
@@ -28,8 +29,11 @@ GameSession::~GameSession()
     unloadRom();
 }
 
-bool GameSession::loadRom(const std::string& path, const std::string& saveDirectory)
+bool GameSession::loadRom(IBackend& backend, const std::string& path, const std::string& saveDirectory)
 {
+    mBackend = &backend;
+    mEmulator = &mBackend->getEmulator();
+
     std::string romName;
     std::string romExtension;
     std::string romFilename;
@@ -44,11 +48,11 @@ bool GameSession::loadRom(const std::string& path, const std::string& saveDirect
     mGameDataPath = mSavePath + FileExtensionData;
     mGameStatePath = mSavePath + FileExtensionState;
 
-    mRom = mEmulator.loadRom(path.c_str());
+    mRom = mEmulator->loadRom(path.c_str());
     if (!mRom)
         return false;
 
-    mContext = mEmulator.createContext(*mRom);
+    mContext = mEmulator->createContext(*mRom);
     if (!mContext)
         return false;
 
@@ -62,15 +66,18 @@ void GameSession::unloadRom()
 
     if (mContext)
     {
-        mEmulator.destroyContext(*mContext);
+        mEmulator->destroyContext(*mContext);
         mContext = nullptr;
     }
 
     if (mRom)
     {
-        mEmulator.unloadRom(*mRom);
+        mEmulator->unloadRom(*mRom);
         mRom = nullptr;
     }
+
+    mBackend = nullptr;
+    mEmulator = nullptr;
 }
 
 bool GameSession::loadGameData()
@@ -83,7 +90,7 @@ bool GameSession::loadGameData()
         return false;
 
     emu::BinaryReader reader(stream);
-    return mEmulator.serializeGameData(*mContext, reader);
+    return mEmulator->serializeGameData(*mContext, reader);
 }
 
 bool GameSession::saveGameData()
@@ -93,7 +100,7 @@ bool GameSession::saveGameData()
 
     emu::MemoryStream streamTemp;
     emu::BinaryWriter writer(streamTemp);
-    if (!mEmulator.serializeGameData(*mContext, writer))
+    if (!mEmulator->serializeGameData(*mContext, writer))
         return false;
     if (streamTemp.getSize() <= 0)
         return false;
@@ -145,7 +152,7 @@ bool GameSession::serializeGameState(emu::ISerializer& serializer)
         if (!reset())
             return false;
     }
-    return mEmulator.serializeGameState(*mContext, serializer);
+    return mEmulator->serializeGameState(*mContext, serializer);
 }
 
 bool GameSession::setRenderBuffer(void* buffer, size_t pitch)
@@ -153,7 +160,7 @@ bool GameSession::setRenderBuffer(void* buffer, size_t pitch)
     if (!mValid)
         return false;
 
-    return mEmulator.setRenderBuffer(*mContext, buffer, pitch);
+    return mEmulator->setRenderBuffer(*mContext, buffer, pitch);
 }
 
 bool GameSession::setSoundBuffer(void* buffer, size_t size)
@@ -161,7 +168,7 @@ bool GameSession::setSoundBuffer(void* buffer, size_t size)
     if (!mValid)
         return false;
 
-    return mEmulator.setSoundBuffer(*mContext, static_cast<int16_t*>(buffer), size);
+    return mEmulator->setSoundBuffer(*mContext, static_cast<int16_t*>(buffer), size);
 }
 
 bool GameSession::setController(uint32_t index, uint32_t value)
@@ -169,7 +176,7 @@ bool GameSession::setController(uint32_t index, uint32_t value)
     if (!mValid)
         return false;
 
-    return mEmulator.setController(*mContext, index, value);
+    return mEmulator->setController(*mContext, index, value);
 }
 
 bool GameSession::reset()
@@ -177,7 +184,7 @@ bool GameSession::reset()
     if (!mValid)
         return false;
 
-    return mEmulator.reset(*mContext);
+    return mEmulator->reset(*mContext);
 }
 
 bool GameSession::execute()
@@ -188,7 +195,7 @@ bool GameSession::execute()
     bool success = true;
     __try
     {
-        success = mEmulator.execute(*mContext);
+        success = mEmulator->execute(*mContext);
     }
     __except (getExceptionFilter(GetExceptionInformation()))
     {

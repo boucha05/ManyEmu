@@ -12,9 +12,7 @@
 #include <Core/Path.h>
 #include <Core/Serialization.h>
 #include <Core/Stream.h>
-#include <NES/NESEmulator.h>
-#include <NES/Tests.h>
-#include <NES/nes.h>
+#include "Backend.h"
 #include "GameSession.h"
 #include <Windows.h>
 
@@ -27,59 +25,6 @@ namespace
     }
 
     static bool sdlInitialized = initSDL();
-
-    class StandardController : public emu::InputController
-    {
-    public:
-        StandardController(InputManager& inputManager)
-            : mInputManager(&inputManager)
-        {
-        }
-
-        virtual void dispose()
-        {
-            delete this;
-        }
-
-        virtual uint8_t readInput()
-        {
-            uint8_t buttonMask = 0;
-            for (auto mapping : mInputs)
-            {
-                static const float threshold = 0.4f;
-                float value = mInputManager->getInput(mapping.inputId);
-                if (value < -threshold)
-                    buttonMask |= mapping.buttonMaskMin;
-                else if (value > threshold)
-                    buttonMask |= mapping.buttonMaskMax;
-            }
-            return buttonMask;
-        }
-
-        virtual void addInput(uint32_t inputId, uint32_t buttonMaskMax, uint32_t buttonMaskMin = 0)
-        {
-            InputMapping mapping =
-            {
-                inputId,
-                buttonMaskMax,
-                buttonMaskMin,
-            };
-            mInputs.push_back(mapping);
-        }
-
-    private:
-        struct InputMapping
-        {
-            uint32_t    inputId;
-            uint32_t    buttonMaskMax;
-            uint32_t    buttonMaskMin;
-        };
-
-        typedef std::vector<InputMapping> InputMappingTable;
-
-        InputMappingTable   mInputs;
-        InputManager*       mInputManager;
-    };
 }
 
 class Application
@@ -125,26 +70,12 @@ public:
     void terminate();
 
 private:
-    enum
+    struct Game
     {
-        Input_A,
-        Input_B,
-        Input_Select,
-        Input_Start,
-        Input_VerticalAxis,
-        Input_HorizontalAxis,
-        Input_PlayerCount,
+        IBackend*       mBackend;
+        GameSession*    mSession;
     };
-
-    enum
-    {
-        Input_Exit,
-        Input_TimeDir,
-        Input_Player1,
-        Input_Player2 = Input_Player1 + Input_PlayerCount,
-        Input_Count = Input_Player2 + Input_PlayerCount,
-    };
-
+    
     bool create();
     void destroy();
     bool createSound();
@@ -343,12 +274,6 @@ bool Application::create()
     }
 
     mPlayer1Controller = new StandardController(mInputManager);
-    mPlayer1Controller->addInput(Input_Player1 + Input_HorizontalAxis, nes::Context::ButtonRight, nes::Context::ButtonLeft);
-    mPlayer1Controller->addInput(Input_Player1 + Input_VerticalAxis, nes::Context::ButtonDown, nes::Context::ButtonUp);
-    mPlayer1Controller->addInput(Input_Player1 + Input_B, nes::Context::ButtonB);
-    mPlayer1Controller->addInput(Input_Player1 + Input_A, nes::Context::ButtonA);
-    mPlayer1Controller->addInput(Input_Player1 + Input_Select, nes::Context::ButtonSelect);
-    mPlayer1Controller->addInput(Input_Player1 + Input_Start, nes::Context::ButtonStart);
     mPlayer1 = mPlayer1Controller;
 
     if (!mConfig.recorded.empty())
@@ -393,6 +318,11 @@ bool Application::create()
         auto gameSession = createGameSession(Path::join(mConfig.romFolder, rom), mConfig.saveFolder);
         if (gameSession)
             mGameSessions.push_back(gameSession);
+    }
+
+    if (mGameSessions.size() > 0)
+    {
+        mGameSessions[mActiveGameSession]->getBackend()->configureController(*mPlayer1Controller, 0);
     }
 
     return true;
@@ -547,8 +477,16 @@ void Application::destroySound()
 
 GameSession* Application::createGameSession(const std::string& path, const std::string& saveDirectory)
 {
-    auto& gameSession = *new GameSession(nes::Emulator::getInstance());
-    if (!gameSession.loadRom(path, saveDirectory))
+    std::string root;
+    std::string ext;
+    Path::splitExt(path, root, ext);
+    Path::normalizeCase(ext);
+    auto backend = BackendRegistry::getInstance().getBackend(ext.c_str());
+    if (!backend)
+        return nullptr;
+
+    auto& gameSession = *new GameSession();
+    if (!gameSession.loadRom(*backend, path, saveDirectory))
     {
         delete &gameSession;
         return nullptr;
