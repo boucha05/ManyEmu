@@ -34,20 +34,20 @@ public:
     {
         typedef std::vector<std::string> StringArray;
 
-        StringArray     roms;
-        std::string     romFolder;
-        std::string     recorded;
-        std::string     saveFolder;
-        uint32_t        frameSkip;
-        uint32_t        replayBufferSize;
-        uint32_t        replayFrameSeek;
-        uint32_t        samplingRate;
-        float           soundDelay;
-        bool            playback;
-        bool            saveAudio;
-        bool            autoSave;
-        bool            autoLoad;
-        bool            profile;
+        StringArray     roms;               // ROM files to execute. Only the first rom specified is playable for now.
+        std::string     romFolder;          // Location where the ROM files are to be found.
+        std::string     recorded;           // File where inputs are recorded (created if playback is falsed, read if playback is true)
+        std::string     saveFolder;         // Savegame folder
+        uint32_t        frameSkip;          // Number of simulated frames to skip before the first frame is rendered (used for reproducing bugs faster)
+        uint32_t        replayBufferSize;   // Size of buffer used to rewind game in time
+        uint32_t        replayFrameSeek;    // Number of frames between two rewind snapshots
+        uint32_t        samplingRate;       // Sound buffer sampling rate
+        float           soundDelay;         // Sound delay in seconds
+        bool            playback;           // Replay recorded controller input
+        bool            saveAudio;          // Save audio to file (not very efficient, for debugging only)
+        bool            autoSave;           // Automatically save game state before exiting game
+        bool            autoLoad;           // Automatically load savegame at startup
+        bool            profile;            // Saves some timings in a file called profiling.prof (for debugging only)
 
         Config()
             : frameSkip(0)
@@ -703,11 +703,17 @@ void Application::audioCallback(void* userData, Uint8* stream, int len)
 int main()
 {
     Application::Config config;
-#if 1
+
+    // Sorry, the UI is not implemented yet. For now, you will need to manually
+    // configure the emulation right here
+    
+#if 0
+    // Configuration for Gameboy development
     config.saveFolder = "C:\\Emu\\Gameboy\\save";
     config.romFolder = "C:\\Emu\\Gameboy\\roms";
     config.roms.push_back("Tetris (V1.1) (JU) [!].gb");
 #else
+    // Configuration for NES development
     config.saveFolder = "C:\\Emu\\NES\\save";
     //config.saveAudio = true;
     config.romFolder = "C:\\Emu\\NES\\roms";
