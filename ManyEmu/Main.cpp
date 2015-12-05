@@ -703,11 +703,16 @@ void Application::audioCallback(void* userData, Uint8* stream, int len)
 int main()
 {
     Application::Config config;
+#if 1
+    config.saveFolder = "C:\\Emu\\Gameboy\\save";
+    config.romFolder = "C:\\Emu\\Gameboy\\roms";
+    config.roms.push_back("Tetris (V1.1) (JU) [!].gb");
+#else
     config.saveFolder = "C:\\Emu\\NES\\save";
     //config.saveAudio = true;
     config.romFolder = "C:\\Emu\\NES\\roms";
-    config.roms.push_back("smb3.nes");
-    config.roms.push_back("exitbike.nes");
+    //config.roms.push_back("smb3.nes");
+    //config.roms.push_back("exitbike.nes");
     config.roms.push_back("megaman2.nes");
     config.roms.push_back("mario.nes");
     config.roms.push_back("zelda2.nes");
@@ -717,6 +722,7 @@ int main()
     //config.autoSave = true;
     config.autoLoad = true;
     //config.profile = true;
+#endif
 
     Application application;
     application.run(config);

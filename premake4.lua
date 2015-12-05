@@ -64,7 +64,10 @@ project "ManyEmu"
     
     includedirs { "." }
 
-    files { "Core/**.h", "Core/**.cpp" }
-    files { "NES/**.h", "NES/**.cpp" }
-    files { "ManyEmu/**.h", "ManyEmu/**.cpp" }
-
+    files
+    {
+        "Core/**.h", "Core/**.cpp",
+        "Gameboy/**.h", "Gameboy/**.cpp",
+        "NES/**.h", "NES/**.cpp",
+        "ManyEmu/**.h", "ManyEmu/**.cpp"
+    }
