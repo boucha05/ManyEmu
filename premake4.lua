@@ -46,13 +46,29 @@ solution "ManyEmu"
 
     configuration "Release"
         defines { "NDEBUG" }
-        flags { "Optimize" }
+        flags { "Symbols", "Optimize" }
 
     configuration "vs*"
         defines { "_CRT_SECURE_NO_WARNINGS", "_CRT_NONSTDC_NO_WARNINGS" }
 
     configuration "vs2013"
         defines { "_USING_V110_SDK71_" }
+
+
+emulators = {}
+function emulatorProject(libname, file_filter)
+    table.insert(emulators, libname);
+    project(libname)
+        kind "StaticLib"
+        language "C++"
+    
+        includedirs { "." }
+    
+        files(file_filter)
+end
+
+emulatorProject("Gameboy", { "Gameboy/**.h", "Gameboy/**.cpp" } )
+emulatorProject("NES", { "NES/**.h", "NES/**.cpp" } )
 
 project "ManyEmu"
     kind "ConsoleApp"
@@ -62,12 +78,12 @@ project "ManyEmu"
     addlibrary("Contrib/glew", "glew32s")
     adddll("Contrib/SDL2/lib", "SDL2")
     
+    links(emulators)
+    
     includedirs { "." }
 
     files
     {
         "Core/**.h", "Core/**.cpp",
-        "Gameboy/**.h", "Gameboy/**.cpp",
-        "NES/**.h", "NES/**.cpp",
         "ManyEmu/**.h", "ManyEmu/**.cpp"
     }

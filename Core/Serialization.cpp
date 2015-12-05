@@ -1,5 +1,6 @@
 #include "Serialization.h"
 #include "Stream.h"
+#include <cstdarg>
 #include <vector>
 
 namespace emu
@@ -189,7 +190,7 @@ namespace emu
         char temp[4096];
         va_list args;
         va_start(args, text);
-        size_t size = SDL_vsnprintf(temp, sizeof(temp), text, args);
+        size_t size = vsnprintf(temp, sizeof(temp), text, args);
         mStream->write(temp, size);
         va_end(args);
     }

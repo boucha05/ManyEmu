@@ -2,7 +2,6 @@
 #define __STREAM_H__
 
 #include <stdint.h>
-#include <SDL.h>
 #include <stdio.h>
 #include "Core.h"
 #include <vector>
