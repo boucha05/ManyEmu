@@ -1,4 +1,8 @@
 #include "Mappers.h"
+#include "Mapper0.h"
+#include "Mapper1.h"
+#include "Mapper2.h"
+#include "Mapper4.h"
 #include <map>
 
 namespace
@@ -44,6 +48,11 @@ namespace nes
     MapperRegistry& MapperRegistry::getInstance()
     {
         static MapperRegistryImpl instance;
+        static nes::AutoRegisterMapper<Mapper0> mapper0(0, "NROM");
+        static nes::AutoRegisterMapper<Mapper1> mapper1(1, "SxROM");
+        static nes::AutoRegisterMapper<Mapper2> mapper2(2, "UxROM");
+        static nes::AutoRegisterMapper<Mapper4> mapper4(4, "MMC3/MMC6");
+
         return instance;
     }
 }

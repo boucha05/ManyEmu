@@ -5,9 +5,9 @@
 #include "PPU.h"
 #include <vector>
 
-namespace
+namespace nes
 {
-    class Mapper : public nes::IMapper
+    class Mapper2 : public nes::IMapper
     {
     public:
         virtual void dispose()
@@ -95,7 +95,7 @@ namespace
 
         static void regWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value)
         {
-            static_cast<Mapper*>(context)->regWrite(addr, value);
+            static_cast<Mapper2*>(context)->regWrite(addr, value);
         }
 
         const nes::Rom*         mRom;
@@ -107,6 +107,4 @@ namespace
         std::vector<uint8_t>    mChrRam;
         uint8_t                 mRegister;
     };
-
-    nes::AutoRegisterMapper<Mapper> mapper(2, "UxROM");
 }

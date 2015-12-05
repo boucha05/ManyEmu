@@ -380,11 +380,8 @@ namespace nes
         uint32_t                mChrRomPage[2];
         uint8_t                 mRegister[4];
     };
-}
 
-namespace
-{
-    class Mapper : public nes::IMapper
+    class Mapper1 : public nes::IMapper
     {
     public:
         virtual void dispose()
@@ -422,6 +419,4 @@ namespace
     private:
         nes::MMC1   mMMC1;
     };
-
-    nes::AutoRegisterMapper<Mapper> mapper(1, "SxROM");
 }

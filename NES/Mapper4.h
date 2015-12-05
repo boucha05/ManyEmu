@@ -5,12 +5,12 @@
 #include "PPU.h"
 #include <vector>
 
-namespace
+namespace nes
 {
-    class Mapper : public nes::IMapper
+    class Mapper4 : public nes::IMapper
     {
     public:
-        Mapper()
+        Mapper4()
             : mRom(nullptr)
             , mClock(nullptr)
             , mPpu(nullptr)
@@ -221,7 +221,7 @@ namespace
 
         static void onLineSync(void* context, int32_t tick)
         {
-            static_cast<Mapper*>(context)->onLineSync(tick);
+            static_cast<Mapper4*>(context)->onLineSync(tick);
         }
 
         void setLineSync(int32_t tick, uint32_t lines)
@@ -302,7 +302,7 @@ namespace
 
         static void regWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value)
         {
-            static_cast<Mapper*>(context)->regWrite(ticks, addr, value);
+            static_cast<Mapper4*>(context)->regWrite(ticks, addr, value);
         }
 
         class PPUListener : public nes::PPU::IListener
@@ -313,7 +313,7 @@ namespace
             {
             }
 
-            void initialize(Mapper& mapper)
+            void initialize(Mapper4& mapper)
             {
                 mMapper = &mapper;
             }
@@ -324,7 +324,7 @@ namespace
             }
 
         private:
-            Mapper*     mMapper;
+            Mapper4*    mMapper;
         };
 
         const nes::Rom*             mRom;
@@ -348,6 +348,4 @@ namespace
         bool                        mIrqEnable;
         bool                        mIrqPending;
     };
-
-    nes::AutoRegisterMapper<Mapper> mapper(4, "MMC3/MMC6");
 }

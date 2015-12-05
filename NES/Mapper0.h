@@ -1,8 +1,8 @@
 #include "Mappers.h"
 
-namespace
+namespace nes
 {
-    class Mapper : public nes::IMapper
+    class Mapper0 : public nes::IMapper
     {
     public:
         virtual void dispose()
@@ -15,6 +15,4 @@ namespace
             return true;
         }
     };
-
-    nes::AutoRegisterMapper<Mapper> mapper(0, "NROM");
 }
