@@ -33,6 +33,7 @@ namespace gb
         inline uint16_t read16(uint16_t addr);
         inline uint8_t fetch8();
         inline uint16_t fetch16();
+        inline uint16_t fetchSigned8();
         inline uint16_t fetchPC();
         inline uint8_t peek8(uint16_t& addr);
         inline uint16_t peek16(uint16_t& addr);
@@ -40,6 +41,95 @@ namespace gb
         inline uint8_t pop8();
         inline void push16(uint16_t value);
         inline uint16_t pop16();
+
+        struct addr
+        {
+            explicit addr(uint16_t _value)
+                : value(_value)
+            {
+            }
+
+            uint16_t    value;
+        };
+
+        // GMB 8bit - Loadcommands
+        void insn_ld(uint8_t& dest, uint8_t src);
+        void insn_ld(addr& dest, uint16_t src);
+
+        // GMB 16bit - Loadcommands
+        void insn_ld(uint16_t& dest, uint16_t src);
+        void insn_push(uint16_t src);
+        void insn_pop(uint16_t& dest);
+
+        // GMB 8bit - Arithmetic / logical Commands
+        void insn_add(uint8_t& dest, uint8_t src);
+        void insn_add(addr& dest, uint8_t src);
+        void insn_adc(uint8_t& dest, uint8_t src);
+        void insn_sub(uint8_t src);
+        void insn_sbc(uint8_t& dest, uint8_t src);
+        void insn_and(uint8_t src);
+        void insn_xor(uint8_t src);
+        void insn_or(uint8_t src);
+        void insn_cp(uint8_t src);
+        void insn_inc(uint8_t& dest);
+        void insn_inc(addr& dest);
+        void insn_dec(uint8_t& dest);
+        void insn_dec(addr& dest);
+        void insn_daa();
+        void insn_cpl();
+
+        // GMB 16bit - Arithmetic/logical Commands
+        void insn_add(uint16_t& dest, uint16_t src);
+        void insn_add(addr& dest, uint16_t src);
+        void insn_inc(uint16_t& dest);
+        void insn_dec(uint16_t& dest);
+
+        // GMB Rotate - and Shift - Commands
+        void insn_rlc(uint8_t& dest);
+        void insn_rlc(addr& dest);
+        void insn_rl(uint8_t& dest);
+        void insn_rl(addr& dest);
+        void insn_rrc(uint8_t& dest);
+        void insn_rrc(addr& dest);
+        void insn_rr(uint8_t& dest);
+        void insn_rr(addr& dest);
+        void insn_sla(uint8_t& dest);
+        void insn_sla(addr& dest);
+        void insn_swap(uint8_t& dest);
+        void insn_swap(addr& dest);
+        void insn_sra(uint8_t& dest);
+        void insn_sra(addr& dest);
+        void insn_srl(uint8_t& dest);
+        void insn_srl(addr& dest);
+
+        // GMB Singlebit Operation Commands
+        void insn_bit(uint8_t mask, uint8_t src);
+        void insn_set(uint8_t mask, uint8_t& dest);
+        void insn_set(uint8_t mask, addr& dest);
+        void insn_res(uint8_t mask, uint8_t& dest);
+        void insn_res(uint8_t mask, addr& dest);
+
+        // GMB CPU-Controlcommands
+        void insn_ccf();
+        void insn_scf();
+        void insn_nop();
+        void insn_halt();
+        void insn_stop();
+        void insn_di();
+        void insn_ei();
+
+        // GMB Jumpcommands
+        void insn_jp(uint16_t dest);
+        void insn_jp(bool cond, uint16_t dest);
+        void insn_jr(uint16_t dest);
+        void insn_jr(bool cond, uint16_t dest);
+        void insn_call(uint16_t dest);
+        void insn_call(bool cond, uint16_t dest);
+        void insn_ret();
+        void insn_ret(bool cond);
+        void insn_reti();
+        void insn_rst(uint8_t dest);
+        void insn_invalid();
 
         void executeCB();
         void executeMain();
