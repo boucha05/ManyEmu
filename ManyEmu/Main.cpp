@@ -316,8 +316,8 @@ bool Application::create()
     for (auto rom : mConfig.roms)
     {
         auto gameSession = createGameSession(Path::join(mConfig.romFolder, rom), mConfig.saveFolder);
-        if (gameSession)
-            mGameSessions.push_back(gameSession);
+        EMU_VERIFY(gameSession);
+        mGameSessions.push_back(gameSession);
     }
 
     if (mGameSessions.size() > 0)

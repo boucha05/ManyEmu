@@ -28,10 +28,18 @@ struct MEM_ACCESS
         }                   write;
     }                       io;
 
-    void setReadMemory(const uint8_t* _mem, uint32_t _base = 0);
-    void setReadMethod(Read8Func _func, void* _context, uint32_t _base = 0);
-    void setWriteMemory(uint8_t* _mem, uint32_t _base = 0);
-    void setWriteMethod(Write8Func _func, void* _context, uint32_t _base = 0);
+    MEM_ACCESS& setReadMemory(const uint8_t* _mem, uint32_t _base = 0);
+    MEM_ACCESS& setReadMethod(Read8Func _func, void* _context, uint32_t _base = 0);
+    MEM_ACCESS& setWriteMemory(uint8_t* _mem, uint32_t _base = 0);
+    MEM_ACCESS& setWriteMethod(Write8Func _func, void* _context, uint32_t _base = 0);
+};
+
+struct MEM_ACCESS_READ_WRITE
+{
+    MEM_ACCESS      read;
+    MEM_ACCESS      write;
+
+    MEM_ACCESS_READ_WRITE& setReadWriteMemory(uint8_t* _mem, uint32_t _base = 0);
 };
 
 struct MEM_PAGE
@@ -73,6 +81,7 @@ namespace emu
         }
 
         bool addMemoryRange(uint32_t pageTableId, uint16_t start, uint16_t end, MEM_ACCESS& access);
+        bool addMemoryRange(uint16_t start, uint16_t end, MEM_ACCESS_READ_WRITE& access);
 
     private:
         MEMORY_BUS                  mState;

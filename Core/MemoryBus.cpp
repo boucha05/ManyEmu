@@ -78,36 +78,49 @@ void memory_bus_write8(const MEMORY_BUS& bus, int32_t ticks, uint16_t addr, uint
 
 ///////////////////////////////////////////////////////////////////////////////
 
-void MEM_ACCESS::setReadMemory(const uint8_t* _mem, uint32_t _base)
+MEM_ACCESS& MEM_ACCESS::setReadMemory(const uint8_t* _mem, uint32_t _base)
 {
     base = _base;
     context = 0;
     io.read.mem = _mem;
     io.read.func = nullptr;
+    return *this;
 }
 
-void MEM_ACCESS::setReadMethod(Read8Func _func, void* _context, uint32_t _base)
+MEM_ACCESS& MEM_ACCESS::setReadMethod(Read8Func _func, void* _context, uint32_t _base)
 {
     base = _base;
     context = _context;
     io.read.mem = nullptr;
     io.read.func = _func;
+    return *this;
 }
 
-void MEM_ACCESS::setWriteMemory(uint8_t* _mem, uint32_t _base)
+MEM_ACCESS& MEM_ACCESS::setWriteMemory(uint8_t* _mem, uint32_t _base)
 {
     base = _base;
     context = 0;
     io.write.mem = _mem;
     io.write.func = nullptr;
+    return *this;
 }
 
-void MEM_ACCESS::setWriteMethod(Write8Func _func, void* _context, uint32_t _base)
+MEM_ACCESS& MEM_ACCESS::setWriteMethod(Write8Func _func, void* _context, uint32_t _base)
 {
     base = _base;
     context = _context;
     io.write.mem = nullptr;
     io.write.func = _func;
+    return *this;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+MEM_ACCESS_READ_WRITE& MEM_ACCESS_READ_WRITE::setReadWriteMemory(uint8_t* _mem, uint32_t _base)
+{
+    read.setReadMemory(_mem, _base);
+    write.setWriteMemory(_mem, _base);
+    return *this;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -190,6 +203,13 @@ namespace emu
             memPage->offset = offset;
             page_table[pageIndex] = memPage;
         }
-        return false;
+        return true;
+    }
+
+    bool MemoryBus::addMemoryRange(uint16_t start, uint16_t end, MEM_ACCESS_READ_WRITE& access)
+    {
+        EMU_VERIFY(addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, start, end, access.read));
+        EMU_VERIFY(addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, start, end, access.write));
+        return true;
     }
 }
