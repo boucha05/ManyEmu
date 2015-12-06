@@ -465,7 +465,17 @@ namespace gb
         NOT_IMPLEMENTED();
     }
 
+    void insnRLC(addr& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
     void insnRRC(uint8_t& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnRRC(addr& dest)
     {
         NOT_IMPLEMENTED();
     }
@@ -475,12 +485,87 @@ namespace gb
         NOT_IMPLEMENTED();
     }
 
+    void insnRL(addr& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
     void insnRR(uint8_t& dest)
     {
         NOT_IMPLEMENTED();
     }
 
+    void insnRR(addr& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnSLA(uint8_t& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnSLA(addr& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnSWAP(uint8_t& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnSWAP(addr& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnSRA(uint8_t& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnSRA(addr& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnSRL(uint8_t& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnSRL(addr& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
     // GMB Singlebit Operation Commands
+
+    void insnBIT(uint8_t mask, uint8_t src)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnSET(uint8_t mask, uint8_t& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnSET(uint8_t mask, addr& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnRES(uint8_t mask, uint8_t& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnRES(uint8_t mask, addr& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
 
     // GMB CPU-Controlcommands
 
@@ -578,6 +663,267 @@ namespace gb
 
     void CpuZ80::executeCB()
     {
+        auto opcode = fetch8();
+        switch (opcode)
+        {
+        case 0x00: insnRLC(B); break;
+        case 0x01: insnRLC(C); break;
+        case 0x02: insnRLC(D); break;
+        case 0x03: insnRLC(E); break;
+        case 0x04: insnRLC(H); break;
+        case 0x05: insnRLC(L); break;
+        case 0x06: insnRLC(addr(HL)); break;
+        case 0x07: insnRLC(A); break;
+        case 0x08: insnRRC(B); break;
+        case 0x09: insnRRC(C); break;
+        case 0x0a: insnRRC(D); break;
+        case 0x0b: insnRRC(E); break;
+        case 0x0c: insnRRC(H); break;
+        case 0x0d: insnRRC(L); break;
+        case 0x0e: insnRRC(addr(HL)); break;
+        case 0x0f: insnRRC(A); break;
+        case 0x10: insnRL(B); break;
+        case 0x11: insnRL(C); break;
+        case 0x12: insnRL(D); break;
+        case 0x13: insnRL(E); break;
+        case 0x14: insnRL(H); break;
+        case 0x15: insnRL(L); break;
+        case 0x16: insnRL(addr(HL)); break;
+        case 0x17: insnRL(A); break;
+        case 0x18: insnRR(B); break;
+        case 0x19: insnRR(C); break;
+        case 0x1a: insnRR(D); break;
+        case 0x1b: insnRR(E); break;
+        case 0x1c: insnRR(H); break;
+        case 0x1d: insnRR(L); break;
+        case 0x1e: insnRR(addr(HL)); break;
+        case 0x1f: insnRR(A); break;
+        case 0x20: insnSLA(B); break;
+        case 0x21: insnSLA(C); break;
+        case 0x22: insnSLA(D); break;
+        case 0x23: insnSLA(E); break;
+        case 0x24: insnSLA(H); break;
+        case 0x25: insnSLA(L); break;
+        case 0x26: insnSLA(addr(HL)); break;
+        case 0x27: insnSLA(A); break;
+        case 0x28: insnSRA(B); break;
+        case 0x29: insnSRA(C); break;
+        case 0x2a: insnSRA(D); break;
+        case 0x2b: insnSRA(E); break;
+        case 0x2c: insnSRA(H); break;
+        case 0x2d: insnSRA(L); break;
+        case 0x2e: insnSRA(addr(HL)); break;
+        case 0x2f: insnSRA(A); break;
+        case 0x30: insnSWAP(B); break;
+        case 0x31: insnSWAP(C); break;
+        case 0x32: insnSWAP(D); break;
+        case 0x33: insnSWAP(E); break;
+        case 0x34: insnSWAP(H); break;
+        case 0x35: insnSWAP(L); break;
+        case 0x36: insnSWAP(addr(HL)); break;
+        case 0x37: insnSWAP(A); break;
+        case 0x38: insnSRL(B); break;
+        case 0x39: insnSRL(C); break;
+        case 0x3a: insnSRL(D); break;
+        case 0x3b: insnSRL(E); break;
+        case 0x3c: insnSRL(H); break;
+        case 0x3d: insnSRL(L); break;
+        case 0x3e: insnSRL(addr(HL)); break;
+        case 0x3f: insnSRL(A); break;
+        case 0x40: insnBIT(1 << 0, B); break;
+        case 0x41: insnBIT(1 << 0, C); break;
+        case 0x42: insnBIT(1 << 0, D); break;
+        case 0x43: insnBIT(1 << 0, E); break;
+        case 0x44: insnBIT(1 << 0, H); break;
+        case 0x45: insnBIT(1 << 0, L); break;
+        case 0x46: insnBIT(1 << 0, read8(HL)); break;
+        case 0x47: insnBIT(1 << 0, A); break;
+        case 0x48: insnBIT(1 << 1, B); break;
+        case 0x49: insnBIT(1 << 1, C); break;
+        case 0x4a: insnBIT(1 << 1, D); break;
+        case 0x4b: insnBIT(1 << 1, E); break;
+        case 0x4c: insnBIT(1 << 1, H); break;
+        case 0x4d: insnBIT(1 << 1, L); break;
+        case 0x4e: insnBIT(1 << 1, read8(HL)); break;
+        case 0x4f: insnBIT(1 << 1, A); break;
+        case 0x50: insnBIT(1 << 2, B); break;
+        case 0x51: insnBIT(1 << 2, C); break;
+        case 0x52: insnBIT(1 << 2, D); break;
+        case 0x53: insnBIT(1 << 2, E); break;
+        case 0x54: insnBIT(1 << 2, H); break;
+        case 0x55: insnBIT(1 << 2, L); break;
+        case 0x56: insnBIT(1 << 2, read8(HL)); break;
+        case 0x57: insnBIT(1 << 2, A); break;
+        case 0x58: insnBIT(1 << 3, B); break;
+        case 0x59: insnBIT(1 << 3, C); break;
+        case 0x5a: insnBIT(1 << 3, D); break;
+        case 0x5b: insnBIT(1 << 3, E); break;
+        case 0x5c: insnBIT(1 << 3, H); break;
+        case 0x5d: insnBIT(1 << 3, L); break;
+        case 0x5e: insnBIT(1 << 3, read8(HL)); break;
+        case 0x5f: insnBIT(1 << 3, A); break;
+        case 0x60: insnBIT(1 << 4, B); break;
+        case 0x61: insnBIT(1 << 4, C); break;
+        case 0x62: insnBIT(1 << 4, D); break;
+        case 0x63: insnBIT(1 << 4, E); break;
+        case 0x64: insnBIT(1 << 4, H); break;
+        case 0x65: insnBIT(1 << 4, L); break;
+        case 0x66: insnBIT(1 << 4, read8(HL)); break;
+        case 0x67: insnBIT(1 << 4, A); break;
+        case 0x68: insnBIT(1 << 5, B); break;
+        case 0x69: insnBIT(1 << 5, C); break;
+        case 0x6a: insnBIT(1 << 5, D); break;
+        case 0x6b: insnBIT(1 << 5, E); break;
+        case 0x6c: insnBIT(1 << 5, H); break;
+        case 0x6d: insnBIT(1 << 5, L); break;
+        case 0x6e: insnBIT(1 << 5, read8(HL)); break;
+        case 0x6f: insnBIT(1 << 5, A); break;
+        case 0x70: insnBIT(1 << 6, B); break;
+        case 0x71: insnBIT(1 << 6, C); break;
+        case 0x72: insnBIT(1 << 6, D); break;
+        case 0x73: insnBIT(1 << 6, E); break;
+        case 0x74: insnBIT(1 << 6, H); break;
+        case 0x75: insnBIT(1 << 6, L); break;
+        case 0x76: insnBIT(1 << 6, read8(HL)); break;
+        case 0x77: insnBIT(1 << 6, A); break;
+        case 0x78: insnBIT(1 << 7, B); break;
+        case 0x79: insnBIT(1 << 7, C); break;
+        case 0x7a: insnBIT(1 << 7, D); break;
+        case 0x7b: insnBIT(1 << 7, E); break;
+        case 0x7c: insnBIT(1 << 7, H); break;
+        case 0x7d: insnBIT(1 << 7, L); break;
+        case 0x7e: insnBIT(1 << 7, read8(HL)); break;
+        case 0x7f: insnBIT(1 << 7, A); break;
+        case 0x80: insnRES(1 << 0, B); break;
+        case 0x81: insnRES(1 << 0, C); break;
+        case 0x82: insnRES(1 << 0, D); break;
+        case 0x83: insnRES(1 << 0, E); break;
+        case 0x84: insnRES(1 << 0, H); break;
+        case 0x85: insnRES(1 << 0, L); break;
+        case 0x86: insnRES(1 << 0, addr(HL)); break;
+        case 0x87: insnRES(1 << 0, A); break;
+        case 0x88: insnRES(1 << 1, B); break;
+        case 0x89: insnRES(1 << 1, C); break;
+        case 0x8a: insnRES(1 << 1, D); break;
+        case 0x8b: insnRES(1 << 1, E); break;
+        case 0x8c: insnRES(1 << 1, H); break;
+        case 0x8d: insnRES(1 << 1, L); break;
+        case 0x8e: insnRES(1 << 1, addr(HL)); break;
+        case 0x8f: insnRES(1 << 1, A); break;
+        case 0x90: insnRES(1 << 2, B); break;
+        case 0x91: insnRES(1 << 2, C); break;
+        case 0x92: insnRES(1 << 2, D); break;
+        case 0x93: insnRES(1 << 2, E); break;
+        case 0x94: insnRES(1 << 2, H); break;
+        case 0x95: insnRES(1 << 2, L); break;
+        case 0x96: insnRES(1 << 2, addr(HL)); break;
+        case 0x97: insnRES(1 << 2, A); break;
+        case 0x98: insnRES(1 << 3, B); break;
+        case 0x99: insnRES(1 << 3, C); break;
+        case 0x9a: insnRES(1 << 3, D); break;
+        case 0x9b: insnRES(1 << 3, E); break;
+        case 0x9c: insnRES(1 << 3, H); break;
+        case 0x9d: insnRES(1 << 3, L); break;
+        case 0x9e: insnRES(1 << 3, addr(HL)); break;
+        case 0x9f: insnRES(1 << 3, A); break;
+        case 0xa0: insnRES(1 << 4, B); break;
+        case 0xa1: insnRES(1 << 4, C); break;
+        case 0xa2: insnRES(1 << 4, D); break;
+        case 0xa3: insnRES(1 << 4, E); break;
+        case 0xa4: insnRES(1 << 4, H); break;
+        case 0xa5: insnRES(1 << 4, L); break;
+        case 0xa6: insnRES(1 << 4, addr(HL)); break;
+        case 0xa7: insnRES(1 << 4, A); break;
+        case 0xa8: insnRES(1 << 5, B); break;
+        case 0xa9: insnRES(1 << 5, C); break;
+        case 0xaa: insnRES(1 << 5, D); break;
+        case 0xab: insnRES(1 << 5, E); break;
+        case 0xac: insnRES(1 << 5, H); break;
+        case 0xad: insnRES(1 << 5, L); break;
+        case 0xae: insnRES(1 << 5, addr(HL)); break;
+        case 0xaf: insnRES(1 << 5, A); break;
+        case 0xb0: insnRES(1 << 6, B); break;
+        case 0xb1: insnRES(1 << 6, C); break;
+        case 0xb2: insnRES(1 << 6, D); break;
+        case 0xb3: insnRES(1 << 6, E); break;
+        case 0xb4: insnRES(1 << 6, H); break;
+        case 0xb5: insnRES(1 << 6, L); break;
+        case 0xb6: insnRES(1 << 6, addr(HL)); break;
+        case 0xb7: insnRES(1 << 6, A); break;
+        case 0xb8: insnRES(1 << 7, B); break;
+        case 0xb9: insnRES(1 << 7, C); break;
+        case 0xba: insnRES(1 << 7, D); break;
+        case 0xbb: insnRES(1 << 7, E); break;
+        case 0xbc: insnRES(1 << 7, H); break;
+        case 0xbd: insnRES(1 << 7, L); break;
+        case 0xbe: insnRES(1 << 7, addr(HL)); break;
+        case 0xbf: insnRES(1 << 7, A); break;
+        case 0xc0: insnSET(1 << 0, B); break;
+        case 0xc1: insnSET(1 << 0, C); break;
+        case 0xc2: insnSET(1 << 0, D); break;
+        case 0xc3: insnSET(1 << 0, E); break;
+        case 0xc4: insnSET(1 << 0, H); break;
+        case 0xc5: insnSET(1 << 0, L); break;
+        case 0xc6: insnSET(1 << 0, addr(HL)); break;
+        case 0xc7: insnSET(1 << 0, A); break;
+        case 0xc8: insnSET(1 << 1, B); break;
+        case 0xc9: insnSET(1 << 1, C); break;
+        case 0xca: insnSET(1 << 1, D); break;
+        case 0xcb: insnSET(1 << 1, E); break;
+        case 0xcc: insnSET(1 << 1, H); break;
+        case 0xcd: insnSET(1 << 1, L); break;
+        case 0xce: insnSET(1 << 1, addr(HL)); break;
+        case 0xcf: insnSET(1 << 1, A); break;
+        case 0xd0: insnSET(1 << 2, B); break;
+        case 0xd1: insnSET(1 << 2, C); break;
+        case 0xd2: insnSET(1 << 2, D); break;
+        case 0xd3: insnSET(1 << 2, E); break;
+        case 0xd4: insnSET(1 << 2, H); break;
+        case 0xd5: insnSET(1 << 2, L); break;
+        case 0xd6: insnSET(1 << 2, addr(HL)); break;
+        case 0xd7: insnSET(1 << 2, A); break;
+        case 0xd8: insnSET(1 << 3, B); break;
+        case 0xd9: insnSET(1 << 3, C); break;
+        case 0xda: insnSET(1 << 3, D); break;
+        case 0xdb: insnSET(1 << 3, E); break;
+        case 0xdc: insnSET(1 << 3, H); break;
+        case 0xdd: insnSET(1 << 3, L); break;
+        case 0xde: insnSET(1 << 3, addr(HL)); break;
+        case 0xdf: insnSET(1 << 3, A); break;
+        case 0xe0: insnSET(1 << 4, B); break;
+        case 0xe1: insnSET(1 << 4, C); break;
+        case 0xe2: insnSET(1 << 4, D); break;
+        case 0xe3: insnSET(1 << 4, E); break;
+        case 0xe4: insnSET(1 << 4, H); break;
+        case 0xe5: insnSET(1 << 4, L); break;
+        case 0xe6: insnSET(1 << 4, addr(HL)); break;
+        case 0xe7: insnSET(1 << 4, A); break;
+        case 0xe8: insnSET(1 << 5, B); break;
+        case 0xe9: insnSET(1 << 5, C); break;
+        case 0xea: insnSET(1 << 5, D); break;
+        case 0xeb: insnSET(1 << 5, E); break;
+        case 0xec: insnSET(1 << 5, H); break;
+        case 0xed: insnSET(1 << 5, L); break;
+        case 0xee: insnSET(1 << 5, addr(HL)); break;
+        case 0xef: insnSET(1 << 5, A); break;
+        case 0xf0: insnSET(1 << 6, B); break;
+        case 0xf1: insnSET(1 << 6, C); break;
+        case 0xf2: insnSET(1 << 6, D); break;
+        case 0xf3: insnSET(1 << 6, E); break;
+        case 0xf4: insnSET(1 << 6, H); break;
+        case 0xf5: insnSET(1 << 6, L); break;
+        case 0xf6: insnSET(1 << 6, addr(HL)); break;
+        case 0xf7: insnSET(1 << 6, A); break;
+        case 0xf8: insnSET(1 << 7, B); break;
+        case 0xf9: insnSET(1 << 7, C); break;
+        case 0xfa: insnSET(1 << 7, D); break;
+        case 0xfb: insnSET(1 << 7, E); break;
+        case 0xfc: insnSET(1 << 7, H); break;
+        case 0xfd: insnSET(1 << 7, L); break;
+        case 0xfe: insnSET(1 << 7, addr(HL)); break;
+        case 0xff: insnSET(1 << 7, A); break;
+        default: break;
+        }
     }
 
     void CpuZ80::executeMain()
@@ -849,13 +1195,7 @@ namespace gb
     {
         while (mExecutedTicks < mDesiredTicks)
         {
-            uint8_t insn = fetch8();
-            switch (insn)
-            {
-            case 0:
-            default:
-                EMU_ASSERT(false);
-            }
+            executeMain();
         }
     }
 
