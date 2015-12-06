@@ -33,8 +33,7 @@ namespace
     bool readFile(std::vector<char>& buffer, const char* path, size_t maxSize = SIZE_MAX)
     {
         FILE* file = fopen(path, "rb");
-        if (!file)
-            return false;
+        EMU_VERIFY(file);
 
         fseek(file, 0, SEEK_END);
         size_t size = ftell(file);
@@ -74,8 +73,7 @@ namespace
 
         bool create(const char* buffer, uint32_t size)
         {
-            if (size == 0)
-                return false;
+            EMU_VERIFY(size);
 
             data.resize(size);
             memcpy(&data[0], buffer, size);
@@ -84,8 +82,7 @@ namespace
             const uint8_t* pos = &data[0];
             const uint8_t* end = pos + size;
             content.rom = pos;
-            if ((pos += HEADER_OFFSET) > end)
-                return false;
+            EMU_VERIFY((pos += HEADER_OFFSET) <= end);
             content.header = pos;
 
             // Get header
@@ -119,8 +116,7 @@ namespace
         {
             memset(&description, 0, sizeof(description));
 
-            if (HEADER_OFFSET + HEADER_SIZE > size)
-                return false;
+            EMU_VERIFY(HEADER_OFFSET + HEADER_SIZE <= size);
 
             const auto& header = *reinterpret_cast<const Header*>(data + HEADER_OFFSET);
 
@@ -137,7 +133,7 @@ namespace
             case 0x52: description.romSize = 0x120000; break;
             case 0x53: description.romSize = 0x140000; break;
             case 0x54: description.romSize = 0x180000; break;
-            default: return false;
+            default: EMU_VERIFY(false);
             }
 
             switch (header.RAMSize)
@@ -146,7 +142,7 @@ namespace
             case 0x01: description.ramSize = 0x0800; break;
             case 0x02: description.ramSize = 0x2000; break;
             case 0x03: description.ramSize = 0x8000; break;
-            default: return false;
+            default: EMU_VERIFY(false);
             }
 
             memcpy(description.title, header.Title, 16);
@@ -187,14 +183,14 @@ namespace
             case 0xfd: description.mapper = Mapper::BandaiTama5; break;
             case 0xfe: description.mapper = Mapper::HuC3; break;
             case 0xff: description.mapper = Mapper::HuC3; description.hasRam = true; description.hasBattery = true; break;
-            default: return false;
+            default: EMU_VERIFY(false);
             }
 
             switch (header.DestinationCode)
             {
             case 0x00: description.destination = Destination::Japan; break;
             case 0x01: description.destination = Destination::NonJapan; break;
-            default: return false;
+            default: EMU_VERIFY(false);
             }
 
             description.version = header.MaskROMVersionNumber;
@@ -218,10 +214,9 @@ namespace gb
     bool Rom::readDescription(Rom::Description& description, const char* path)
     {
         std::vector<char> buffer;
-        if (!readFile(buffer, path, HEADER_OFFSET + HEADER_SIZE))
-            return nullptr;
-
-        return RomImpl::getDescription(description, reinterpret_cast<const uint8_t*>(&buffer[HEADER_OFFSET]), buffer.size());
+        EMU_VERIFY(!readFile(buffer, path, HEADER_OFFSET + HEADER_SIZE));
+        EMU_VERIFY(RomImpl::getDescription(description, reinterpret_cast<const uint8_t*>(&buffer[HEADER_OFFSET]), buffer.size()));
+        return true;
     }
 
     Rom* Rom::load(const char* path)

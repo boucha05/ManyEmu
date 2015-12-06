@@ -6,6 +6,9 @@
 
 namespace
 {
+    static const uint32_t MEM_SIZE_LOG2 = 16;
+    static const uint32_t MEM_SIZE = 1 << MEM_SIZE_LOG2;
+    static const uint32_t MEM_PAGE_SIZE_LOG2 = 8;
 }
 
 namespace
@@ -15,7 +18,6 @@ namespace
     public:
         ContextImpl()
             : rom(nullptr)
-            //, mapper(nullptr)
         {
         }
 
@@ -30,11 +32,14 @@ namespace
             const auto& romDesc = rom->getDescription();
             const auto& romContent = rom->getContent();
 
+            EMU_VERIFY(memory.create(MEM_SIZE_LOG2, MEM_PAGE_SIZE_LOG2));
+
             return true;
         }
 
         void destroy()
         {
+            memory.destroy();
             rom = nullptr;
         }
 
@@ -82,6 +87,7 @@ namespace
 
     private:
         const gb::Rom*          rom;
+        emu::MemoryBus          memory;
     };
 }
 

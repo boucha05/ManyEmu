@@ -7,11 +7,10 @@
 #if defined(DEBUG) || defined(_DEBUG)
 #include <assert.h>
 #define EMU_ASSERT(e)   emu::Assert(!!(e), #e)
-#define EMU_VERIFY(e)   emu::Assert(!!(e), #e)
 #else
 #define EMU_ASSERT(e)
-#define EMU_VERIFY(e)   (e)
 #endif
+#define EMU_VERIFY(e)   if (e) ; else return false
 
 #define EMU_ARRAY_SIZE(a)  (sizeof(a) / sizeof((a)[0]))
 
