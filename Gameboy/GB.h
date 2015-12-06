@@ -24,7 +24,7 @@ namespace gb
             INVALID,
         };
 
-        enum class DestinationCode : uint8_t
+        enum class Destination : uint8_t
         {
             Japan,
             NonJapan,
@@ -33,24 +33,25 @@ namespace gb
 
         struct Description
         {
-            uint32_t        romSize;
-            uint32_t        ramSize;
-            char            title[17];
-            bool            useCGB;
-            bool            onlyCGB;
-            bool            useSGB;
-            bool            hasRam;
-            bool            hasBattery;
-            bool            hasTimer;
-            bool            hasRumble;
-            Mapper          mapper;
-            uint8_t         cartridgeType;
-            uint8_t         version;
-            uint8_t         licenseeOld;
-            uint16_t        licenseeNew;
-            uint32_t        manufacturer;
-            uint8_t         headerChecksum;
-            uint16_t        globalChecksum;
+            uint32_t            romSize;
+            uint32_t            ramSize;
+            char                title[17];
+            bool                useCGB;
+            bool                onlyCGB;
+            bool                useSGB;
+            bool                hasRam;
+            bool                hasBattery;
+            bool                hasTimer;
+            bool                hasRumble;
+            Mapper              mapper;
+            Destination         destination;
+            uint8_t             cartridgeType;
+            uint8_t             version;
+            uint8_t             licenseeOld;
+            uint16_t            licenseeNew;
+            uint32_t            manufacturer;
+            uint8_t             headerChecksum;
+            uint16_t            globalChecksum;
         };
 
         struct Content

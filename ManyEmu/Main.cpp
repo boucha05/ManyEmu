@@ -707,7 +707,7 @@ int main()
     // Sorry, the UI is not implemented yet. For now, you will need to manually
     // configure the emulation right here
     
-#if 0
+#if 1
     // Configuration for Gameboy development
     config.saveFolder = "C:\\Emu\\Gameboy\\save";
     config.romFolder = "C:\\Emu\\Gameboy\\roms";

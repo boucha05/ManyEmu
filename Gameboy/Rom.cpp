@@ -190,6 +190,13 @@ namespace
             default: return false;
             }
 
+            switch (header.DestinationCode)
+            {
+            case 0x00: description.destination = Destination::Japan; break;
+            case 0x01: description.destination = Destination::NonJapan; break;
+            default: return false;
+            }
+
             description.version = header.MaskROMVersionNumber;
             description.licenseeOld = header.OldLicenseeCode;
             description.licenseeNew = emu::little_endian(header.NewLicenseeCode);
