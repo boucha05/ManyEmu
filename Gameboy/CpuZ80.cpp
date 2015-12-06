@@ -5,13 +5,28 @@
 #include <memory.h>
 #include <stdio.h>
 
+#define A           mRegs.r8.a
+#define FLAGS       mRegs.r8.flags
+#define B           mRegs.r8.b
+#define C           mRegs.r8.c
+#define D           mRegs.r8.d
+#define E           mRegs.r8.e
+#define H           mRegs.r8.h
+#define L           mRegs.r8.l
+#define FLAG_Z      mRegs.r8.flag_z
+#define FLAG_N      mRegs.r8.flag_n
+#define FLAG_H      mRegs.r8.flag_h
+#define FLAG_C      mRegs.r8.flag_c
+
+#define AF          mRegs.r16.af
+#define BC          mRegs.r16.bc
+#define DE          mRegs.r16.de
+#define HL          mRegs.r16.hl
+#define SP          mRegs.r16.sp
+#define PC          mRegs.r16.pc
+
 namespace
 {
-    static const uint8_t FLAG_Z = 0x80;
-    static const uint8_t FLAG_N = 0x40;
-    static const uint8_t FLAG_H = 0x20;
-    static const uint8_t FLAG_C = 0x10;
-
     /***************************************************************************
     
     Gameboy CPU (LR35902) instruction set 
@@ -186,7 +201,7 @@ namespace gb
 
     uint8_t CpuZ80::fetch8()
     {
-        return read8(mRegs.pc++);
+        return read8(PC++);
     }
 
     uint16_t CpuZ80::fetch16()
@@ -194,6 +209,13 @@ namespace gb
         uint8_t lo = fetch8();
         uint8_t hi = fetch8();
         uint16_t addr = static_cast<uint16_t>(lo) | (static_cast<uint16_t>(hi) << 8);
+        return addr;
+    }
+
+    uint16_t CpuZ80::fetchPC()
+    {
+        int8_t offset = fetch8();
+        uint16_t addr = PC + static_cast<int16_t>(offset);
         return addr;
     }
 
@@ -216,13 +238,13 @@ namespace gb
 
     void CpuZ80::push8(uint8_t value)
     {
-        uint16_t addr = mRegs.sp-- + 0x100;
+        uint16_t addr = SP-- + 0x100;
         write8(addr, value);
     }
     
     uint8_t CpuZ80::pop8()
     {
-        uint16_t addr = ++mRegs.sp + 0x100;
+        uint16_t addr = ++SP + 0x100;
         uint8_t value = read8(addr);
         return value;
     }
@@ -273,16 +295,12 @@ namespace gb
 
     void CpuZ80::reset()
     {
-        mRegs.a = 0x01;
-        mRegs.b = 0x00;
-        mRegs.c = 0x13;
-        mRegs.d = 0x00;
-        mRegs.e = 0xd8;
-        mRegs.h = 0x01;
-        mRegs.l = 0x4d;
-        mRegs.flags = 0xb0;
-        mRegs.sp = 0xfffe;
-        mRegs.pc = 0x0100;
+        AF = 0x01b0;
+        BC = 0x0013;
+        DE = 0x00d8;
+        HL = 0x014d;
+        SP = 0xfffe;
+        PC = 0x0100;
         mExecutedTicks = 0;
         mDesiredTicks = 0;
     }
@@ -296,6 +314,535 @@ namespace gb
     void CpuZ80::setDesiredTicks(int32_t ticks)
     {
         mDesiredTicks = ticks;
+    }
+
+#define NOT_IMPLEMENTED()                                       \
+    printf("Instruction %s not implemented\n", __FUNCTION__);   \
+    EMU_ASSERT(false)
+
+    struct addr
+    {
+        explicit addr(uint16_t _value)
+            : value(_value)
+        {
+        }
+
+        uint16_t    value;
+    };
+
+    // GMB 8bit-Loadcommands
+
+    void insnLD(uint8_t& dest, uint8_t src)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnLD(addr& dest, uint16_t src)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    // GMB 16bit - Loadcommands
+
+    void insnLD(uint16_t& dest, uint16_t src)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnPUSH(uint16_t src)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnPOP(uint16_t& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    // GMB 8bit - Arithmetic / logical Commands
+
+    void insnADD(uint8_t& dest, uint8_t src)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnADD(addr& dest, uint8_t src)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnADC(uint8_t& dest, uint8_t src)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnSUB(uint8_t src)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnSBC(uint8_t& dest, uint8_t src)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnAND(uint8_t src)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnXOR(uint8_t src)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnOR(uint8_t src)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnCP(uint8_t src)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnINC(uint8_t& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnINC(addr& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnDEC(uint8_t& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnDEC(addr& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnDAA()
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnCPL()
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    // GMB 16bit-Arithmetic/logical Commands
+
+    void insnADD(uint16_t& dest, uint16_t src)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnADD(addr& dest, uint16_t src)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnINC(uint16_t& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnDEC(uint16_t& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    // GMB Rotate - and Shift - Commands
+
+    void insnRLC(uint8_t& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnRRC(uint8_t& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnRL(uint8_t& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnRR(uint8_t& dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    // GMB Singlebit Operation Commands
+
+    // GMB CPU-Controlcommands
+
+    void insnCCF()
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnSCF()
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnNOP()
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnHALT()
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnSTOP()
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnDI()
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnEI()
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    // GMB Jumpcommands
+
+    void insnJP(uint16_t dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnJP(bool cond, uint16_t dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnJR(uint16_t dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnJR(bool cond, uint16_t dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnCALL(uint16_t dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnCALL(bool cond, uint16_t dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnRET()
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnRET(bool cond)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnRETI()
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnRST(uint8_t dest)
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void insnINVALID()
+    {
+        NOT_IMPLEMENTED();
+    }
+
+    void CpuZ80::executeCB()
+    {
+    }
+
+    void CpuZ80::executeMain()
+    {
+        auto opcode = fetch8();
+        switch (opcode)
+        {
+        case 0x00: insnNOP(); break;
+        case 0x01: insnLD(BC, fetch16()); break;
+        case 0x02: insnLD(addr(BC), A); break;
+        case 0x03: insnINC(BC); break;
+        case 0x04: insnINC(B); break;
+        case 0x05: insnDEC(B); break;
+        case 0x06: insnLD(B, fetch8()); break;
+        case 0x07: insnRLC(A); break;
+        case 0x08: insnLD(addr(fetch16()), SP); break;
+        case 0x09: insnADD(HL, BC); break;
+        case 0x0a: insnLD(A, read8(BC)); break;
+        case 0x0b: insnDEC(BC); break;
+        case 0x0c: insnINC(C); break;
+        case 0x0d: insnDEC(C); break;
+        case 0x0e: insnLD(C, fetch8()); break;
+        case 0x0f: insnRRC(A); break;
+        case 0x10: insnSTOP(); fetch8(); break;
+        case 0x11: insnLD(DE, fetch16()); break;
+        case 0x12: insnLD(addr(DE), A); break;
+        case 0x13: insnINC(DE); break;
+        case 0x14: insnINC(D); break;
+        case 0x15: insnDEC(D); break;
+        case 0x16: insnLD(D, fetch8()); break;
+        case 0x17: insnRL(A); break;
+        case 0x18: insnJR(fetchPC()); break;
+        case 0x19: insnADD(HL, DE); break;
+        case 0x1a: insnLD(A, read8(DE)); break;
+        case 0x1b: insnDEC(DE); break;
+        case 0x1c: insnINC(E); break;
+        case 0x1d: insnDEC(E); break;
+        case 0x1e: insnLD(E, fetch8()); break;
+        case 0x1f: insnRR(A); break;
+        case 0x20: insnJR(FLAG_Z != 0, fetchPC()); break;
+        case 0x21: insnLD(HL, fetch16()); break;
+        case 0x22: insnLD(addr(HL++), A); break;
+        case 0x23: insnINC(HL); break;
+        case 0x24: insnINC(H); break;
+        case 0x25: insnDEC(H); break;
+        case 0x26: insnLD(H, fetch8()); break;
+        case 0x27: insnDAA(); break;
+        case 0x28: insnJR(FLAG_Z == 0, fetchPC()); break;
+        case 0x29: insnADD(HL, HL); break;
+        case 0x2a: insnLD(A, read8(HL++)); break;
+        case 0x2b: insnDEC(HL); break;
+        case 0x2c: insnINC(L); break;
+        case 0x2d: insnDEC(L); break;
+        case 0x2e: insnLD(L, fetch8()); break;
+        case 0x2f: insnCPL(); break;
+        case 0x30: insnJR(FLAG_C == 0, fetchPC()); break;
+        case 0x31: insnLD(SP, fetch16()); break;
+        case 0x32: insnLD(addr(HL--), A); break;
+        case 0x33: insnINC(SP); break;
+        case 0x34: insnINC(addr(HL)); break;
+        case 0x35: insnDEC(addr(HL)); break;
+        case 0x36: insnLD(addr(HL), fetch8()); break;
+        case 0x37: insnSCF(); break;
+        case 0x38: insnJR(C != 0, fetchPC()); break;
+        case 0x39: insnADD(HL, SP); break;
+        case 0x3a: insnLD(A, read8(HL--)); break;
+        case 0x3b: insnDEC(SP); break;
+        case 0x3c: insnINC(A); break;
+        case 0x3d: insnDEC(A); break;
+        case 0x3e: insnLD(A, fetch8()); break;
+        case 0x3f: insnCCF(); break;
+        case 0x40: insnLD(B, B); break;
+        case 0x41: insnLD(B, C); break;
+        case 0x42: insnLD(B, D); break;
+        case 0x43: insnLD(B, E); break;
+        case 0x44: insnLD(B, H); break;
+        case 0x45: insnLD(B, L); break;
+        case 0x46: insnLD(B, read8(HL)); break;
+        case 0x47: insnLD(B, A); break;
+        case 0x48: insnLD(C, B); break;
+        case 0x49: insnLD(C, C); break;
+        case 0x4a: insnLD(C, D); break;
+        case 0x4b: insnLD(C, E); break;
+        case 0x4c: insnLD(C, H); break;
+        case 0x4d: insnLD(C, L); break;
+        case 0x4e: insnLD(C, read8(HL)); break;
+        case 0x4f: insnLD(C, A); break;
+        case 0x50: insnLD(D, B); break;
+        case 0x51: insnLD(D, C); break;
+        case 0x52: insnLD(D, D); break;
+        case 0x53: insnLD(D, E); break;
+        case 0x54: insnLD(D, H); break;
+        case 0x55: insnLD(D, L); break;
+        case 0x56: insnLD(D, read8(HL)); break;
+        case 0x57: insnLD(D, A); break;
+        case 0x58: insnLD(E, B); break;
+        case 0x59: insnLD(E, C); break;
+        case 0x5a: insnLD(E, D); break;
+        case 0x5b: insnLD(E, E); break;
+        case 0x5c: insnLD(E, H); break;
+        case 0x5d: insnLD(E, L); break;
+        case 0x5e: insnLD(E, read8(HL)); break;
+        case 0x5f: insnLD(E, A); break;
+        case 0x60: insnLD(H, B); break;
+        case 0x61: insnLD(H, C); break;
+        case 0x62: insnLD(H, D); break;
+        case 0x63: insnLD(H, E); break;
+        case 0x64: insnLD(H, H); break;
+        case 0x65: insnLD(H, L); break;
+        case 0x66: insnLD(H, read8(HL)); break;
+        case 0x67: insnLD(H, A); break;
+        case 0x68: insnLD(L, B); break;
+        case 0x69: insnLD(L, C); break;
+        case 0x6a: insnLD(L, D); break;
+        case 0x6b: insnLD(L, E); break;
+        case 0x6c: insnLD(L, H); break;
+        case 0x6d: insnLD(L, L); break;
+        case 0x6e: insnLD(L, read8(HL)); break;
+        case 0x6f: insnLD(L, A); break;
+        case 0x70: insnLD(addr(HL), B); break;
+        case 0x71: insnLD(addr(HL), C); break;
+        case 0x72: insnLD(addr(HL), D); break;
+        case 0x73: insnLD(addr(HL), E); break;
+        case 0x74: insnLD(addr(HL), H); break;
+        case 0x75: insnLD(addr(HL), L); break;
+        case 0x76: insnHALT(); break;
+        case 0x77: insnLD(addr(HL), A); break;
+        case 0x78: insnLD(A, B); break;
+        case 0x79: insnLD(A, C); break;
+        case 0x7a: insnLD(A, D); break;
+        case 0x7b: insnLD(A, E); break;
+        case 0x7c: insnLD(A, H); break;
+        case 0x7d: insnLD(A, L); break;
+        case 0x7e: insnLD(A, read8(HL)); break;
+        case 0x7f: insnLD(A, A); break;
+        case 0x80: insnADD(A, B); break;
+        case 0x81: insnADD(A, C); break;
+        case 0x82: insnADD(A, D); break;
+        case 0x83: insnADD(A, E); break;
+        case 0x84: insnADD(A, H); break;
+        case 0x85: insnADD(A, L); break;
+        case 0x86: insnADD(A, read8(HL)); break;
+        case 0x87: insnADD(A, A); break;
+        case 0x88: insnADC(A, B); break;
+        case 0x89: insnADC(A, C); break;
+        case 0x8a: insnADC(A, D); break;
+        case 0x8b: insnADC(A, E); break;
+        case 0x8c: insnADC(A, H); break;
+        case 0x8d: insnADC(A, L); break;
+        case 0x8e: insnADC(A, read8(HL)); break;
+        case 0x8f: insnADC(A, A); break;
+        case 0x90: insnSUB(B); break;
+        case 0x91: insnSUB(C); break;
+        case 0x92: insnSUB(D); break;
+        case 0x93: insnSUB(E); break;
+        case 0x94: insnSUB(H); break;
+        case 0x95: insnSUB(L); break;
+        case 0x96: insnSUB(read8(HL)); break;
+        case 0x97: insnSUB(A); break;
+        case 0x98: insnSBC(A, B); break;
+        case 0x99: insnSBC(A, C); break;
+        case 0x9a: insnSBC(A, D); break;
+        case 0x9b: insnSBC(A, E); break;
+        case 0x9c: insnSBC(A, H); break;
+        case 0x9d: insnSBC(A, L); break;
+        case 0x9e: insnSBC(A, read8(HL)); break;
+        case 0x9f: insnSBC(A, A); break;
+        case 0xa0: insnAND(B); break;
+        case 0xa1: insnAND(C); break;
+        case 0xa2: insnAND(D); break;
+        case 0xa3: insnAND(E); break;
+        case 0xa4: insnAND(H); break;
+        case 0xa5: insnAND(L); break;
+        case 0xa6: insnAND(read8(HL)); break;
+        case 0xa7: insnAND(A); break;
+        case 0xa8: insnXOR(B); break;
+        case 0xa9: insnXOR(C); break;
+        case 0xaa: insnXOR(D); break;
+        case 0xab: insnXOR(E); break;
+        case 0xac: insnXOR(H); break;
+        case 0xad: insnXOR(L); break;
+        case 0xae: insnXOR(read8(HL)); break;
+        case 0xaf: insnXOR(A); break;
+        case 0xb0: insnOR(B); break;
+        case 0xb1: insnOR(C); break;
+        case 0xb2: insnOR(D); break;
+        case 0xb3: insnOR(E); break;
+        case 0xb4: insnOR(H); break;
+        case 0xb5: insnOR(L); break;
+        case 0xb6: insnOR(read8(HL)); break;
+        case 0xb7: insnOR(A); break;
+        case 0xb8: insnCP(B); break;
+        case 0xb9: insnCP(C); break;
+        case 0xba: insnCP(D); break;
+        case 0xbb: insnCP(E); break;
+        case 0xbc: insnCP(H); break;
+        case 0xbd: insnCP(L); break;
+        case 0xbe: insnCP(read8(HL)); break;
+        case 0xbf: insnCP(A); break;
+        case 0xc0: insnRET(FLAG_Z != 0); break;
+        case 0xc1: insnPOP(BC); break;
+        case 0xc2: insnJP(FLAG_Z != 0, fetch16()); break;
+        case 0xc3: insnJP(fetch16()); break;
+        case 0xc4: insnCALL(FLAG_Z != 0, fetch16()); break;
+        case 0xc5: insnPUSH(BC); break;
+        case 0xc6: insnADD(A, fetch8()); break;
+        case 0xc7: insnRST(0x00); break;
+        case 0xc8: insnRET(FLAG_Z == 0); break;
+        case 0xc9: insnRET(); break;
+        case 0xca: insnJP(FLAG_Z == 0, fetch16()); break;
+        case 0xcb: executeCB(); break;
+        case 0xcc: insnCALL(FLAG_Z == 0, fetch16()); break;
+        case 0xcd: insnCALL(fetch16()); break;
+        case 0xce: insnADC(A, fetch8()); break;
+        case 0xcf: insnRST(0x08); break;
+        case 0xd0: insnRET(FLAG_C == 0); break;
+        case 0xd1: insnPOP(DE); break;
+        case 0xd2: insnJP(FLAG_C == 0, fetch16()); break;
+        case 0xd3: insnINVALID(); break;
+        case 0xd4: insnCALL(FLAG_C == 0, fetch16()); break;
+        case 0xd5: insnPUSH(DE); break;
+        case 0xd6: insnSUB(fetch8()); break;
+        case 0xd7: insnRST(0x10); break;
+        case 0xd8: insnRET(FLAG_C != 0); break;
+        case 0xd9: insnRETI(); break;
+        case 0xda: insnJP(FLAG_C != 0, fetch16()); break;
+        case 0xdb: insnINVALID(); break;
+        case 0xdc: insnCALL(FLAG_C != 0, fetch16()); break;
+        case 0xdd: insnINVALID(); break;
+        case 0xde: insnSBC(A, fetch8()); break;
+        case 0xdf: insnRST(0x18); break;
+        case 0xe0: insnLD(addr(0xff00 + fetch8()), A); break;
+        case 0xe1: insnPOP(HL); break;
+        case 0xe2: insnLD((C), A); break;
+        case 0xe3: insnINVALID(); break;
+        case 0xe4: insnINVALID(); break;
+        case 0xe5: insnPUSH(HL); break;
+        case 0xe6: insnAND(fetch8()); break;
+        case 0xe7: insnRST(0x20); break;
+        case 0xe8: insnADD(SP, fetchPC()); break;
+        case 0xe9: insnJP((HL)); break;
+        case 0xea: insnLD(addr(fetch16()), A); break;
+        case 0xeb: insnINVALID(); break;
+        case 0xec: insnINVALID(); break;
+        case 0xed: insnINVALID(); break;
+        case 0xee: insnXOR(fetch8()); break;
+        case 0xef: insnRST(0x28); break;
+        case 0xf0: insnLD(A, read8(0xff00 + fetch8())); break;
+        case 0xf1: insnPOP(AF); break;
+        case 0xf2: insnLD(A, (C)); break;
+        case 0xf3: insnDI(); break;
+        case 0xf4: insnINVALID(); break;
+        case 0xf5: insnPUSH(AF); break;
+        case 0xf6: insnOR(fetch8()); break;
+        case 0xf7: insnRST(0x30); break;
+        case 0xf8: insnLD(HL, SP + fetchPC()); break;
+        case 0xf9: insnLD(SP, HL); break;
+        case 0xfa: insnLD(A, read8(fetch16())); break;
+        case 0xfb: insnEI(); break;
+        case 0xfc: insnINVALID(); break;
+        case 0xfd: insnINVALID(); break;
+        case 0xfe: insnCP(fetch8()); break;
+        case 0xff: insnRST(0x38); break;
+        default: break;
+        }
     }
 
     void CpuZ80::execute()
@@ -321,19 +868,15 @@ namespace gb
     {
         uint32_t version = 1;
         serializer.serialize(version);
-        serializer.serialize(mRegs.a);
-        serializer.serialize(mRegs.b);
-        serializer.serialize(mRegs.c);
-        serializer.serialize(mRegs.d);
-        serializer.serialize(mRegs.e);
-        serializer.serialize(mRegs.h);
-        serializer.serialize(mRegs.l);
-        serializer.serialize(mRegs.flags);
-        serializer.serialize(mRegs.sp);
-        serializer.serialize(mRegs.pc);
-        serializer.serialize(mRegs.flag_z);
-        serializer.serialize(mRegs.flag_n);
-        serializer.serialize(mRegs.flag_h);
-        serializer.serialize(mRegs.flag_c);
+        serializer.serialize(AF);
+        serializer.serialize(BC);
+        serializer.serialize(DE);
+        serializer.serialize(HL);
+        serializer.serialize(SP);
+        serializer.serialize(PC);
+        serializer.serialize(FLAG_Z);
+        serializer.serialize(FLAG_N);
+        serializer.serialize(FLAG_H);
+        serializer.serialize(FLAG_C);
     }
 }
