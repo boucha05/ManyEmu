@@ -177,6 +177,36 @@ PC (program counter)                   C - Carry Flag
                                        0 - Not used, always zero
 
     ***************************************************************************/
+
+    static const uint8_t refTicksMain[] =
+    {
+        4,  12, 8,  8,  4,  4,  8,  4,  20, 8,  8,  8,  4,  4,  8,  4,
+        4,  12, 8,  8,  4,  4,  8,  4,  12, 8,  8,  8,  4,  4,  8,  4,
+        8,  12, 8,  8,  4,  4,  8,  4,  8,  8,  8,  8,  4,  4,  8,  4,
+        8,  12, 8,  8,  12, 12, 12, 4,  8,  8,  8,  8,  4,  4,  8,  4,
+        4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+        4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+        4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+        8,  8,  8,  8,  8,  8,  4,  8,  4,  4,  4,  4,  4,  4,  8,  4,
+        4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+        4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+        4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+        4,  4,  4,  4,  4,  4,  8,  4,  4,  4,  4,  4,  4,  4,  8,  4,
+        8,  12, 12, 16, 12, 16, 8,  16, 8,  16, 12, 4,  12, 24, 8,  16,
+        8,  12, 12, 0,  12, 16, 8,  16, 8,  16, 12, 0,  12, 0,  8,  16,
+        12, 12, 8,  0,  0,  16, 8,  16, 16, 4,  16, 0,  0,  0,  8,  16,
+        12, 12, 8,  4,  0,  16, 8,  16, 12, 8,  16, 4,  0,  0,  8,  16,
+    };
+
+    static const uint8_t refTicksCB[] =
+    {
+        8,  8,  8,  8,  8,  8,  16, 8
+    };
+
+    static const uint8_t refTicksCond_call = 12;
+    static const uint8_t refTicksCond_ret = 12;
+    static const uint8_t refTicksCond_jp = 4;
+    static const uint8_t refTicksCond_jr = 4;
 }
 
 namespace gb
@@ -193,10 +223,10 @@ namespace gb
 
     uint16_t CpuZ80::read16(uint16_t addr)
     {
-        uint8_t lo = read8(addr);
-        uint8_t hi = read8(addr + 1);
-        uint16_t value = static_cast<uint16_t>(lo) | (static_cast<uint16_t>(hi) << 8);
-        return value;
+        emu::word16_t value;
+        value.w.h.u = read8(addr);
+        value.w.l.u = read8(addr + 1);
+        return value.u;
     }
 
     uint8_t CpuZ80::fetch8()
@@ -206,10 +236,10 @@ namespace gb
 
     uint16_t CpuZ80::fetch16()
     {
-        uint8_t lo = fetch8();
-        uint8_t hi = fetch8();
-        uint16_t addr = static_cast<uint16_t>(lo) | (static_cast<uint16_t>(hi) << 8);
-        return addr;
+        emu::word16_t addr;
+        addr.w.h.u = fetch8();
+        addr.w.l.u = fetch8();
+        return addr.u;
     }
 
     uint16_t CpuZ80::fetchSigned8()
@@ -235,41 +265,41 @@ namespace gb
 
     uint16_t CpuZ80::peek16(uint16_t& addr)
     {
-        uint8_t lo = peek8(addr);
-        uint8_t hi = peek8(addr);
-        uint16_t value = static_cast<uint16_t>(lo) | (static_cast<uint16_t>(hi) << 8);
-        return value;
+        emu::word16_t value;
+        value.w.h.u = peek8(addr);
+        value.w.l.u = peek8(addr);
+        return value.u;
     }
 
     ///////////////////////////////////////////////////////////////////////////
 
     void CpuZ80::push8(uint8_t value)
     {
-        uint16_t addr = SP-- + 0x100;
+        uint16_t addr = --SP;
         write8(addr, value);
     }
     
     uint8_t CpuZ80::pop8()
     {
-        uint16_t addr = ++SP + 0x100;
+        uint16_t addr = SP++;
         uint8_t value = read8(addr);
         return value;
     }
 
     void CpuZ80::push16(uint16_t value)
     {
-        uint8_t lo = value & 0xff;
-        uint8_t hi = (value >> 8) & 0xff;
-        push8(hi);
-        push8(lo);
+        emu::word16_t data;
+        data.u = value;
+        push8(data.w.l.u);
+        push8(data.w.h.u);
     }
 
     uint16_t CpuZ80::pop16()
     {
-        uint8_t lo = pop8();
-        uint8_t hi = pop8();
-        uint16_t value = (static_cast<uint16_t>(lo) | (static_cast<uint16_t>(hi) << 8));
-        return value;
+        emu::word16_t data;
+        data.w.h.u = pop8();
+        data.w.l.u = pop8();
+        return data.u;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -288,6 +318,16 @@ namespace gb
     {
         mClock = &clock;
         mClock->addListener(*this);
+        mMemory = &bus;
+
+        for (auto index = 0; index < EMU_ARRAY_SIZE(mTicksMain); ++index)
+            mTicksMain[index] = refTicksMain[index] * master_clock_divider;
+        for (auto index = 0; index < EMU_ARRAY_SIZE(mTicksCB); ++index)
+            mTicksCB[index] = refTicksCB[index] * master_clock_divider;
+        mTicksCond_call = refTicksCond_call * master_clock_divider;
+        mTicksCond_ret = refTicksCond_ret * master_clock_divider;
+        mTicksCond_jp = refTicksCond_jp * master_clock_divider;
+        mTicksCond_jr = refTicksCond_jr * master_clock_divider;
         return true;
     }
 
@@ -610,6 +650,8 @@ namespace gb
 
     void CpuZ80::insn_jp(bool cond, uint16_t dest)
     {
+        if (cond)
+            mExecutedTicks += mTicksCond_jp;
         NOT_IMPLEMENTED();
     }
 
@@ -620,6 +662,8 @@ namespace gb
 
     void CpuZ80::insn_jr(bool cond, uint16_t dest)
     {
+        if (cond)
+            mExecutedTicks += mTicksCond_jr;
         NOT_IMPLEMENTED();
     }
 
@@ -630,6 +674,8 @@ namespace gb
 
     void CpuZ80::insn_call(bool cond, uint16_t dest)
     {
+        if (cond)
+            mExecutedTicks += mTicksCond_call;
         NOT_IMPLEMENTED();
     }
 
@@ -640,6 +686,8 @@ namespace gb
 
     void CpuZ80::insn_ret(bool cond)
     {
+        if (cond)
+            mExecutedTicks += mTicksCond_ret;
         NOT_IMPLEMENTED();
     }
 
@@ -661,6 +709,7 @@ namespace gb
     void CpuZ80::executeCB()
     {
         auto opcode = fetch8();
+        mExecutedTicks += mTicksCB[opcode] & 7;
         switch (opcode)
         {
         case 0x00: insn_rlc(B); break;
@@ -926,6 +975,7 @@ namespace gb
     void CpuZ80::executeMain()
     {
         auto opcode = fetch8();
+        mExecutedTicks += mTicksMain[opcode];
         switch (opcode)
         {
         case 0x00: insn_nop(); break;

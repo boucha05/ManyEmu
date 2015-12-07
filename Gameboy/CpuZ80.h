@@ -148,6 +148,7 @@ namespace gb
 
             struct
             {
+#if EMU_CONFIG_LITTLE_ENDIAN
                 uint8_t     a;
                 uint8_t     flags;
                 uint8_t     b;
@@ -156,6 +157,16 @@ namespace gb
                 uint8_t     e;
                 uint8_t     h;
                 uint8_t     l;
+#else
+                uint8_t     flags;
+                uint8_t     a;
+                uint8_t     c;
+                uint8_t     b;
+                uint8_t     e;
+                uint8_t     d;
+                uint8_t     l;
+                uint8_t     h;
+#endif
                 uint16_t    reserved_sp;
                 uint16_t    reserved_pc;
                 uint8_t     flag_z;
@@ -170,5 +181,11 @@ namespace gb
         int32_t                 mExecutedTicks;
         MEMORY_BUS*             mMemory;
         emu::Clock*             mClock;
+        uint8_t                 mTicksMain[256];
+        uint8_t                 mTicksCB[8];
+        uint8_t                 mTicksCond_call;
+        uint8_t                 mTicksCond_ret;
+        uint8_t                 mTicksCond_jp;
+        uint8_t                 mTicksCond_jr;
     };
 }

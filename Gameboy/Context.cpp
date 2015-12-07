@@ -11,7 +11,18 @@ namespace
     static const uint32_t MEM_SIZE = 1 << MEM_SIZE_LOG2;
     static const uint32_t MEM_PAGE_SIZE_LOG2 = 10;
 
+    static const uint32_t DISPLAY_CLOCK_PER_LINE = 456;
+    static const uint32_t DISPLAY_VISIBLE_LINES = 144;
+    static const uint32_t DISPLAY_VBLANK_LINES = 10;
+    static const uint32_t DISPLAY_TOTAL_LINES = DISPLAY_VISIBLE_LINES + DISPLAY_VBLANK_LINES;
+    static const uint32_t DISPLAY_CLOCK_PER_FRAME = DISPLAY_CLOCK_PER_LINE * DISPLAY_TOTAL_LINES;
+
+    static const uint32_t MASTER_CLOCK_FREQUENCY_GB = 4194304;
+    static const uint32_t MASTER_CLOCK_FREQUENCY_CGB = 2 * MASTER_CLOCK_FREQUENCY_GB;
+    static const uint32_t MASTER_CLOCK_FREQUENCY_SGB = 4295454;
+
     static const uint32_t MASTER_CLOCK_CPU_DIVIDER = 1;
+    static const uint32_t MASTER_CLOCK_PRE_FRAME = DISPLAY_CLOCK_PER_FRAME;
 
     static const uint32_t ROM_BANK_SIZE = 0x4000;
 
@@ -91,6 +102,7 @@ namespace
 
         virtual void reset()
         {
+            mClock.reset();
             mCpu.reset();
         }
 
@@ -108,15 +120,26 @@ namespace
 
         virtual void update()
         {
+            mClock.setTargetExecution(DISPLAY_CLOCK_PER_FRAME);
+            while (mClock.canExecute())
+            {
+                mClock.beginExecute();
+                mCpu.execute();
+                mClock.endExecute();
+            }
+            mClock.advance();
+            mClock.clearEvents();
         }
 
-        virtual uint8_t read8(uint16_t /*addr*/)
+        virtual uint8_t read8(uint16_t addr)
         {
-            return 0;
+            uint8_t value = memory_bus_read8(mMemory.getState(), mClock.getDesiredTicks(), addr);
+            return value;
         }
 
-        virtual void write8(uint16_t /*addr*/, uint8_t /*value*/)
+        virtual void write8(uint16_t addr, uint8_t value)
         {
+            memory_bus_write8(mMemory.getState(), mClock.getDesiredTicks(), addr, value);
         }
 
         virtual void serializeGameData(emu::ISerializer& /*serializer*/)
