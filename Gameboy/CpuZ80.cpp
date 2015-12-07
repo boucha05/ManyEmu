@@ -363,9 +363,13 @@ namespace gb
         mDesiredTicks = ticks;
     }
 
-#define NOT_IMPLEMENTED()                                       \
-    printf("Instruction %s not implemented\n", __FUNCTION__);   \
-    EMU_ASSERT(false)
+    void notImplemented(const char* function)
+    {
+        printf("Instruction %s not implemented\n", function);
+        EMU_ASSERT(false);
+    }
+
+#define NOT_IMPLEMENTED()   EMU_INVOKE_ONCE(notImplemented(__FUNCTION__))
 
     // GMB 8bit - Loadcommands
 

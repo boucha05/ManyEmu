@@ -12,6 +12,16 @@
 #endif
 #define EMU_VERIFY(e)   if (e) ; else return false
 
+#define EMU_INVOKE_ONCE(e)                  \
+{                                           \
+    static bool __invoked_before = false;   \
+    if (!__invoked_before)                  \
+    {                                       \
+        __invoked_before = true;            \
+        e;                                  \
+    }                                       \
+}
+
 #define EMU_ARRAY_SIZE(a)  (sizeof(a) / sizeof((a)[0]))
 
 #if EMU_CONFIG_LITTLE_ENDIAN
