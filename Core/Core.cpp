@@ -8,4 +8,9 @@ namespace emu
         if (!valid)
             printf("Assertion failed: %s\n", msg);
     }
+
+    void notImplemented(const char* function)
+    {
+        printf("Feature not implemented in %s\n", function);
+    }
 }

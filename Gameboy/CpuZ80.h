@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Core/Clock.h>
+#include <Core/Core.h>
 #include <stdint.h>
 #include <map>
 
@@ -55,10 +56,11 @@ namespace gb
 
         // GMB 8bit - Loadcommands
         void insn_ld(uint8_t& dest, uint8_t src);
-        void insn_ld(addr& dest, uint16_t src);
+        void insn_ld(addr& dest, uint8_t src);
 
         // GMB 16bit - Loadcommands
         void insn_ld(uint16_t& dest, uint16_t src);
+        void insn_ld(addr& dest, uint16_t src);
         void insn_push(uint16_t src);
         void insn_pop(uint16_t& dest);
 
@@ -150,26 +152,27 @@ namespace gb
             struct
             {
 #if EMU_CONFIG_LITTLE_ENDIAN
-                uint8_t     a;
                 uint8_t     flags;
-                uint8_t     b;
+                uint8_t     a;
                 uint8_t     c;
-                uint8_t     d;
+                uint8_t     b;
                 uint8_t     e;
-                uint8_t     h;
+                uint8_t     d;
                 uint8_t     l;
+                uint8_t     h;
 #else
-                uint8_t     flags;
                 uint8_t     a;
-                uint8_t     c;
+                uint8_t     flags;
                 uint8_t     b;
-                uint8_t     e;
+                uint8_t     c;
                 uint8_t     d;
-                uint8_t     l;
+                uint8_t     e;
                 uint8_t     h;
+                uint8_t     l;
 #endif
                 uint16_t    reserved_sp;
                 uint16_t    reserved_pc;
+                uint8_t     ime;
                 uint8_t     flag_z;
                 uint8_t     flag_n;
                 uint8_t     flag_h;

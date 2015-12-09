@@ -25,13 +25,13 @@
 #define EMU_ARRAY_SIZE(a)  (sizeof(a) / sizeof((a)[0]))
 
 #if EMU_CONFIG_LITTLE_ENDIAN
-#define _EMU_HALF_0                 h
-#define _EMU_HALF_1                 l
+#define _EMU_HALF_0                 l
+#define _EMU_HALF_1                 h
 #define _EMU_LITTLE_ENDIAN(expr)    (expr)
 #define _EMU_BIG_ENDIAN(expr)       emu::swap(expr)
 #else
-#define _EMU_HALF_0                 l
-#define _EMU_HALF_1                 h
+#define _EMU_HALF_0                 h
+#define _EMU_HALF_1                 l
 #define _EMU_LITTLE_ENDIAN(expr)    emu::swap(expr)
 #define _EMU_BIG_ENDIAN(expr)       (expr)
 #endif
@@ -135,6 +135,9 @@ namespace emu
     _EMU_ENDIAN_CONVERTERS(emu::word64_t, emu::word64_t);
 
     void Assert(bool valid, const char* msg);
+    void notImplemented(const char* function);
+
+#define EMU_NOT_IMPLEMENTED()   EMU_INVOKE_ONCE(emu::notImplemented(__FUNCTION__))
 
     class ISerializer;
 

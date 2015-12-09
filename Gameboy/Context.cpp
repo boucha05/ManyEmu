@@ -186,20 +186,24 @@ namespace
 
         static uint8_t ioRegsRead(void* context, int32_t ticks, uint32_t addr)
         {
+            EMU_NOT_IMPLEMENTED();
             return 0x00;
         }
 
         static void ioRegsWrite(void* /*context*/, int32_t /*ticks*/, uint32_t /*addr*/, uint8_t /*value*/)
         {
+            EMU_NOT_IMPLEMENTED();
         }
 
         static uint8_t intEnableRead(void* context, int32_t ticks, uint32_t addr)
         {
+            EMU_NOT_IMPLEMENTED();
             return 0x00;
         }
 
         static void intEnableWrite(void* /*context*/, int32_t /*ticks*/, uint32_t /*addr*/, uint8_t /*value*/)
         {
+            EMU_NOT_IMPLEMENTED();
         }
 
         const gb::Rom*          mRom;
