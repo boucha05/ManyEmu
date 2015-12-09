@@ -178,6 +178,204 @@ PC (program counter)                   C - Carry Flag
 
     ***************************************************************************/
 
+    enum ADDR_MODE
+    {
+        ADDR_NONE,          ADDR_MEM_BC_A,      ADDR_MEM_C_A,       ADDR_MEM_DE_A,
+        ADDR_MEM_HL,        ADDR_MEM_HL_A,      ADDR_MEM_HL_B,      ADDR_MEM_HL_C,
+        ADDR_MEM_HL_D,      ADDR_MEM_HL_E,      ADDR_MEM_HL_H,      ADDR_MEM_HL_L,
+        ADDR_MEM_HL_D8,     ADDR_MEM_HL_INC_A,  ADDR_MEM_HL_DEC_A,  ADDR_MEM_A16_A,
+        ADDR_MEM_A16_SP,    ADDR_MEM_A8_A,      ADDR_ZERO,          ADDR_RST,
+        ADDR_A,             ADDR_A_MEM_BC,      ADDR_A_MEM_C,       ADDR_A_MEM_DE,
+        ADDR_A_MEM_HL,      ADDR_A_MEM_HL_INC,  ADDR_A_MEM_HL_DEC,  ADDR_A_MEM_A16,
+        ADDR_A_MEM_A8,      ADDR_A_A,           ADDR_A_B,           ADDR_A_C,
+        ADDR_A_D,           ADDR_A_E,           ADDR_A_H,           ADDR_A_L,
+        ADDR_A_D8,          ADDR_AF,            ADDR_B,             ADDR_B_MEM_HL,
+        ADDR_B_A,           ADDR_B_B,           ADDR_B_C,           ADDR_B_D,
+        ADDR_B_E,           ADDR_B_H,           ADDR_B_L,           ADDR_B_D8,
+        ADDR_BC,            ADDR_BC_D16,        ADDR_C,             ADDR_C_MEM_HL,
+        ADDR_C_A,           ADDR_C_B,           ADDR_C_C,           ADDR_C_D,
+        ADDR_C_E,           ADDR_C_H,           ADDR_C_L,           ADDR_C_A16,
+        ADDR_C_D8,          ADDR_C_R8,          ADDR_CB,            ADDR_D,
+        ADDR_D_MEM_HL,      ADDR_D_A,           ADDR_D_B,           ADDR_D_C,
+        ADDR_D_D,           ADDR_D_E,           ADDR_D_H,           ADDR_D_L,
+        ADDR_D_D8,          ADDR_DE,            ADDR_DE_D16,        ADDR_E,
+        ADDR_E_MEM_HL,      ADDR_E_A,           ADDR_E_B,           ADDR_E_C,
+        ADDR_E_D,           ADDR_E_E,           ADDR_E_H,           ADDR_E_L,
+        ADDR_E_D8,          ADDR_H,             ADDR_H_MEM_HL,      ADDR_H_A,
+        ADDR_H_B,           ADDR_H_C,           ADDR_H_D,           ADDR_H_E,
+        ADDR_H_H,           ADDR_H_L,           ADDR_H_D8,          ADDR_HL,
+        ADDR_HL_BC,         ADDR_HL_DE,         ADDR_HL_HL,         ADDR_HL_SP,
+        ADDR_HL_SP_INC_R8,  ADDR_HL_D16,        ADDR_L,             ADDR_L_MEM_HL,
+        ADDR_L_A,           ADDR_L_B,           ADDR_L_C,           ADDR_L_D,
+        ADDR_L_E,           ADDR_L_H,           ADDR_L_L,           ADDR_L_D8,
+        ADDR_NC,            ADDR_NC_A16,        ADDR_NC_R8,         ADDR_NZ,
+        ADDR_NZ_A16,        ADDR_NZ_R8,         ADDR_SP,            ADDR_SP_HL,
+        ADDR_SP_D16,        ADDR_SP_R8,         ADDR_Z,             ADDR_Z_A16,
+        ADDR_Z_R8,          ADDR_A16,           ADDR_D8,            ADDR_R8,
+        ADDR_CB1_A,         ADDR_CB1_B,         ADDR_CB1_C,         ADDR_CB1_D,
+        ADDR_CB1_E,         ADDR_CB1_H,         ADDR_CB1_L,         ADDR_CB1_MEM_HL,
+        ADDR_CB2_A,         ADDR_CB2_B,         ADDR_CB2_C,         ADDR_CB2_D,
+        ADDR_CB2_E,         ADDR_CB2_H,         ADDR_CB2_L,         ADDR_CB2_MEM_HL,
+    };
+
+    static const char* addrModeFormat[] =
+    {
+        "",             "(BC),A",       "(C),A",        "(DE),A",
+        "(HL)",         "(HL),A",       "(HL),B",       "(HL),C",
+        "(HL),D",       "(HL),E",       "(HL),H",       "(HL),L",
+        "(HL),$%02X",   "(HL+),A",      "(HL-),A",      "($%04X),A",
+        "($%04X),SP",   "($%02X),A",    "0",            "$%02X",
+        "A",            "A,(BC)",       "A,(C)",        "A,(DE)",
+        "A,(HL)",       "A,(HL+)",      "A,(HL-)",      "A,($%04X)",
+        "A,($%02X)",    "A,A",          "A,B",          "A,C",
+        "A,D",          "A,E",          "A,H",          "A,L",
+        "A,$%02X",      "AF",           "B",            "B,(HL)",
+        "B,A",          "B,B",          "B,C",          "B,D",
+        "B,E",          "B,H",          "B,L",          "B,$%02X",
+        "BC",           "BC,$%04X",     "C",            "C,(HL)",
+        "C,A",          "C,B",          "C,C",          "C,D",
+        "C,E",          "C,H",          "C,L",          "C,$%04X",
+        "C,$%02X",      "C,$%04X",      "",             "D",
+        "D,(HL)",       "D,A",          "D,B",          "D,C",
+        "D,D",          "D,E",          "D,H",          "D,L",
+        "D,$%02X",      "DE",           "DE,$%04X",     "E",
+        "E,(HL)",       "E,A",          "E,B",          "E,C",
+        "E,D",          "E,E",          "E,H",          "E,L",
+        "E,$%02X",      "H",            "H,(HL)",       "H,A",
+        "H,B",          "H,C",          "H,D",          "H,E",
+        "H,H",          "H,L",          "H,$%02X",      "HL",
+        "HL,BC",        "HL,DE",        "HL,HL",        "HL,SP",
+        "HL,SP+$%04X",  "HL,$%04X",     "L",            "L,(HL)",
+        "L,A",          "L,B",          "L,C",          "L,D",
+        "L,E",          "L,H",          "L,L",          "L,$%02X",
+        "NC",           "NC,$%04X",     "NC,$%04X",     "NZ",
+        "NZ,$%04X",     "NZ,$%04X",     "SP",           "SP,HL",
+        "SP,$%04X",     "SP,$%04X",     "Z",            "Z,$%04X",
+        "Z,$%04X",      "$%04X",        "$%02X",        "$%04X",
+        "A",            "B",            "C",            "D",
+        "E",            "H",            "L",            "(HL)",
+        "%d,A",         "%d,B",         "%d,C",         "%d,D",
+        "%d,E",         "%d,H",         "%d,L",         "%d,(HL)",
+    };
+
+    enum INSN_TYPE
+    {
+        INSN_ADC,       INSN_ADD,       INSN_AND,       INSN_BIT,
+        INSN_CALL,      INSN_CCF,       INSN_CP,        INSN_CPL,
+        INSN_DAA,       INSN_DEC,       INSN_DI,        INSN_EI,
+        INSN_HALT,      INSN_INC,       INSN_INVALID,   INSN_JP,
+        INSN_JR,        INSN_LD,        INSN_LDH,       INSN_NOP,
+        INSN_OR,        INSN_POP,       INSN_PREFIX,    INSN_PUSH,
+        INSN_RES,       INSN_RET,       INSN_RETI,      INSN_RL,
+        INSN_RLA,       INSN_RLC,       INSN_RLCA,      INSN_RR,
+        INSN_RRA,       INSN_RRC,       INSN_RRCA,      INSN_RST,
+        INSN_SBC,       INSN_SCF,       INSN_SET,       INSN_SLA,
+        INSN_SRA,       INSN_SRL,       INSN_STOP,      INSN_SUB,
+        INSN_SWAP,      INSN_XOR,
+    };
+
+    static const char* insnName[] =
+    {
+        "ADC",  "ADD",  "AND",  "BIT",  "CALL", "CCF",  "CP",   "CPL",
+        "DAA",  "DEC",  "DI",   "EI",   "HALT", "INC",  "???",  "JP",
+        "JR",   "LD",   "LDH",  "NOP",  "OR",   "POP",  "???",  "PUSH",
+        "RES",  "RET",  "RETI", "RL",   "RLA",  "RLC",  "RLCA", "RR",
+        "RRA",  "RRC",  "RRCA", "RST",  "SBC",  "SCF",  "SET",  "SLA",
+        "SRA",  "SRL",  "STOP", "SUB",  "SWAP", "XOR",
+    };
+
+    static const uint8_t insnTypeMain[] =
+    {
+        INSN_NOP,       INSN_LD,        INSN_LD,        INSN_INC,       INSN_INC,       INSN_DEC,       INSN_LD,        INSN_RLCA,
+        INSN_LD,        INSN_ADD,       INSN_LD,        INSN_DEC,       INSN_INC,       INSN_DEC,       INSN_LD,        INSN_RRCA,
+        INSN_STOP,      INSN_LD,        INSN_LD,        INSN_INC,       INSN_INC,       INSN_DEC,       INSN_LD,        INSN_RLA,
+        INSN_JR,        INSN_ADD,       INSN_LD,        INSN_DEC,       INSN_INC,       INSN_DEC,       INSN_LD,        INSN_RRA,
+        INSN_JR,        INSN_LD,        INSN_LD,        INSN_INC,       INSN_INC,       INSN_DEC,       INSN_LD,        INSN_DAA,
+        INSN_JR,        INSN_ADD,       INSN_LD,        INSN_DEC,       INSN_INC,       INSN_DEC,       INSN_LD,        INSN_CPL,
+        INSN_JR,        INSN_LD,        INSN_LD,        INSN_INC,       INSN_INC,       INSN_DEC,       INSN_LD,        INSN_SCF,
+        INSN_JR,        INSN_ADD,       INSN_LD,        INSN_DEC,       INSN_INC,       INSN_DEC,       INSN_LD,        INSN_CCF,
+        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,
+        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,
+        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,
+        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,
+        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,
+        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,
+        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_HALT,      INSN_LD,
+        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,        INSN_LD,
+        INSN_ADD,       INSN_ADD,       INSN_ADD,       INSN_ADD,       INSN_ADD,       INSN_ADD,       INSN_ADD,       INSN_ADD,
+        INSN_ADC,       INSN_ADC,       INSN_ADC,       INSN_ADC,       INSN_ADC,       INSN_ADC,       INSN_ADC,       INSN_ADC,
+        INSN_SUB,       INSN_SUB,       INSN_SUB,       INSN_SUB,       INSN_SUB,       INSN_SUB,       INSN_SUB,       INSN_SUB,
+        INSN_SBC,       INSN_SBC,       INSN_SBC,       INSN_SBC,       INSN_SBC,       INSN_SBC,       INSN_SBC,       INSN_SBC,
+        INSN_AND,       INSN_AND,       INSN_AND,       INSN_AND,       INSN_AND,       INSN_AND,       INSN_AND,       INSN_AND,
+        INSN_XOR,       INSN_XOR,       INSN_XOR,       INSN_XOR,       INSN_XOR,       INSN_XOR,       INSN_XOR,       INSN_XOR,
+        INSN_OR,        INSN_OR,        INSN_OR,        INSN_OR,        INSN_OR,        INSN_OR,        INSN_OR,        INSN_OR,
+        INSN_CP,        INSN_CP,        INSN_CP,        INSN_CP,        INSN_CP,        INSN_CP,        INSN_CP,        INSN_CP,
+        INSN_RET,       INSN_POP,       INSN_JP,        INSN_JP,        INSN_CALL,      INSN_PUSH,      INSN_ADD,       INSN_RST,
+        INSN_RET,       INSN_RET,       INSN_JP,        INSN_PREFIX,    INSN_CALL,      INSN_CALL,      INSN_ADC,       INSN_RST,
+        INSN_RET,       INSN_POP,       INSN_JP,        INSN_INVALID,   INSN_CALL,      INSN_PUSH,      INSN_SUB,       INSN_RST,
+        INSN_RET,       INSN_RETI,      INSN_JP,        INSN_INVALID,   INSN_CALL,      INSN_INVALID,   INSN_SBC,       INSN_RST,
+        INSN_LDH,       INSN_POP,       INSN_LD,        INSN_INVALID,   INSN_INVALID,   INSN_PUSH,      INSN_AND,       INSN_RST,
+        INSN_ADD,       INSN_JP,        INSN_LD,        INSN_INVALID,   INSN_INVALID,   INSN_INVALID,   INSN_XOR,       INSN_RST,
+        INSN_LDH,       INSN_POP,       INSN_LD,        INSN_DI,        INSN_INVALID,   INSN_PUSH,      INSN_OR,        INSN_RST,
+        INSN_LD,        INSN_LD,        INSN_LD,        INSN_EI,        INSN_INVALID,   INSN_INVALID,   INSN_CP,        INSN_RST,
+    };
+
+    static const uint8_t insnTypeCB[] =
+    {
+        INSN_RLC,   INSN_RRC,   INSN_RL,    INSN_RR,    INSN_SLA,   INSN_SRA,   INSN_SWAP,  INSN_SRL,
+        INSN_BIT,   INSN_BIT,   INSN_BIT,   INSN_BIT,   INSN_BIT,   INSN_BIT,   INSN_BIT,   INSN_BIT,
+        INSN_RES,   INSN_RES,   INSN_RES,   INSN_RES,   INSN_RES,   INSN_RES,   INSN_RES,   INSN_RES,
+        INSN_SET,   INSN_SET,   INSN_SET,   INSN_SET,   INSN_SET,   INSN_SET,   INSN_SET,   INSN_SET,
+    };
+
+    static const uint8_t addrModeMain[] =
+    {
+        ADDR_NONE,          ADDR_BC_D16,        ADDR_MEM_BC_A,      ADDR_BC,            ADDR_B,             ADDR_B,             ADDR_B_D8,          ADDR_NONE,
+        ADDR_MEM_A16_SP,    ADDR_HL_BC,         ADDR_A_MEM_BC,      ADDR_BC,            ADDR_C,             ADDR_C,             ADDR_C_D8,          ADDR_NONE,
+        ADDR_ZERO,          ADDR_DE_D16,        ADDR_MEM_DE_A,      ADDR_DE,            ADDR_D,             ADDR_D,             ADDR_D_D8,          ADDR_NONE,
+        ADDR_R8,            ADDR_HL_DE,         ADDR_A_MEM_DE,      ADDR_DE,            ADDR_E,             ADDR_E,             ADDR_E_D8,          ADDR_NONE,
+        ADDR_NZ_R8,         ADDR_HL_D16,        ADDR_MEM_HL_INC_A,  ADDR_HL,            ADDR_H,             ADDR_H,             ADDR_H_D8,          ADDR_NONE,
+        ADDR_Z_R8,          ADDR_HL_HL,         ADDR_A_MEM_HL_INC,  ADDR_HL,            ADDR_L,             ADDR_L,             ADDR_L_D8,          ADDR_NONE,
+        ADDR_NC_R8,         ADDR_SP_D16,        ADDR_MEM_HL_DEC_A,  ADDR_SP,            ADDR_MEM_HL,        ADDR_MEM_HL,        ADDR_MEM_HL_D8,     ADDR_NONE,
+        ADDR_C_R8,          ADDR_HL_SP,         ADDR_A_MEM_HL_DEC,  ADDR_SP,            ADDR_A,             ADDR_A,             ADDR_A_D8,          ADDR_NONE,
+        ADDR_B_B,           ADDR_B_C,           ADDR_B_D,           ADDR_B_E,           ADDR_B_H,           ADDR_B_L,           ADDR_B_MEM_HL,      ADDR_B_A,
+        ADDR_C_B,           ADDR_C_C,           ADDR_C_D,           ADDR_C_E,           ADDR_C_H,           ADDR_C_L,           ADDR_C_MEM_HL,      ADDR_C_A,
+        ADDR_D_B,           ADDR_D_C,           ADDR_D_D,           ADDR_D_E,           ADDR_D_H,           ADDR_D_L,           ADDR_D_MEM_HL,      ADDR_D_A,
+        ADDR_E_B,           ADDR_E_C,           ADDR_E_D,           ADDR_E_E,           ADDR_E_H,           ADDR_E_L,           ADDR_E_MEM_HL,      ADDR_E_A,
+        ADDR_H_B,           ADDR_H_C,           ADDR_H_D,           ADDR_H_E,           ADDR_H_H,           ADDR_H_L,           ADDR_H_MEM_HL,      ADDR_H_A,
+        ADDR_L_B,           ADDR_L_C,           ADDR_L_D,           ADDR_L_E,           ADDR_L_H,           ADDR_L_L,           ADDR_L_MEM_HL,      ADDR_L_A,
+        ADDR_MEM_HL_B,      ADDR_MEM_HL_C,      ADDR_MEM_HL_D,      ADDR_MEM_HL_E,      ADDR_MEM_HL_H,      ADDR_MEM_HL_L,      ADDR_NONE,          ADDR_MEM_HL_A,
+        ADDR_A_B,           ADDR_A_C,           ADDR_A_D,           ADDR_A_E,           ADDR_A_H,           ADDR_A_L,           ADDR_A_MEM_HL,      ADDR_A_A,
+        ADDR_A_B,           ADDR_A_C,           ADDR_A_D,           ADDR_A_E,           ADDR_A_H,           ADDR_A_L,           ADDR_A_MEM_HL,      ADDR_A_A,
+        ADDR_A_B,           ADDR_A_C,           ADDR_A_D,           ADDR_A_E,           ADDR_A_H,           ADDR_A_L,           ADDR_A_MEM_HL,      ADDR_A_A,
+        ADDR_B,             ADDR_C,             ADDR_D,             ADDR_E,             ADDR_H,             ADDR_L,             ADDR_MEM_HL,        ADDR_A,
+        ADDR_A_B,           ADDR_A_C,           ADDR_A_D,           ADDR_A_E,           ADDR_A_H,           ADDR_A_L,           ADDR_A_MEM_HL,      ADDR_A_A,
+        ADDR_B,             ADDR_C,             ADDR_D,             ADDR_E,             ADDR_H,             ADDR_L,             ADDR_MEM_HL,        ADDR_A,
+        ADDR_B,             ADDR_C,             ADDR_D,             ADDR_E,             ADDR_H,             ADDR_L,             ADDR_MEM_HL,        ADDR_A,
+        ADDR_B,             ADDR_C,             ADDR_D,             ADDR_E,             ADDR_H,             ADDR_L,             ADDR_MEM_HL,        ADDR_A,
+        ADDR_B,             ADDR_C,             ADDR_D,             ADDR_E,             ADDR_H,             ADDR_L,             ADDR_MEM_HL,        ADDR_A,
+        ADDR_NZ,            ADDR_BC,            ADDR_NZ_A16,        ADDR_A16,           ADDR_NZ_A16,        ADDR_BC,            ADDR_A_D8,          ADDR_RST,
+        ADDR_Z,             ADDR_NONE,          ADDR_Z_A16,         ADDR_CB,            ADDR_Z_A16,         ADDR_A16,           ADDR_A_D8,          ADDR_RST,
+        ADDR_NC,            ADDR_DE,            ADDR_NC_A16,        ADDR_NONE,          ADDR_NC_A16,        ADDR_DE,            ADDR_D8,            ADDR_RST,
+        ADDR_C,             ADDR_NONE,          ADDR_C_A16,         ADDR_NONE,          ADDR_C_A16,         ADDR_NONE,          ADDR_A_D8,          ADDR_RST,
+        ADDR_MEM_A8_A,      ADDR_HL,            ADDR_MEM_C_A,       ADDR_NONE,          ADDR_NONE,          ADDR_HL,            ADDR_D8,            ADDR_RST,
+        ADDR_SP_R8,         ADDR_MEM_HL,        ADDR_MEM_A16_A,     ADDR_NONE,          ADDR_NONE,          ADDR_NONE,          ADDR_D8,            ADDR_RST,
+        ADDR_A_MEM_A8,      ADDR_AF,            ADDR_A_MEM_C,       ADDR_NONE,          ADDR_NONE,          ADDR_AF,            ADDR_D8,            ADDR_RST,
+        ADDR_HL_SP_INC_R8,  ADDR_SP_HL,         ADDR_A_MEM_A16,     ADDR_NONE,          ADDR_NONE,          ADDR_NONE,          ADDR_D8,            ADDR_RST,
+    };
+
+    static const uint8_t addrModeCB1[] =
+    {
+        ADDR_CB1_B,         ADDR_CB1_C,         ADDR_CB1_D,         ADDR_CB1_E,
+        ADDR_CB1_H,         ADDR_CB1_L,         ADDR_CB1_MEM_HL,    ADDR_CB1_A,
+    };
+
+    static const uint8_t addrModeCB2[] =
+    {
+        ADDR_CB2_B,         ADDR_CB2_C,         ADDR_CB2_D,         ADDR_CB2_E,
+        ADDR_CB2_H,         ADDR_CB2_L,         ADDR_CB2_MEM_HL,    ADDR_CB2_A,
+    };
+
     static const uint8_t refTicksMain[] =
     {
         4,  12, 8,  8,  4,  4,  8,  4,  20, 8,  8,  8,  4,  4,  8,  4,
@@ -269,6 +467,13 @@ namespace gb
         value.w.h.u = peek8(addr);
         value.w.l.u = peek8(addr);
         return value.u;
+    }
+
+    uint16_t CpuZ80::peekSigned8(uint16_t& addr)
+    {
+        int8_t offset = peek8(addr);
+        uint16_t result = static_cast<int16_t>(offset);
+        return result;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -366,7 +571,6 @@ namespace gb
     void notImplemented(const char* function)
     {
         printf("Instruction %s not implemented\n", function);
-        EMU_ASSERT(false);
     }
 
 #define NOT_IMPLEMENTED()   EMU_INVOKE_ONCE(notImplemented(__FUNCTION__))
@@ -1246,13 +1450,115 @@ namespace gb
     {
         while (mExecutedTicks < mDesiredTicks)
         {
+#if 1
+            char temp[32];
+            auto nextPC = disassemble(temp, sizeof(temp), PC);
+            uint16_t byteCount = nextPC - PC;
+            char temp2[16];
+            char* temp2Pos = temp2;
+            for (uint16_t offset = 0; offset < byteCount; ++offset)
+                temp2Pos += sprintf(temp2Pos, "%02X ", read8(PC + offset));
+            printf("%04X  %-9s %s\n", PC, temp2, temp);
+
+            static int traceCount = 0;
+            static int traceBreak = 100;
+            if (++traceCount == traceBreak)
+            {
+                traceBreak = traceBreak;
+            }
+#endif
             executeMain();
         }
     }
 
-    uint16_t CpuZ80::disassemble(char* /*buffer*/, size_t /*size*/, uint16_t addr)
+    uint16_t CpuZ80::disassemble(char* buffer, size_t size, uint16_t addr)
     {
-        return addr;
+        // Decode
+        auto pc = addr;
+        auto data = peek8(pc);
+        auto insnType = static_cast<INSN_TYPE>(insnTypeMain[data]);
+        auto addrMode = static_cast<ADDR_MODE>(addrModeMain[data]);
+        auto opcode = insnName[insnType];
+        if (insnType == INSN_PREFIX)
+        {
+            data = peek8(pc);
+            insnType = static_cast<INSN_TYPE>(insnTypeCB[data >> 3]);
+            const auto& addrModeTable = (data > 0x40) ? addrModeCB2 : addrModeCB1;
+            addrMode = static_cast<ADDR_MODE>(addrModeTable[data & 7]);
+        }
+
+        // Format
+        char temp[32];
+        char* text = temp;
+        text += sprintf(text, (addrMode == ADDR_NONE) ? "%s" : "%-4s ", opcode);
+        auto format = addrModeFormat[addrMode];
+        switch (addrMode)
+        {
+        case ADDR_MEM_HL_D8:
+        case ADDR_MEM_A8_A:
+        case ADDR_A_MEM_A8:
+        case ADDR_A_D8:
+        case ADDR_B_D8:
+        case ADDR_C_D8:
+        case ADDR_D_D8:
+        case ADDR_E_D8:
+        case ADDR_H_D8:
+        case ADDR_L_D8:
+        case ADDR_D8:
+            text += sprintf(text, format, peek8(pc));
+            break;
+
+        case ADDR_MEM_A16_A:
+        case ADDR_MEM_A16_SP:
+        case ADDR_A_MEM_A16:
+        case ADDR_BC_D16:
+        case ADDR_C_A16:
+        case ADDR_DE_D16:
+        case ADDR_HL_D16:
+        case ADDR_NC_A16:
+        case ADDR_NZ_A16:
+        case ADDR_SP_D16:
+        case ADDR_Z_A16:
+        case ADDR_A16:
+            text += sprintf(text, format, peek16(pc));
+            break;
+
+        case ADDR_RST:
+            text += sprintf(text, format, data & 0x38);
+            break;
+
+        case ADDR_C_R8:
+        case ADDR_NC_R8:
+        case ADDR_NZ_R8:
+        case ADDR_Z_R8:
+        case ADDR_R8:
+            text += sprintf(text, format, peekSigned8(pc) + pc);
+            break;
+
+        case ADDR_HL_SP_INC_R8:
+        case ADDR_SP_R8:
+            text += sprintf(text, format, peekSigned8(pc));
+            break;
+
+        case ADDR_CB2_B:
+        case ADDR_CB2_C:
+        case ADDR_CB2_D:
+        case ADDR_CB2_E:
+        case ADDR_CB2_H:
+        case ADDR_CB2_L:
+        case ADDR_CB2_MEM_HL:
+        case ADDR_CB2_A:
+            text += sprintf(text, format, (data >> 3) & 7);
+            break;
+
+        default:
+            text += sprintf(text, format);
+        }
+        if (size-- > 0)
+            strncpy(buffer, temp, size);
+        buffer[size] = 0;
+
+        return pc;
     }
 
     void CpuZ80::serialize(emu::ISerializer& serializer)

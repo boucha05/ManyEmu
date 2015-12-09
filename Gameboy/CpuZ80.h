@@ -37,6 +37,7 @@ namespace gb
         inline uint16_t fetchPC();
         inline uint8_t peek8(uint16_t& addr);
         inline uint16_t peek16(uint16_t& addr);
+        inline uint16_t peekSigned8(uint16_t& addr);
         inline void push8(uint8_t value);
         inline uint8_t pop8();
         inline void push16(uint16_t value);
