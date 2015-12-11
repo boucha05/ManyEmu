@@ -110,44 +110,44 @@ namespace gb
 {
     void Registers::reset(bool isSGB)
     {
-        memset(value, 0, sizeof(value));
+        memset(values, 0, sizeof(values));
 
-        value[0x05] = 0x00;
-        value[0x06] = 0x00;
-        value[0x07] = 0x00;
-        value[0x10] = 0x80;
-        value[0x11] = 0xBF;
-        value[0x12] = 0xF3;
-        value[0x14] = 0xBF;
-        value[0x16] = 0x3F;
-        value[0x17] = 0x00;
-        value[0x19] = 0xBF;
-        value[0x1A] = 0x7F;
-        value[0x1B] = 0xFF;
-        value[0x1C] = 0x9F;
-        value[0x1E] = 0xBF;
-        value[0x20] = 0xFF;
-        value[0x21] = 0x00;
-        value[0x22] = 0x00;
-        value[0x23] = 0xBF;
-        value[0x24] = 0x77;
-        value[0x25] = 0xF3;
-        value[0x26] = !isSGB ? 0xF1 : 0xF0;
-        value[0x40] = 0x91;
-        value[0x42] = 0x00;
-        value[0x43] = 0x00;
-        value[0x45] = 0x00;
-        value[0x47] = 0xFC;
-        value[0x48] = 0xFF;
-        value[0x49] = 0xFF;
-        value[0x4A] = 0x00;
-        value[0x4B] = 0x00;
-        value[0xFF] = 0x00;
+        values[0x05] = 0x00;
+        values[0x06] = 0x00;
+        values[0x07] = 0x00;
+        values[0x10] = 0x80;
+        values[0x11] = 0xBF;
+        values[0x12] = 0xF3;
+        values[0x14] = 0xBF;
+        values[0x16] = 0x3F;
+        values[0x17] = 0x00;
+        values[0x19] = 0xBF;
+        values[0x1A] = 0x7F;
+        values[0x1B] = 0xFF;
+        values[0x1C] = 0x9F;
+        values[0x1E] = 0xBF;
+        values[0x20] = 0xFF;
+        values[0x21] = 0x00;
+        values[0x22] = 0x00;
+        values[0x23] = 0xBF;
+        values[0x24] = 0x77;
+        values[0x25] = 0xF3;
+        values[0x26] = !isSGB ? 0xF1 : 0xF0;
+        values[0x40] = 0x91;
+        values[0x42] = 0x00;
+        values[0x43] = 0x00;
+        values[0x45] = 0x00;
+        values[0x47] = 0xFC;
+        values[0x48] = 0xFF;
+        values[0x49] = 0xFF;
+        values[0x4A] = 0x00;
+        values[0x4B] = 0x00;
+        values[0xFF] = 0x00;
     }
 
     void Registers::serialize(emu::ISerializer& serializer)
     {
-        serializer.serialize(value, EMU_ARRAY_SIZE(value));
+        serializer.serialize(values, EMU_ARRAY_SIZE(values));
     }
 
     uint32_t Registers::getRegisterIndex(REG reg)
@@ -168,5 +168,25 @@ namespace gb
     {
         auto index = getRegisterIndex(reg);
         return getRegisterInfo(index).description;
+    }
+
+    uint8_t Registers::readIO(int32_t ticks, uint32_t addr)
+    {
+        return values[addr & 0x7f];
+    }
+
+    void Registers::writeIO(int32_t ticks, uint32_t addr, uint8_t value)
+    {
+        values[addr & 0x7f] = value;
+    }
+
+    uint8_t Registers::readIE(int32_t ticks)
+    {
+        return values[0x80];
+    }
+
+    void Registers::writeIE(int32_t ticks, uint8_t value)
+    {
+        values[0x80] = value;
     }
 }

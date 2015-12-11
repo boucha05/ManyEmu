@@ -165,6 +165,11 @@ namespace
             mRegisters.serialize(serializer);
         }
 
+        gb::Registers& getRegisters()
+        {
+            return mRegisters;
+        }
+
     private:
         bool updateMemoryMap()
         {
@@ -191,24 +196,22 @@ namespace
 
         static uint8_t ioRegsRead(void* context, int32_t ticks, uint32_t addr)
         {
-            EMU_NOT_IMPLEMENTED();
-            return 0x00;
+            return static_cast<ContextImpl*>(context)->getRegisters().readIO(ticks, addr);
         }
 
-        static void ioRegsWrite(void* /*context*/, int32_t /*ticks*/, uint32_t /*addr*/, uint8_t /*value*/)
+        static void ioRegsWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value)
         {
-            EMU_NOT_IMPLEMENTED();
+            static_cast<ContextImpl*>(context)->getRegisters().writeIO(ticks, addr, value);
         }
 
         static uint8_t intEnableRead(void* context, int32_t ticks, uint32_t addr)
         {
-            EMU_NOT_IMPLEMENTED();
-            return 0x00;
+            return static_cast<ContextImpl*>(context)->getRegisters().readIE(ticks);
         }
 
-        static void intEnableWrite(void* /*context*/, int32_t /*ticks*/, uint32_t /*addr*/, uint8_t /*value*/)
+        static void intEnableWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value)
         {
-            EMU_NOT_IMPLEMENTED();
+            static_cast<ContextImpl*>(context)->getRegisters().writeIE(ticks, value);
         }
 
         gb::Model               mModel;

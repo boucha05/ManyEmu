@@ -77,10 +77,14 @@ namespace gb
     {
         static const uint32_t Count = 0x81;
 
-        uint8_t     value[Count];
+        uint8_t     values[Count];
 
         void reset(bool isSGB);
         void serialize(emu::ISerializer& serializer);
+        uint8_t readIO(int32_t ticks, uint32_t addr);
+        void writeIO(int32_t ticks, uint32_t addr, uint8_t value);
+        uint8_t readIE(int32_t ticks);
+        void writeIE(int32_t ticks, uint8_t value);
 
         static uint32_t getRegisterIndex(REG reg);
         static const char* getName(REG reg);
