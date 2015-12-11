@@ -5,6 +5,13 @@
 
 namespace gb
 {
+    enum class Model : uint8_t
+    {
+        GB,
+        GBC,
+        SGB,
+    };
+
     class Rom : public emu::Rom, public emu::IDisposable
     {
     public:

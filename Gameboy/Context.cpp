@@ -3,6 +3,7 @@
 #include <Core/Serialization.h>
 #include "CpuZ80.h"
 #include "GB.h"
+#include "Registers.h"
 #include <vector>
 
 namespace
@@ -58,7 +59,9 @@ namespace
 
         bool create(const gb::Rom& rom)
         {
-            bool isGBC = true;
+            mModel = gb::Model::GBC;
+
+            bool isGBC = mModel >= gb::Model::GBC;
 
             mRom = &rom;
 
@@ -104,6 +107,7 @@ namespace
         {
             mClock.reset();
             mCpu.reset();
+            mRegisters.reset(mModel >= gb::Model::SGB);
         }
 
         virtual void setController(uint32_t /*index*/, uint32_t /*buttons*/)
@@ -158,6 +162,7 @@ namespace
             serializer.serialize(mBankVRAM);
             serializer.serialize(mBankExternalRAM);
             serializer.serialize(mBankWRAM, EMU_ARRAY_SIZE(mBankWRAM));
+            mRegisters.serialize(serializer);
         }
 
     private:
@@ -206,6 +211,7 @@ namespace
             EMU_NOT_IMPLEMENTED();
         }
 
+        gb::Model               mModel;
         const gb::Rom*          mRom;
         emu::Clock              mClock;
         emu::MemoryBus          mMemory;
@@ -227,6 +233,7 @@ namespace
         uint8_t                 mBankVRAM;
         uint8_t                 mBankExternalRAM;
         uint8_t                 mBankWRAM[2];
+        gb::Registers           mRegisters;
     };
 }
 
