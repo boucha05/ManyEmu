@@ -850,36 +850,38 @@ namespace gb
     void CpuZ80::insn_rlca()
     {
         auto value = A;
-        auto carry_out = (value >> 7) & 1;
-        auto result = value << 1;
+        auto bit_in = (value >> 7) & 0x01;
+        auto bit_out = bit_in;
+        auto result = (value << 1) | bit_in;
         A = result;
-        flags_000c(carry_out);
+        flags_000c(bit_out);
     }
 
     void CpuZ80::insn_rla()
     {
         auto value = A;
-        auto carry_in = (FLAGS & FLAG_C) ? 1 : 0;
-        auto carry_out = (value >> 7) & 1;
-        auto result = (value << 1) | carry_in;
+        auto bit_in = (FLAGS & FLAG_C) ? 0x01 : 0x00;
+        auto bit_out = (value >> 7) & 0x01;
+        auto result = (value << 1) | bit_in;
         A = result;
-        flags_000c(carry_out);
+        flags_000c(bit_out);
     }
 
     void CpuZ80::insn_rrca()
     {
         auto value = A;
-        auto carry_out = value & 1;
-        auto result = value >> 1;
+        auto bit_in = (value << 7) & 0x80;
+        auto bit_out = bit_in;
+        auto result = (value >> 1) | bit_in;
         A = result;
-        flags_000c(carry_out);
+        flags_000c(bit_out);
     }
 
     void CpuZ80::insn_rra()
     {
         auto value = A;
         auto carry_in = (FLAGS & FLAG_C) ? 0x80 : 0x00;
-        auto carry_out = value & 1;
+        auto carry_out = value & 0x01;
         auto result = (value >> 1) | carry_in;
         A = result;
         flags_000c(carry_out);
@@ -887,52 +889,100 @@ namespace gb
 
     void CpuZ80::insn_rlc(uint8_t& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        auto value = dest;
+        auto bit_in = (value >> 7) & 0x01;
+        auto bit_out = bit_in;
+        auto result = (value << 1) | bit_in;
+        dest = result;
+        flags_z00c(result, bit_out);
     }
 
     void CpuZ80::insn_rlc(addr& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        auto value = read8(dest.value);
+        auto bit_in = (value >> 7) & 0x01;
+        auto bit_out = bit_in;
+        auto result = (value << 1) | bit_in;
+        write8(dest.value, result);
+        flags_z00c(result, bit_out);
     }
 
     void CpuZ80::insn_rl(uint8_t& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        auto value = dest;
+        auto bit_in = (FLAGS & FLAG_C) ? 0x01 : 0x00;
+        auto bit_out = (value >> 7) & 0x01;
+        auto result = (value << 1) | bit_in;
+        dest = result;
+        flags_z00c(result, bit_out);
     }
 
     void CpuZ80::insn_rl(addr& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        auto value = read8(dest.value);
+        auto bit_in = (FLAGS & FLAG_C) ? 0x01 : 0x00;
+        auto bit_out = (value >> 7) & 0x01;
+        auto result = (value << 1) | bit_in;
+        write8(dest.value, result);
+        flags_z00c(result, bit_out);
     }
 
     void CpuZ80::insn_rrc(uint8_t& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        auto value = dest;
+        auto bit_in = (value << 7) & 0x80;
+        auto bit_out = bit_in;
+        auto result = (value >> 1) | bit_in;
+        dest = result;
+        flags_z00c(result, bit_out);
     }
 
     void CpuZ80::insn_rrc(addr& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        auto value = read8(dest.value);
+        auto bit_in = (value << 7) & 0x80;
+        auto bit_out = bit_in;
+        auto result = (value >> 1) | bit_in;
+        write8(dest.value, result);
+        flags_z00c(result, bit_out);
     }
 
     void CpuZ80::insn_rr(uint8_t& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        auto value = dest;
+        auto carry_in = (FLAGS & FLAG_C) ? 0x80 : 0x00;
+        auto carry_out = value & 0x01;
+        auto result = (value >> 1) | carry_in;
+        dest = result;
+        flags_z00c(result, carry_out);
     }
 
     void CpuZ80::insn_rr(addr& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        auto value = read8(dest.value);
+        auto carry_in = (FLAGS & FLAG_C) ? 0x80 : 0x00;
+        auto carry_out = value & 0x01;
+        auto result = (value >> 1) | carry_in;
+        write8(dest.value, result);
+        flags_z00c(result, carry_out);
     }
 
     void CpuZ80::insn_sla(uint8_t& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        auto value = dest;
+        auto bit_out = value & 0x80;
+        auto result = value << 1;
+        dest = result;
+        flags_z00c(result, bit_out);
     }
 
     void CpuZ80::insn_sla(addr& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        auto value = read8(dest.value);
+        auto bit_out = value & 0x80;
+        auto result = value << 1;
+        write8(dest.value, result);
+        flags_z00c(result, bit_out);
     }
 
     void CpuZ80::insn_swap(uint8_t& dest)
@@ -953,22 +1003,40 @@ namespace gb
 
     void CpuZ80::insn_sra(uint8_t& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        auto value = dest;
+        auto bit_in = value & 0x80;
+        auto bit_out = value & 0x01;
+        auto result = (value >> 1) | bit_in;
+        dest = result;
+        flags_z00c(result, bit_out);
     }
 
     void CpuZ80::insn_sra(addr& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        uint8_t value = read8(dest.value);
+        auto bit_in = value & 0x80;
+        auto bit_out = value & 0x01;
+        auto result = (value >> 1) | bit_in;
+        write8(dest.value, result);
+        flags_z00c(result, bit_out);
     }
 
     void CpuZ80::insn_srl(uint8_t& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        auto value = dest;
+        auto bit_out = value & 0x01;
+        auto result = value >> 1;
+        dest = result;
+        flags_z00c(result, bit_out);
     }
 
     void CpuZ80::insn_srl(addr& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        uint8_t value = read8(dest.value);
+        auto bit_out = value & 0x01;
+        auto result = value >> 1;
+        write8(dest.value, result);
+        flags_z00c(result, bit_out);
     }
 
     // GMB Singlebit Operation Commands
