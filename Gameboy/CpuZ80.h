@@ -56,16 +56,16 @@ namespace gb
         };
 
         // Flags
-        inline void flags_z0hc(uint8_t result, uint8_t value);
-        inline void flags_z1hc(uint8_t result, uint8_t value);
+        inline void flags_z0hc(uint16_t result, uint8_t value1, uint8_t value2, uint8_t carry);
+        inline void flags_z1hc(uint16_t result, uint8_t value1, uint8_t value2, uint8_t carry);
         inline void flags_z010(uint8_t result);
         inline void flags_z000(uint8_t result);
         inline void flags_z0h_(uint8_t result, uint8_t value);
         inline void flags_z1h_(uint8_t result, uint8_t value);
         inline void flags_z_0x(uint8_t result, uint8_t value);
         inline void flags__11_();
-        inline void flags__0hc(uint16_t result, uint16_t value);
-        inline void flags_00hc(uint16_t result, uint16_t value);
+        inline void flags__0hc(uint32_t result, uint16_t value1, uint16_t value2);
+        inline void flags_00hc(uint16_t value1, uint16_t value2);
         inline void flags_000c(uint8_t carry);
         inline void flags_z00c(uint8_t result, uint8_t carry);
         inline void flags_z01_(uint8_t result);
@@ -82,9 +82,9 @@ namespace gb
 
         // GMB 8bit - Arithmetic / logical Commands
         void insn_add(uint8_t src);
-        void insn_adc(uint8_t& dest, uint8_t src);
+        void insn_adc(uint8_t src);
         void insn_sub(uint8_t src);
-        void insn_sbc(uint8_t& dest, uint8_t src);
+        void insn_sbc(uint8_t src);
         void insn_and(uint8_t src);
         void insn_xor(uint8_t src);
         void insn_or(uint8_t src);
@@ -97,7 +97,7 @@ namespace gb
         void insn_cpl();
 
         // GMB 16bit - Arithmetic/logical Commands
-        void insn_add(uint16_t& dest, uint16_t src);
+        void insn_add(uint16_t src);
         void insn_inc(uint16_t& dest);
         void insn_dec(uint16_t& dest);
         void insn_add_sp(uint16_t src);

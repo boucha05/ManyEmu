@@ -407,6 +407,7 @@ PC (program counter)                   C - Carry Flag
     static const uint8_t FLAG_N = 0x40;
     static const uint8_t FLAG_H = 0x20;
     static const uint8_t FLAG_C = 0x10;
+    static const uint8_t FLAG_ZNHC = FLAG_Z | FLAG_N | FLAG_H | FLAG_C;
 }
 
 namespace gb
@@ -581,25 +582,27 @@ namespace gb
 
     // Flags
 
-    void CpuZ80::flags_z0hc(uint8_t result, uint8_t value)
+    void CpuZ80::flags_z0hc(uint16_t result, uint8_t value1, uint8_t value2, uint8_t carry)
     {
+        auto half = (value1 & 0x0f) + (value2 & 0x0f) + carry;
         FLAGS = 0;
-        FLAGS |= result ? 0 : FLAG_Z;
-        FLAGS |= ((result & 0x0f) < (value & 0x0f)) ? FLAG_H : 0;
-        FLAGS |= (result < value) ? FLAG_C : 0;
+        FLAGS |= (result & 0xff) ? 0 : FLAG_Z;
+        FLAGS |= (half >= 0x10) ? FLAG_H : 0;
+        FLAGS |= (result >= 0x100) ? FLAG_C : 0;
     }
 
-    void CpuZ80::flags_z1hc(uint8_t result, uint8_t value)
+    void CpuZ80::flags_z1hc(uint16_t result, uint8_t value1, uint8_t value2, uint8_t carry)
     {
+        auto half = (value1 & 0x0f) - (value2 & 0x0f) - carry;
         FLAGS = FLAG_N;
-        FLAGS |= result ? 0 : FLAG_Z;
-        FLAGS |= ((result & 0x0f) > (value & 0x0f)) ? FLAG_H : 0;
-        FLAGS |= (result > value) ? FLAG_C : 0;
+        FLAGS |= (result & 0xff) ? 0 : FLAG_Z;
+        FLAGS |= (half & 0x80) ? FLAG_H : 0;
+        FLAGS |= (result & 0x8000) ? FLAG_C : 0;
     }
 
     void CpuZ80::flags_z010(uint8_t result)
     {
-        FLAGS = H;
+        FLAGS = FLAG_H;
         FLAGS |= result ? 0 : FLAG_Z;
     }
 
@@ -636,18 +639,21 @@ namespace gb
         FLAGS |= FLAG_N | FLAG_H;
     }
 
-    void CpuZ80::flags__0hc(uint16_t result, uint16_t value)
+    void CpuZ80::flags__0hc(uint32_t result, uint16_t value1, uint16_t value2)
     {
+        auto half = (value1 & 0x0fff) + (value2 & 0x0fff);
         FLAGS &= FLAG_Z;
-        FLAGS |= ((result & 0x0f) < (value & 0x0f)) ? FLAG_H : 0;
-        FLAGS |= ((result & 0xff) < (value & 0xff)) ? FLAG_C : 0;
+        FLAGS |= (half >= 0x1000) ? FLAG_H : 0;
+        FLAGS |= (result >= 0x10000) ? FLAG_C : 0;
     }
 
-    void CpuZ80::flags_00hc(uint16_t result, uint16_t value)
+    void CpuZ80::flags_00hc(uint16_t value1, uint16_t value2)
     {
+        auto result = (value1 & 0x00ff) + (value2 & 0x00ff);
+        auto half = (value1 & 0x000f) + (value2 & 0x000f);
         FLAGS = 0;
-        FLAGS |= ((result & 0x0f) < (value & 0x0f)) ? FLAG_H : 0;
-        FLAGS |= ((result & 0xff) < (value & 0xff)) ? FLAG_C : 0;
+        FLAGS |= (half >= 0x10) ? FLAG_H : 0;
+        FLAGS |= (result >= 0x100) ? FLAG_C : 0;
     }
 
     void CpuZ80::flags_000c(uint8_t carry)
@@ -709,35 +715,36 @@ namespace gb
     void CpuZ80::insn_add(uint8_t src)
     {
         auto value = A;
-        auto result = value + src;
+        auto result = static_cast<uint16_t>(value) + src;
         A = result;
-        flags_z0hc(result, value);
+        flags_z0hc(result, value, src, 0);
     }
 
-    void CpuZ80::insn_adc(uint8_t& dest, uint8_t src)
+    void CpuZ80::insn_adc(uint8_t src)
     {
-        uint8_t c = (FLAGS & FLAG_C) ? 1 : 0;
+        uint8_t c_in = (FLAGS & FLAG_C) ? 1 : 0;
         auto value = A;
-        auto result = value + src + c;
-        A = result;
-        flags_z0hc(result, value);
+        auto result = static_cast<uint16_t>(value) + src + c_in;
+        uint8_t c_out = (result >= 0x100) ? 1 : 0;
+        A = result & 0xff;
+        flags_z0hc(result, value, src, c_in);
     }
 
     void CpuZ80::insn_sub(uint8_t src)
     {
         auto value = A;
-        auto result = value - src;
-        A = result;
-        flags_z1hc(result, value);
+        auto result = static_cast<uint16_t>(value) - src;
+        A = result & 0xff;
+        flags_z1hc(result, value, src, 0);
     }
 
-    void CpuZ80::insn_sbc(uint8_t& dest, uint8_t src)
+    void CpuZ80::insn_sbc(uint8_t src)
     {
-        uint8_t c = (FLAGS & FLAG_C) ? 1 : 0;
+        uint8_t c_in = (FLAGS & FLAG_C) ? 1 : 0;
         auto value = A;
-        auto result = value - src - c;
-        A = result;
-        flags_z1hc(result, value);
+        auto result = static_cast<uint16_t>(value) - src - c_in;
+        A = result & 0xff;
+        flags_z1hc(result, value, src, c_in);
     }
 
     void CpuZ80::insn_and(uint8_t src)
@@ -761,8 +768,8 @@ namespace gb
     void CpuZ80::insn_cp(uint8_t src)
     {
         auto value = A;
-        auto result = value - src;
-        flags_z1hc(result, value);
+        uint16_t result = static_cast<uint16_t>(value)-src;
+        flags_z1hc(result, value, src, 0);
     }
 
     void CpuZ80::insn_inc(uint8_t& dest)
@@ -810,12 +817,12 @@ namespace gb
 
     // GMB 16bit - Arithmetic/logical Commands
 
-    void CpuZ80::insn_add(uint16_t& dest, uint16_t src)
+    void CpuZ80::insn_add(uint16_t src)
     {
-        auto value = dest;
-        auto result = value + src;
-        dest = result;
-        flags__0hc(result, value);
+        auto value = HL;
+        auto result = static_cast<uint32_t>(value) + src;
+        HL = result & 0xffff;
+        flags__0hc(result, value, src);
     }
 
     void CpuZ80::insn_inc(uint16_t& dest)
@@ -833,16 +840,15 @@ namespace gb
         auto value = SP;
         auto result = value + src;
         SP = result;
-        flags_00hc(result, value);
+        flags_00hc(value, src);
     }
 
     void CpuZ80::insn_ld_sp(uint16_t& dest, uint16_t src)
     {
         auto value = SP;
         auto result = value + src;
-        SP = result;
-        dest = src;
-        flags_00hc(result, value);
+        dest = result;
+        flags_00hc(value, src);
     }
 
     // GMB Rotate - and Shift - Commands
@@ -1173,6 +1179,7 @@ namespace gb
 
     void CpuZ80::insn_rst(uint8_t dest)
     {
+        push16(PC);
         PC = static_cast<uint16_t>(dest);
     }
 
@@ -1462,7 +1469,7 @@ namespace gb
         case 0x06: insn_ld(B, fetch8()); break;
         case 0x07: insn_rlc(A); break;
         case 0x08: insn_ld(addr(fetch16()), SP); break;
-        case 0x09: insn_add(HL, BC); break;
+        case 0x09: insn_add(BC); break;
         case 0x0a: insn_ld(A, read8(BC)); break;
         case 0x0b: insn_dec(BC); break;
         case 0x0c: insn_inc(C); break;
@@ -1478,7 +1485,7 @@ namespace gb
         case 0x16: insn_ld(D, fetch8()); break;
         case 0x17: insn_rl(A); break;
         case 0x18: insn_jr(fetchPC()); break;
-        case 0x19: insn_add(HL, DE); break;
+        case 0x19: insn_add(DE); break;
         case 0x1a: insn_ld(A, read8(DE)); break;
         case 0x1b: insn_dec(DE); break;
         case 0x1c: insn_inc(E); break;
@@ -1494,7 +1501,7 @@ namespace gb
         case 0x26: insn_ld(H, fetch8()); break;
         case 0x27: insn_daa(); break;
         case 0x28: insn_jr((FLAGS & FLAG_Z) != 0, fetchPC()); break;
-        case 0x29: insn_add(HL, HL); break;
+        case 0x29: insn_add(HL); break;
         case 0x2a: insn_ld(A, read8(HL++)); break;
         case 0x2b: insn_dec(HL); break;
         case 0x2c: insn_inc(L); break;
@@ -1510,7 +1517,7 @@ namespace gb
         case 0x36: insn_ld(addr(HL), fetch8()); break;
         case 0x37: insn_scf(); break;
         case 0x38: insn_jr((FLAGS & FLAG_C) != 0, fetchPC()); break;
-        case 0x39: insn_add(HL, SP); break;
+        case 0x39: insn_add(SP); break;
         case 0x3a: insn_ld(A, read8(HL--)); break;
         case 0x3b: insn_dec(SP); break;
         case 0x3c: insn_inc(A); break;
@@ -1589,14 +1596,14 @@ namespace gb
         case 0x85: insn_add(L); break;
         case 0x86: insn_add(read8(HL)); break;
         case 0x87: insn_add(A); break;
-        case 0x88: insn_adc(A, B); break;
-        case 0x89: insn_adc(A, C); break;
-        case 0x8a: insn_adc(A, D); break;
-        case 0x8b: insn_adc(A, E); break;
-        case 0x8c: insn_adc(A, H); break;
-        case 0x8d: insn_adc(A, L); break;
-        case 0x8e: insn_adc(A, read8(HL)); break;
-        case 0x8f: insn_adc(A, A); break;
+        case 0x88: insn_adc(B); break;
+        case 0x89: insn_adc(C); break;
+        case 0x8a: insn_adc(D); break;
+        case 0x8b: insn_adc(E); break;
+        case 0x8c: insn_adc(H); break;
+        case 0x8d: insn_adc(L); break;
+        case 0x8e: insn_adc(read8(HL)); break;
+        case 0x8f: insn_adc(A); break;
         case 0x90: insn_sub(B); break;
         case 0x91: insn_sub(C); break;
         case 0x92: insn_sub(D); break;
@@ -1605,14 +1612,14 @@ namespace gb
         case 0x95: insn_sub(L); break;
         case 0x96: insn_sub(read8(HL)); break;
         case 0x97: insn_sub(A); break;
-        case 0x98: insn_sbc(A, B); break;
-        case 0x99: insn_sbc(A, C); break;
-        case 0x9a: insn_sbc(A, D); break;
-        case 0x9b: insn_sbc(A, E); break;
-        case 0x9c: insn_sbc(A, H); break;
-        case 0x9d: insn_sbc(A, L); break;
-        case 0x9e: insn_sbc(A, read8(HL)); break;
-        case 0x9f: insn_sbc(A, A); break;
+        case 0x98: insn_sbc(B); break;
+        case 0x99: insn_sbc(C); break;
+        case 0x9a: insn_sbc(D); break;
+        case 0x9b: insn_sbc(E); break;
+        case 0x9c: insn_sbc(H); break;
+        case 0x9d: insn_sbc(L); break;
+        case 0x9e: insn_sbc(read8(HL)); break;
+        case 0x9f: insn_sbc(A); break;
         case 0xa0: insn_and(B); break;
         case 0xa1: insn_and(C); break;
         case 0xa2: insn_and(D); break;
@@ -1659,7 +1666,7 @@ namespace gb
         case 0xcb: executeCB(); break;
         case 0xcc: insn_call((FLAGS & FLAG_Z) != 0, fetch16()); break;
         case 0xcd: insn_call(fetch16()); break;
-        case 0xce: insn_adc(A, fetch8()); break;
+        case 0xce: insn_adc(fetch8()); break;
         case 0xcf: insn_rst(0x08); break;
         case 0xd0: insn_ret((FLAGS & FLAG_C) == 0); break;
         case 0xd1: insn_pop(DE); break;
@@ -1675,11 +1682,11 @@ namespace gb
         case 0xdb: insn_invalid(); break;
         case 0xdc: insn_call((FLAGS & FLAG_C) != 0, fetch16()); break;
         case 0xdd: insn_invalid(); break;
-        case 0xde: insn_sbc(A, fetch8()); break;
+        case 0xde: insn_sbc(fetch8()); break;
         case 0xdf: insn_rst(0x18); break;
         case 0xe0: insn_ld(addr(0xff00 + fetch8()), A); break;
         case 0xe1: insn_pop(HL); break;
-        case 0xe2: insn_ld((C), A); break;
+        case 0xe2: insn_ld(addr(0xff00 + C), A); break;
         case 0xe3: insn_invalid(); break;
         case 0xe4: insn_invalid(); break;
         case 0xe5: insn_push(HL); break;
@@ -1694,14 +1701,14 @@ namespace gb
         case 0xee: insn_xor(fetch8()); break;
         case 0xef: insn_rst(0x28); break;
         case 0xf0: insn_ld(A, read8(0xff00 + fetch8())); break;
-        case 0xf1: insn_pop(AF); break;
-        case 0xf2: insn_ld(A, (C)); break;
+        case 0xf1: insn_pop(AF); FLAGS &= FLAG_ZNHC; break;
+        case 0xf2: insn_ld(A, read8(0xff00 + C)); break;
         case 0xf3: insn_di(); break;
         case 0xf4: insn_invalid(); break;
         case 0xf5: insn_push(AF); break;
         case 0xf6: insn_or(fetch8()); break;
         case 0xf7: insn_rst(0x30); break;
-        case 0xf8: insn_ld_sp(HL, SP + fetchSigned8()); break;
+        case 0xf8: insn_ld_sp(HL, fetchSigned8()); break;
         case 0xf9: insn_ld(SP, HL); break;
         case 0xfa: insn_ld(A, read8(fetch16())); break;
         case 0xfb: insn_ei(); break;
