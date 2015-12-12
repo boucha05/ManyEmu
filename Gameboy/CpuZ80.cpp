@@ -583,42 +583,52 @@ namespace gb
 
     void CpuZ80::flags_z0hc(uint8_t result, uint8_t value)
     {
-        EMU_NOT_IMPLEMENTED();
+        FLAGS = 0;
+        FLAGS |= result ? 0 : FLAG_Z;
+        FLAGS |= ((result & 0x0f) < (value & 0x0f)) ? FLAG_H : 0;
+        FLAGS |= (result < value) ? FLAG_C : 0;
     }
 
     void CpuZ80::flags_z1hc(uint8_t result, uint8_t value)
     {
-        EMU_NOT_IMPLEMENTED();
+        FLAGS = FLAG_N;
+        FLAGS |= result ? 0 : FLAG_Z;
+        FLAGS |= ((result & 0x0f) > (value & 0x0f)) ? FLAG_H : 0;
+        FLAGS |= (result > value) ? FLAG_C : 0;
     }
 
-    void CpuZ80::flags_z010()
+    void CpuZ80::flags_z010(uint8_t result)
     {
-        FLAGS = A ? FLAG_H : (FLAG_Z | FLAG_H);
+        FLAGS = H;
+        FLAGS |= result ? 0 : FLAG_Z;
     }
 
-    void CpuZ80::flags_z000()
+    void CpuZ80::flags_z000(uint8_t result)
     {
-        EMU_NOT_IMPLEMENTED();
+        FLAGS = 0;
+        FLAGS |= result ? 0 : FLAG_Z;
     }
 
     void CpuZ80::flags_z0h_(uint8_t result, uint8_t value)
     {
         FLAGS &= FLAG_C;
-        FLAGS |= (result ? 0 : FLAG_Z);
-        FLAGS |= ((result & 0x0f) > (value & 0x0f)) ? FLAG_H : 0;
+        FLAGS |= result ? 0 : FLAG_Z;
+        FLAGS |= ((result & 0x0f) < (value & 0x0f)) ? FLAG_H : 0;
     }
 
     void CpuZ80::flags_z1h_(uint8_t result, uint8_t value)
     {
         FLAGS &= FLAG_C;
-        FLAGS |= (result ? 0 : FLAG_Z);
+        FLAGS |= result ? 0 : FLAG_Z;
         FLAGS |= FLAG_N;
         FLAGS |= ((result & 0x0f) > (value & 0x0f)) ? FLAG_H : 0;
     }
 
     void CpuZ80::flags_z_0x(uint8_t result, uint8_t value)
     {
-        EMU_NOT_IMPLEMENTED();
+        FLAGS &= FLAG_N;
+        FLAGS |= result ? 0 : FLAG_Z;
+        FLAGS |= (result < value) ? FLAG_C : 0;
     }
 
     void CpuZ80::flags__11_()
@@ -626,30 +636,38 @@ namespace gb
         FLAGS |= FLAG_N | FLAG_H;
     }
 
-    void CpuZ80::flags__0hc(uint8_t result, uint8_t value)
+    void CpuZ80::flags__0hc(uint16_t result, uint16_t value)
     {
-        EMU_NOT_IMPLEMENTED();
+        FLAGS &= FLAG_Z;
+        FLAGS |= ((result & 0x0f) < (value & 0x0f)) ? FLAG_H : 0;
+        FLAGS |= ((result & 0xff) < (value & 0xff)) ? FLAG_C : 0;
     }
 
-    void CpuZ80::flags__00c(uint8_t result, uint8_t value)
+    void CpuZ80::flags_00hc(uint16_t result, uint16_t value)
     {
-        EMU_NOT_IMPLEMENTED();
+        FLAGS = 0;
+        FLAGS |= ((result & 0x0f) < (value & 0x0f)) ? FLAG_H : 0;
+        FLAGS |= ((result & 0xff) < (value & 0xff)) ? FLAG_C : 0;
     }
 
-    void CpuZ80::flags_z00c(uint8_t result, uint8_t value)
+    void CpuZ80::flags_000c(uint8_t carry)
     {
-        EMU_NOT_IMPLEMENTED();
+        FLAGS = 0;
+        FLAGS |= carry ? FLAG_C : 0;
     }
 
-    void CpuZ80::flags_z01_()
+    void CpuZ80::flags_z00c(uint8_t result, uint8_t carry)
     {
-        EMU_NOT_IMPLEMENTED();
+        FLAGS = 0;
+        FLAGS |= result ? 0 : FLAG_Z;
+        FLAGS |= carry ? FLAG_C : 0;
     }
 
-    void CpuZ80::flags__001()
+    void CpuZ80::flags_z01_(uint8_t result)
     {
-        FLAGS &= ~(FLAG_N | FLAG_H);
-        FLAGS |= FLAG_C;
+        FLAGS &= FLAG_C;
+        FLAGS |= result ? 0 : FLAG_Z;
+        FLAGS |= FLAG_H;
     }
 
     // GMB 8bit - Loadcommands
@@ -678,14 +696,12 @@ namespace gb
 
     void CpuZ80::insn_push(uint16_t src)
     {
-        SP -= 2;
-        write16(SP, src);
+        push16(src);
     }
 
     void CpuZ80::insn_pop(uint16_t& dest)
     {
-        dest = read16(SP);
-        SP += 2;
+        dest = pop16();
     }
 
     // GMB 8bit - Arithmetic / logical Commands
@@ -727,19 +743,19 @@ namespace gb
     void CpuZ80::insn_and(uint8_t src)
     {
         A &= src;
-        flags_z010();
+        flags_z010(A);
     }
 
     void CpuZ80::insn_xor(uint8_t src)
     {
         A ^= src;
-        flags_z000();
+        flags_z000(A);
     }
 
     void CpuZ80::insn_or(uint8_t src)
     {
         A |= src;
-        flags_z000();
+        flags_z000(A);
     }
 
     void CpuZ80::insn_cp(uint8_t src)
@@ -796,25 +812,78 @@ namespace gb
 
     void CpuZ80::insn_add(uint16_t& dest, uint16_t src)
     {
-        EMU_NOT_IMPLEMENTED();
-    }
-
-    void CpuZ80::insn_add(addr& dest, uint16_t src)
-    {
-        EMU_NOT_IMPLEMENTED();
+        auto value = dest;
+        auto result = value + src;
+        dest = result;
+        flags__0hc(result, value);
     }
 
     void CpuZ80::insn_inc(uint16_t& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        ++dest;
     }
 
     void CpuZ80::insn_dec(uint16_t& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        --dest;
+    }
+
+    void CpuZ80::insn_add_sp(uint16_t src)
+    {
+        auto value = SP;
+        auto result = value + src;
+        SP = result;
+        flags_00hc(result, value);
+    }
+
+    void CpuZ80::insn_ld_sp(uint16_t& dest, uint16_t src)
+    {
+        auto value = SP;
+        auto result = value + src;
+        SP = result;
+        dest = src;
+        flags_00hc(result, value);
     }
 
     // GMB Rotate - and Shift - Commands
+
+    void CpuZ80::insn_rlca()
+    {
+        auto value = A;
+        auto carry_out = (value >> 7) & 1;
+        auto result = value << 1;
+        A = result;
+        flags_000c(carry_out);
+    }
+
+    void CpuZ80::insn_rla()
+    {
+        auto value = A;
+        auto carry_in = (FLAGS & FLAG_C) ? 1 : 0;
+        auto carry_out = (value >> 7) & 1;
+        auto result = (value << 1) | carry_in;
+        A = result;
+        flags_000c(carry_out);
+    }
+
+    void CpuZ80::insn_rrca()
+    {
+        auto value = A;
+        auto carry_out = value & 1;
+        auto result = value >> 1;
+        A = result;
+        flags_000c(carry_out);
+    }
+
+    void CpuZ80::insn_rra()
+    {
+        auto value = A;
+        auto carry_in = (FLAGS & FLAG_C) ? 0x80 : 0x00;
+        auto carry_out = value & 1;
+        auto result = (value >> 1) | carry_in;
+        A = result;
+        flags_000c(carry_out);
+    }
 
     void CpuZ80::insn_rlc(uint8_t& dest)
     {
@@ -868,12 +937,18 @@ namespace gb
 
     void CpuZ80::insn_swap(uint8_t& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        uint8_t value = dest;
+        uint8_t result = ((value >> 4) & 0x0f) | ((value << 4) & 0xf0);
+        dest = result;
+        flags_z000(result);
     }
 
     void CpuZ80::insn_swap(addr& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        uint8_t value = read8(dest.value);
+        uint8_t result = ((value >> 4) & 0x0f) | ((value << 4) & 0xf0);
+        write8(dest.value, result);
+        flags_z000(result);
     }
 
     void CpuZ80::insn_sra(uint8_t& dest)
@@ -900,39 +975,42 @@ namespace gb
 
     void CpuZ80::insn_bit(uint8_t mask, uint8_t src)
     {
-        EMU_NOT_IMPLEMENTED();
+        auto result = mask & src;
+        flags_z01_(result);
     }
 
     void CpuZ80::insn_set(uint8_t mask, uint8_t& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        dest |= mask;
     }
 
     void CpuZ80::insn_set(uint8_t mask, addr& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        auto result = read8(dest.value) | mask;
+        write8(dest.value, result);
     }
 
     void CpuZ80::insn_res(uint8_t mask, uint8_t& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        dest &= ~mask;
     }
 
     void CpuZ80::insn_res(uint8_t mask, addr& dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        auto result = read8(dest.value) & ~mask;
+        write8(dest.value, result);
     }
 
     // GMB CPU-Controlcommands
 
     void CpuZ80::insn_ccf()
     {
-        EMU_NOT_IMPLEMENTED();
+        FLAGS = (FLAGS & FLAG_Z) ^ FLAG_C;
     }
 
     void CpuZ80::insn_scf()
     {
-        EMU_NOT_IMPLEMENTED();
+        FLAGS = (FLAGS & FLAG_Z) | FLAG_C;
     }
 
     void CpuZ80::insn_nop()
@@ -956,7 +1034,7 @@ namespace gb
 
     void CpuZ80::insn_ei()
     {
-        EMU_NOT_IMPLEMENTED();
+        IME = 1;
     }
 
     // GMB Jumpcommands
@@ -969,13 +1047,15 @@ namespace gb
     void CpuZ80::insn_jp(bool cond, uint16_t dest)
     {
         if (cond)
+        {
             mExecutedTicks += mTicksCond_jp;
-        EMU_NOT_IMPLEMENTED();
+            PC = dest;
+        }
     }
 
     void CpuZ80::insn_jr(uint16_t dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        PC = dest;
     }
 
     void CpuZ80::insn_jr(bool cond, uint16_t dest)
@@ -989,36 +1069,43 @@ namespace gb
 
     void CpuZ80::insn_call(uint16_t dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        push16(PC);
+        PC = dest;
     }
 
     void CpuZ80::insn_call(bool cond, uint16_t dest)
     {
         if (cond)
+        {
             mExecutedTicks += mTicksCond_call;
-        EMU_NOT_IMPLEMENTED();
+            push16(PC);
+            PC = dest;
+        }
     }
 
     void CpuZ80::insn_ret()
     {
-        EMU_NOT_IMPLEMENTED();
+        PC = pop16();
     }
 
     void CpuZ80::insn_ret(bool cond)
     {
         if (cond)
+        {
             mExecutedTicks += mTicksCond_ret;
-        EMU_NOT_IMPLEMENTED();
+            PC = pop16();
+        }
     }
 
     void CpuZ80::insn_reti()
     {
-        EMU_NOT_IMPLEMENTED();
+        PC = pop16();
+        IME = 1;
     }
 
     void CpuZ80::insn_rst(uint8_t dest)
     {
-        EMU_NOT_IMPLEMENTED();
+        PC = static_cast<uint16_t>(dest);
     }
 
     void CpuZ80::insn_invalid()
@@ -1039,7 +1126,7 @@ namespace gb
         case 0x04: insn_rlc(H); break;
         case 0x05: insn_rlc(L); break;
         case 0x06: insn_rlc(addr(HL)); break;
-        case 0x07: insn_rlc(A); break;
+        case 0x07: insn_rlca(); break;
         case 0x08: insn_rrc(B); break;
         case 0x09: insn_rrc(C); break;
         case 0x0a: insn_rrc(D); break;
@@ -1047,7 +1134,7 @@ namespace gb
         case 0x0c: insn_rrc(H); break;
         case 0x0d: insn_rrc(L); break;
         case 0x0e: insn_rrc(addr(HL)); break;
-        case 0x0f: insn_rrc(A); break;
+        case 0x0f: insn_rrca(); break;
         case 0x10: insn_rl(B); break;
         case 0x11: insn_rl(C); break;
         case 0x12: insn_rl(D); break;
@@ -1055,7 +1142,7 @@ namespace gb
         case 0x14: insn_rl(H); break;
         case 0x15: insn_rl(L); break;
         case 0x16: insn_rl(addr(HL)); break;
-        case 0x17: insn_rl(A); break;
+        case 0x17: insn_rla(); break;
         case 0x18: insn_rr(B); break;
         case 0x19: insn_rr(C); break;
         case 0x1a: insn_rr(D); break;
@@ -1063,7 +1150,7 @@ namespace gb
         case 0x1c: insn_rr(H); break;
         case 0x1d: insn_rr(L); break;
         case 0x1e: insn_rr(addr(HL)); break;
-        case 0x1f: insn_rr(A); break;
+        case 0x1f: insn_rra(); break;
         case 0x20: insn_sla(B); break;
         case 0x21: insn_sla(C); break;
         case 0x22: insn_sla(D); break;
@@ -1314,7 +1401,7 @@ namespace gb
         case 0x0d: insn_dec(C); break;
         case 0x0e: insn_ld(C, fetch8()); break;
         case 0x0f: insn_rrc(A); break;
-        case 0x10: insn_stop(); fetch8(); break;
+        case 0x10: fetch8(); insn_stop(); break;
         case 0x11: insn_ld(DE, fetch16()); break;
         case 0x12: insn_ld(addr(DE), A); break;
         case 0x13: insn_inc(DE); break;
@@ -1530,7 +1617,7 @@ namespace gb
         case 0xe5: insn_push(HL); break;
         case 0xe6: insn_and(fetch8()); break;
         case 0xe7: insn_rst(0x20); break;
-        case 0xe8: insn_add(SP, SP + fetchSigned8()); break;
+        case 0xe8: insn_add_sp(fetchSigned8()); break;
         case 0xe9: insn_jp((HL)); break;
         case 0xea: insn_ld(addr(fetch16()), A); break;
         case 0xeb: insn_invalid(); break;
@@ -1546,7 +1633,7 @@ namespace gb
         case 0xf5: insn_push(AF); break;
         case 0xf6: insn_or(fetch8()); break;
         case 0xf7: insn_rst(0x30); break;
-        case 0xf8: insn_ld(HL, SP + fetchSigned8()); break;
+        case 0xf8: insn_ld_sp(HL, SP + fetchSigned8()); break;
         case 0xf9: insn_ld(SP, HL); break;
         case 0xfa: insn_ld(A, read8(fetch16())); break;
         case 0xfb: insn_ei(); break;

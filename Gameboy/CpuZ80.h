@@ -58,17 +58,17 @@ namespace gb
         // Flags
         inline void flags_z0hc(uint8_t result, uint8_t value);
         inline void flags_z1hc(uint8_t result, uint8_t value);
-        inline void flags_z010();
-        inline void flags_z000();
+        inline void flags_z010(uint8_t result);
+        inline void flags_z000(uint8_t result);
         inline void flags_z0h_(uint8_t result, uint8_t value);
         inline void flags_z1h_(uint8_t result, uint8_t value);
         inline void flags_z_0x(uint8_t result, uint8_t value);
         inline void flags__11_();
-        inline void flags__0hc(uint8_t result, uint8_t value);
-        inline void flags__00c(uint8_t result, uint8_t value);
-        inline void flags_z00c(uint8_t result, uint8_t value);
-        inline void flags_z01_();
-        inline void flags__001();
+        inline void flags__0hc(uint16_t result, uint16_t value);
+        inline void flags_00hc(uint16_t result, uint16_t value);
+        inline void flags_000c(uint8_t carry);
+        inline void flags_z00c(uint8_t result, uint8_t carry);
+        inline void flags_z01_(uint8_t result);
 
         // GMB 8bit - Loadcommands
         void insn_ld(uint8_t& dest, uint8_t src);
@@ -98,11 +98,16 @@ namespace gb
 
         // GMB 16bit - Arithmetic/logical Commands
         void insn_add(uint16_t& dest, uint16_t src);
-        void insn_add(addr& dest, uint16_t src);
         void insn_inc(uint16_t& dest);
         void insn_dec(uint16_t& dest);
+        void insn_add_sp(uint16_t src);
+        void insn_ld_sp(uint16_t& dest, uint16_t src);
 
         // GMB Rotate - and Shift - Commands
+        void insn_rlca();
+        void insn_rla();
+        void insn_rrca();
+        void insn_rra();
         void insn_rlc(uint8_t& dest);
         void insn_rlc(addr& dest);
         void insn_rl(uint8_t& dest);
