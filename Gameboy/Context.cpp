@@ -1,5 +1,6 @@
 #include <Core/Clock.h>
 #include <Core/MemoryBus.h>
+#include <Core/RegisterBank.h>
 #include <Core/Serialization.h>
 #include "CpuZ80.h"
 #include "GB.h"
@@ -80,6 +81,9 @@ namespace
             mBankExternalRAM = 0xff;
             mBankWRAM[0] = 0;
             mBankWRAM[1] = 1;
+
+            mRegistersIO.create(mMemory, 0xff00, 0x80, emu::RegisterBank::Access::ReadWrite);
+            mRegistersIE.create(mMemory, 0xffff, 0x01, emu::RegisterBank::Access::ReadWrite);
             EMU_VERIFY(updateMemoryMap());
 
             reset();
@@ -89,6 +93,8 @@ namespace
 
         void destroy()
         {
+            mRegistersIE.destroy();
+            mRegistersIO.destroy();
             mVRAM.clear();
             mExternalRAM.clear();
             mWRAM.clear();
@@ -107,7 +113,6 @@ namespace
         {
             mClock.reset();
             mCpu.reset();
-            mRegisters.reset(mModel >= gb::Model::SGB);
         }
 
         virtual void setController(uint32_t /*index*/, uint32_t /*buttons*/)
@@ -162,12 +167,16 @@ namespace
             serializer.serialize(mBankVRAM);
             serializer.serialize(mBankExternalRAM);
             serializer.serialize(mBankWRAM, EMU_ARRAY_SIZE(mBankWRAM));
-            mRegisters.serialize(serializer);
         }
 
-        gb::Registers& getRegisters()
+        emu::RegisterBank& getRegistersIO()
         {
-            return mRegisters;
+            return mRegistersIO;
+        }
+
+        emu::RegisterBank& getRegistersIE()
+        {
+            return mRegistersIE;
         }
 
     private:
@@ -186,32 +195,8 @@ namespace
             EMU_VERIFY(mMemory.addMemoryRange(0xe000, 0xefff, mMemoryWRAM[2].setReadWriteMemory(mWRAM.data() + mBankWRAM[0] * WRAM_BANK_SIZE)));
             EMU_VERIFY(mMemory.addMemoryRange(0xf000, 0xfdff, mMemoryWRAM[3].setReadWriteMemory(mWRAM.data() + mBankWRAM[1] * WRAM_BANK_SIZE)));
             EMU_VERIFY(mMemory.addMemoryRange(0xfe00, 0xfe9f, mMemoryOAM.setReadWriteMemory(mOAM.data())));
-            EMU_VERIFY(mMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0xff00, 0xff7f, mMemoryIO.read.setReadMethod(&ioRegsRead, this, 0xff00)));
-            EMU_VERIFY(mMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, 0xff00, 0xff7f, mMemoryIO.read.setWriteMethod(&ioRegsWrite, this, 0xff00)));
             EMU_VERIFY(mMemory.addMemoryRange(0xff80, 0xfffe, mMemoryHRAM.setReadWriteMemory(mHRAM.data())));
-            EMU_VERIFY(mMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0xffff, 0xffff, mMemoryIntEnable.read.setReadMethod(&intEnableRead, this, 0xffff)));
-            EMU_VERIFY(mMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, 0xffff, 0xffff, mMemoryIntEnable.read.setWriteMethod(&intEnableWrite, this, 0xffff)));
             return true;
-        }
-
-        static uint8_t ioRegsRead(void* context, int32_t ticks, uint32_t addr)
-        {
-            return static_cast<ContextImpl*>(context)->getRegisters().readIO(ticks, addr);
-        }
-
-        static void ioRegsWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value)
-        {
-            static_cast<ContextImpl*>(context)->getRegisters().writeIO(ticks, addr, value);
-        }
-
-        static uint8_t intEnableRead(void* context, int32_t ticks, uint32_t addr)
-        {
-            return static_cast<ContextImpl*>(context)->getRegisters().readIE(ticks);
-        }
-
-        static void intEnableWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value)
-        {
-            static_cast<ContextImpl*>(context)->getRegisters().writeIE(ticks, value);
         }
 
         gb::Model               mModel;
@@ -236,7 +221,8 @@ namespace
         uint8_t                 mBankVRAM;
         uint8_t                 mBankExternalRAM;
         uint8_t                 mBankWRAM[2];
-        gb::Registers           mRegisters;
+        emu::RegisterBank       mRegistersIO;
+        emu::RegisterBank       mRegistersIE;
     };
 }
 
