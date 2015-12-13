@@ -62,7 +62,7 @@ namespace gb
         inline void flags_z000(uint8_t result);
         inline void flags_z0h_(uint8_t result, uint8_t value);
         inline void flags_z1h_(uint8_t result, uint8_t value);
-        inline void flags_z_0x(uint8_t result, uint8_t value);
+        inline void flags_z_0x(uint16_t result);
         inline void flags__11_();
         inline void flags__0hc(uint32_t result, uint16_t value1, uint16_t value2);
         inline void flags_00hc(uint16_t value1, uint16_t value2);
