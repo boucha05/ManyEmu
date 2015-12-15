@@ -4,6 +4,7 @@
 #include <Core/Core.h>
 #include <stdint.h>
 #include <map>
+#include <vector>
 
 struct MEMORY_BUS;
 
@@ -17,6 +18,13 @@ namespace gb
     class CpuZ80 : public emu::Clock::IListener
     {
     public:
+        class IInterruptListener
+        {
+        public:
+            virtual void onInterruptEnable(int32_t tick) {}
+            virtual void onInterruptDisable(int32_t tick) {}
+        };
+        
         CpuZ80();
         ~CpuZ80();
         bool create(emu::Clock& clock, MEMORY_BUS& bus, uint32_t master_clock_divider);
@@ -27,6 +35,8 @@ namespace gb
         void execute();
         uint16_t disassemble(char* buffer, size_t size, uint16_t addr);
         void serialize(emu::ISerializer& serializer);
+        void addInterruptListener(IInterruptListener& listener);
+        void removeInterruptListener(IInterruptListener& listener);
 
     private:
         inline uint8_t read8(uint16_t addr);
@@ -157,6 +167,8 @@ namespace gb
         void executeCB();
         void executeMain();
 
+        void setIME(bool enable);
+
         union Registers
         {
             struct
@@ -196,6 +208,8 @@ namespace gb
             }               r8;
         };
 
+        typedef std::vector<IInterruptListener*> InterruptListeners;
+
         Registers               mRegs;
         int32_t                 mDesiredTicks;
         int32_t                 mExecutedTicks;
@@ -207,5 +221,6 @@ namespace gb
         uint8_t                 mTicksCond_ret;
         uint8_t                 mTicksCond_jp;
         uint8_t                 mTicksCond_jr;
+        InterruptListeners      mInterruptListeners;
     };
 }

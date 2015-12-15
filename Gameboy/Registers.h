@@ -11,7 +11,6 @@ namespace gb
         TIMA  = 0x05,
         TMA   = 0x06,
         TAC   = 0x07,
-        IF    = 0x0F,
         NR10  = 0x10,
         NR11  = 0x11,
         NR12  = 0x12,
@@ -65,7 +64,6 @@ namespace gb
         UND75 = 0x75,
         UND76 = 0x76,
         UND77 = 0x77,
-        IE    = 0xFF,
     };
 
     /*
@@ -76,7 +74,6 @@ namespace gb
         defineRegister(gb::REG::TIMA,   ACCESS_RW,  "TIMA",     "Timer counter");
         defineRegister(gb::REG::TMA,    ACCESS_RW,  "TMA",      "Timer Modulo");
         defineRegister(gb::REG::TAC,    ACCESS_RW,  "TAC",      "Timer Control");
-        defineRegister(gb::REG::IF,     ACCESS_RW,  "IF",       "Interrupt Flag");
         defineRegister(gb::REG::NR10,   ACCESS_RW,  "NR10",     "Channel 1 Sweep register");
         defineRegister(gb::REG::NR11,   ACCESS_RW,  "NR11",     "Channel 1 Sound length/Wave pattern duty");
         defineRegister(gb::REG::NR12,   ACCESS_RW,  "NR12",     "Channel 1 Volume Envelope");
@@ -130,6 +127,5 @@ namespace gb
         defineRegister(gb::REG::UND75,  ACCESS_RW,  "UND75",    "Bit 4-6: Read/Write");
         defineRegister(gb::REG::UND76,  ACCESS_R,   "UND76",    "Always 00h");
         defineRegister(gb::REG::UND77,  ACCESS_R,   "UND77",    "Always 00h");
-        defineRegister(gb::REG::IE,     ACCESS_RW,  "IE",       "Interrupt Enable");
     */
 }

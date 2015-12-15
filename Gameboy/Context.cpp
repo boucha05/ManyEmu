@@ -4,6 +4,7 @@
 #include <Core/Serialization.h>
 #include "CpuZ80.h"
 #include "GB.h"
+#include "Interrupts.h"
 #include "Registers.h"
 #include <vector>
 
@@ -86,6 +87,8 @@ namespace
             mRegistersIE.create(mMemory, 0xffff, 0x01, emu::RegisterBank::Access::ReadWrite);
             EMU_VERIFY(updateMemoryMap());
 
+            EMU_VERIFY(mInterrupts.create(mCpu, mRegistersIO, mRegistersIE));
+
             reset();
 
             return true;
@@ -93,6 +96,7 @@ namespace
 
         void destroy()
         {
+            mInterrupts.destroy();
             mRegistersIE.destroy();
             mRegistersIO.destroy();
             mVRAM.clear();
@@ -223,6 +227,7 @@ namespace
         uint8_t                 mBankWRAM[2];
         emu::RegisterBank       mRegistersIO;
         emu::RegisterBank       mRegistersIE;
+        gb::Interrupts          mInterrupts;
     };
 }
 

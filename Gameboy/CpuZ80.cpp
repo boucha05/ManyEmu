@@ -544,11 +544,17 @@ namespace gb
         mTicksCond_ret = refTicksCond_ret * master_clock_divider;
         mTicksCond_jp = refTicksCond_jp * master_clock_divider;
         mTicksCond_jr = refTicksCond_jr * master_clock_divider;
+
+        mRegs.r8.ime = 0;
+        reset();
         return true;
     }
 
     void CpuZ80::destroy()
     {
+        while (!mInterruptListeners.empty())
+            removeInterruptListener(*mInterruptListeners.back());
+
         if (mClock)
         {
             mClock->removeListener(*this);
@@ -564,7 +570,7 @@ namespace gb
         HL = 0x014d;
         SP = 0xfffe;
         PC = 0x0100;
-        IME = 0;
+        setIME(false);
         mExecutedTicks = 0;
         mDesiredTicks = 0;
     }
@@ -1121,12 +1127,12 @@ namespace gb
 
     void CpuZ80::insn_di()
     {
-        IME = 0;
+        setIME(false);
     }
 
     void CpuZ80::insn_ei()
     {
-        IME = 1;
+        setIME(true);
     }
 
     // GMB Jumpcommands
@@ -1868,5 +1874,47 @@ namespace gb
         serializer.serialize(HL);
         serializer.serialize(SP);
         serializer.serialize(PC);
+    }
+
+    void CpuZ80::setIME(bool enable)
+    {
+        if (enable)
+        {
+            if (!IME)
+            {
+                for (auto listener : mInterruptListeners)
+                    listener->onInterruptEnable(mExecutedTicks);
+                IME = 1;
+            }
+        }
+        else
+        {
+            if (IME)
+            {
+                for (auto listener : mInterruptListeners)
+                    listener->onInterruptDisable(mExecutedTicks);
+                IME = 0;
+            }
+        }
+    }
+
+    void CpuZ80::addInterruptListener(IInterruptListener& listener)
+    {
+        mInterruptListeners.push_back(&listener);
+        if (IME)
+            listener.onInterruptDisable(mExecutedTicks);
+        else
+            listener.onInterruptEnable(mExecutedTicks);
+    }
+
+    void CpuZ80::removeInterruptListener(IInterruptListener& listener)
+    {
+        auto item = std::find(mInterruptListeners.begin(), mInterruptListeners.end(), &listener);
+        if (item != mInterruptListeners.end())
+        {
+            if (IME)
+                (*item)->onInterruptDisable(mExecutedTicks);
+            mInterruptListeners.erase(item);
+        }
     }
 }
