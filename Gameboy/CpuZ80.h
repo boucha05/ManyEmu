@@ -167,6 +167,7 @@ namespace gb
 
         void executeCB();
         void executeMain();
+        inline void trace();
 
         void setIME(bool enable);
 

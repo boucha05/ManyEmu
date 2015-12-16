@@ -545,7 +545,7 @@ namespace gb
         mTicksCond_jp = refTicksCond_jp * master_clock_divider;
         mTicksCond_jr = refTicksCond_jr * master_clock_divider;
 
-        mRegs.r8.ime = 0;
+        IME = 0;
         reset();
         return true;
     }
@@ -1205,7 +1205,7 @@ namespace gb
     void CpuZ80::insn_reti()
     {
         PC = pop16();
-        IME = 1;
+        setIME(true);
     }
 
     void CpuZ80::insn_rst(uint8_t dest)
@@ -1751,32 +1751,37 @@ namespace gb
         }
     }
 
+    void CpuZ80::trace()
+    {
+#if 0
+        static int traceStart = 0x3000;
+        static int traceBreak = 0x3000;
+        static int traceCount = 0;
+        if (traceCount++ >= traceStart)
+        {
+            char temp[32];
+            auto nextPC = disassemble(temp, sizeof(temp), PC);
+            uint16_t byteCount = nextPC - PC;
+            char temp2[16];
+            char* temp2Pos = temp2;
+            for (uint16_t offset = 0; offset < byteCount; ++offset)
+                temp2Pos += sprintf(temp2Pos, "%02X ", read8(PC + offset));
+            printf("%04X  %-9s %-20s  AF:%04X BC:%04X DE:%04X HL:%04X SP:%04X\n",
+                PC, temp2, temp, AF, BC, DE, HL, SP);
+        }
+
+        if (traceCount == traceBreak)
+        {
+            traceBreak = traceBreak;
+        }
+#endif
+    }
+
     void CpuZ80::execute()
     {
         while (mExecutedTicks < mDesiredTicks)
         {
-#if 0
-            static int traceStart = 12300;
-            static int traceBreak = 15000;
-            static int traceCount = 0;
-            if (traceCount++ >= traceStart)
-            {
-                char temp[32];
-                auto nextPC = disassemble(temp, sizeof(temp), PC);
-                uint16_t byteCount = nextPC - PC;
-                char temp2[16];
-                char* temp2Pos = temp2;
-                for (uint16_t offset = 0; offset < byteCount; ++offset)
-                    temp2Pos += sprintf(temp2Pos, "%02X ", read8(PC + offset));
-                printf("%04X  %-9s %-20s  AF:%04X BC:%04X DE:%04X HL:%04X SP:%04X\n",
-                    PC, temp2, temp, AF, BC, DE, HL, SP);
-            }
-            
-            if (traceCount == traceBreak)
-            {
-                traceBreak = traceBreak;
-            }
-#endif
+            trace();
             executeMain();
         }
     }
@@ -1909,9 +1914,9 @@ namespace gb
     {
         mInterruptListeners.push_back(&listener);
         if (IME)
-            listener.onInterruptDisable(mExecutedTicks);
-        else
             listener.onInterruptEnable(mExecutedTicks);
+        else
+            listener.onInterruptDisable(mExecutedTicks);
     }
 
     void CpuZ80::removeInterruptListener(IInterruptListener& listener)

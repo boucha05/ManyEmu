@@ -712,13 +712,13 @@ int main()
 #if 1
     // Configuration for Gameboy development
     config.saveFolder = "C:\\Emu\\Gameboy\\save";
-    //config.romFolder = "C:\\Emu\\Gameboy\\roms";
-    //config.roms.push_back("Tetris (V1.1) (JU) [!].gb");
+    config.romFolder = "C:\\Emu\\Gameboy\\roms";
+    config.roms.push_back("Tetris (V1.1) (JU) [!].gb");
     //config.frameSkip = 1000;
     config.display = false;
-    config.romFolder = "..\\Gameboy\\ROMs\\cpu_instrs\\individual";
+    //config.romFolder = "..\\Gameboy\\ROMs\\cpu_instrs\\individual";
     //config.roms.push_back("01-special.gb");             // passed
-    config.roms.push_back("02-interrupts.gb");          // Failed #4
+    //config.roms.push_back("02-interrupts.gb");          // Failed #4
     //config.roms.push_back("03-op sp,hl.gb");            // passed
     //config.roms.push_back("04-op r,imm.gb");            // passed
     //config.roms.push_back("05-op rp.gb");               // passed

@@ -45,6 +45,8 @@ namespace emu
             Write8Func          mWrite8;
             std::string         mName;
             std::string         mDescription;
+            uint32_t            mReadCount;
+            uint32_t            mWriteCount;
         };
 
         emu::MemoryBus*         mMemory;

@@ -1,17 +1,23 @@
 #include "Core.h"
 #include "RegisterBank.h"
 
+#define REPORT_INVALID_REGISTERS    1
+
 namespace
 {
     uint8_t nullRead8(void* context, int32_t ticks, uint16_t addr)
     {
+#if !REPORT_INVALID_REGISTERS
         EMU_NOT_IMPLEMENTED();
+#endif
         return 0x00;
     }
 
     void nullWrite8(void* context, int32_t ticks, uint16_t addr, uint8_t value)
     {
+#if !REPORT_INVALID_REGISTERS
         EMU_NOT_IMPLEMENTED();
+#endif
     }
 
     uint8_t regsRead8(void* context, int32_t ticks, uint32_t addr)
@@ -33,6 +39,8 @@ namespace emu
         , mWrite8(nullWrite8)
         , mName("???")
         , mDescription("")
+        , mReadCount(0)
+        , mWriteCount(0)
     {
     }
 
@@ -42,6 +50,8 @@ namespace emu
         , mWrite8(write8)
         , mName(name)
         , mDescription(description)
+        , mReadCount(0)
+        , mWriteCount(0)
     {
     }
 
@@ -122,7 +132,15 @@ namespace emu
     {
         uint16_t offset = addr - mBase;
         EMU_ASSERT(offset < mRegisters.size());
-        const auto& reg = mRegisters[offset];
+        auto& reg = mRegisters[offset];
+#if REPORT_INVALID_REGISTERS
+        if (reg.mRead8 == &nullRead8)
+        {
+            if (!reg.mReadCount)
+                printf("Register read not implemented: $%04X\n", mBase + addr);
+        }
+        ++reg.mReadCount;
+#endif
         return reg.mRead8(reg.mContext, ticks, addr);
     }
 
@@ -130,7 +148,15 @@ namespace emu
     {
         uint16_t offset = addr - mBase;
         EMU_ASSERT(offset < mRegisters.size());
-        const auto& reg = mRegisters[offset];
+        auto& reg = mRegisters[offset];
+#if REPORT_INVALID_REGISTERS
+        if (reg.mWrite8 == &nullWrite8)
+        {
+            if (!reg.mWriteCount)
+                printf("Register write not implemented: $%04X, $%02X\n", mBase + addr, value);
+        }
+        ++reg.mWriteCount;
+#endif
         return reg.mWrite8(reg.mContext, ticks, addr, value);
     }
 }
