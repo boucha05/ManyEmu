@@ -48,6 +48,7 @@ public:
         bool            autoSave;           // Automatically save game state before exiting game
         bool            autoLoad;           // Automatically load savegame at startup
         bool            profile;            // Saves some timings in a file called profiling.prof (for debugging only)
+        bool            display;            // Display video output (enabled by default, for debugging only)
 
         Config()
             : frameSkip(0)
@@ -60,6 +61,7 @@ public:
             , autoSave(false)
             , autoLoad(false)
             , profile(false)
+            , display(true)
         {
         }
     };
@@ -210,7 +212,7 @@ bool Application::create()
 
     mJobScheduler.create(SDL_GetCPUCount());
 
-    mWindow = SDL_CreateWindow("ManyEmu", 100, 100, 256 * 2, 240 * 2, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+    mWindow = SDL_CreateWindow("ManyEmu", 100, 100, 256 * 2, 240 * 2, (mConfig.display ? SDL_WINDOW_SHOWN : SDL_WINDOW_HIDDEN) | SDL_WINDOW_RESIZABLE);
     if (!mWindow)
         return false;
 
@@ -710,8 +712,22 @@ int main()
 #if 1
     // Configuration for Gameboy development
     config.saveFolder = "C:\\Emu\\Gameboy\\save";
-    config.romFolder = "C:\\Emu\\Gameboy\\roms";
-    config.roms.push_back("Tetris (V1.1) (JU) [!].gb");
+    //config.romFolder = "C:\\Emu\\Gameboy\\roms";
+    //config.roms.push_back("Tetris (V1.1) (JU) [!].gb");
+    //config.frameSkip = 1000;
+    config.display = false;
+    config.romFolder = "..\\Gameboy\\ROMs\\cpu_instrs\\individual";
+    //config.roms.push_back("01-special.gb");             // passed
+    config.roms.push_back("02-interrupts.gb");          // Failed #4
+    //config.roms.push_back("03-op sp,hl.gb");            // passed
+    //config.roms.push_back("04-op r,imm.gb");            // passed
+    //config.roms.push_back("05-op rp.gb");               // passed
+    //config.roms.push_back("06-ld r,r.gb");              // passed
+    //config.roms.push_back("07-jr,jp,call,ret,rst.gb");  // passed
+    //config.roms.push_back("08-misc instrs.gb");         // passed
+    //config.roms.push_back("09-op r,r.gb");              // passed
+    //config.roms.push_back("10-bit ops.gb");             // passed
+    //config.roms.push_back("11-op a,(hl).gb");           // passed
 #else
     // Configuration for NES development
     config.saveFolder = "C:\\Emu\\NES\\save";
