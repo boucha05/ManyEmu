@@ -575,6 +575,13 @@ namespace gb
         mDesiredTicks = 0;
     }
 
+    void CpuZ80::interrupt(int32_t tick, uint16_t addr)
+    {
+        push16(PC);
+        PC = addr;
+        setIME(false);
+    }
+
     void CpuZ80::advanceClock(int32_t ticks)
     {
         mExecutedTicks -= ticks;
@@ -1748,7 +1755,7 @@ namespace gb
     {
         while (mExecutedTicks < mDesiredTicks)
         {
-#if 1
+#if 0
             static int traceStart = 12300;
             static int traceBreak = 15000;
             static int traceCount = 0;
@@ -1882,18 +1889,18 @@ namespace gb
         {
             if (!IME)
             {
+                IME = 1;
                 for (auto listener : mInterruptListeners)
                     listener->onInterruptEnable(mExecutedTicks);
-                IME = 1;
             }
         }
         else
         {
             if (IME)
             {
+                IME = 0;
                 for (auto listener : mInterruptListeners)
                     listener->onInterruptDisable(mExecutedTicks);
-                IME = 0;
             }
         }
     }

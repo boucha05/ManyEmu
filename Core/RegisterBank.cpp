@@ -3,13 +3,13 @@
 
 namespace
 {
-    uint8_t nullRead8(int32_t ticks, uint16_t addr)
+    uint8_t nullRead8(void* context, int32_t ticks, uint16_t addr)
     {
         EMU_NOT_IMPLEMENTED();
         return 0x00;
     }
 
-    void nullWrite8(int32_t ticks, uint16_t addr, uint8_t value)
+    void nullWrite8(void* context, int32_t ticks, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
     }
@@ -28,15 +28,17 @@ namespace
 namespace emu
 {
     RegisterBank::Register::Register()
-        : mRead8(nullRead8)
+        : mContext(nullptr)
+        , mRead8(nullRead8)
         , mWrite8(nullWrite8)
         , mName("???")
         , mDescription("")
     {
     }
 
-    RegisterBank::Register::Register(Read8Func read8, Write8Func write8, const std::string& name, const std::string& description)
-        : mRead8(read8)
+    RegisterBank::Register::Register(void* context, Read8Func read8, Write8Func write8, const std::string& name, const std::string& description)
+        : mContext(context)
+        , mRead8(read8)
         , mWrite8(write8)
         , mName(name)
         , mDescription(description)
@@ -91,22 +93,22 @@ namespace emu
         mRegisters.resize(size);
     }
 
-    bool RegisterBank::addRegister(uint16_t addr, Read8Func read8Func, const char* name, const char* description)
+    bool RegisterBank::addRegister(uint16_t addr, void* context, Read8Func read8Func, const char* name, const char* description)
     {
-        return addRegister(addr, read8Func, nullWrite8, name, description);
+        return addRegister(addr, context, read8Func, nullWrite8, name, description);
     }
 
-    bool RegisterBank::addRegister(uint16_t addr, Read8Func read8Func, Write8Func write8Func, const char* name, const char* description)
+    bool RegisterBank::addRegister(uint16_t addr, void* context, Read8Func read8Func, Write8Func write8Func, const char* name, const char* description)
     {
         uint16_t offset = addr - mBase;
         EMU_VERIFY(mMemory && (offset < mRegisters.size()) && name && description);
-        mRegisters[offset] = Register(read8Func, write8Func, name, description);
+        mRegisters[offset] = Register(context, read8Func, write8Func, name, description);
         return true;
     }
 
-    bool RegisterBank::addRegister(uint16_t addr, Write8Func write8Func, const char* name, const char* description)
+    bool RegisterBank::addRegister(uint16_t addr, void* context, Write8Func write8Func, const char* name, const char* description)
     {
-        return addRegister(addr, nullRead8, write8Func, name, description);
+        return addRegister(addr, context, nullRead8, write8Func, name, description);
     }
 
     void RegisterBank::removeRegister(uint16_t addr)
@@ -120,13 +122,15 @@ namespace emu
     {
         uint16_t offset = addr - mBase;
         EMU_ASSERT(offset < mRegisters.size());
-        return mRegisters[offset].mRead8(ticks, addr);
+        const auto& reg = mRegisters[offset];
+        return reg.mRead8(reg.mContext, ticks, addr);
     }
 
     void RegisterBank::write8(int32_t ticks, uint16_t addr, uint8_t value)
     {
         uint16_t offset = addr - mBase;
         EMU_ASSERT(offset < mRegisters.size());
-        return mRegisters[offset].mWrite8(ticks, addr, value);
+        const auto& reg = mRegisters[offset];
+        return reg.mWrite8(reg.mContext, ticks, addr, value);
     }
 }

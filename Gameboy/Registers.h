@@ -5,8 +5,6 @@ namespace gb
     enum REG
     {
         JOYP  = 0x00,
-        SB    = 0x01,
-        SC    = 0x02,
         DIV   = 0x04,
         TIMA  = 0x05,
         TMA   = 0x06,
@@ -68,8 +66,6 @@ namespace gb
 
     /*
         defineRegister(gb::REG::JOYP,   ACCESS_RW,  "JOYP",     "Joypad");
-        defineRegister(gb::REG::SB,     ACCESS_RW,  "SB",       "Serial transfer data");
-        defineRegister(gb::REG::SC,     ACCESS_RW,  "SC",       "Serial Transfer Control");
         defineRegister(gb::REG::DIV,    ACCESS_RW,  "DIV",      "Divider Register");
         defineRegister(gb::REG::TIMA,   ACCESS_RW,  "TIMA",     "Timer counter");
         defineRegister(gb::REG::TMA,    ACCESS_RW,  "TMA",      "Timer Modulo");

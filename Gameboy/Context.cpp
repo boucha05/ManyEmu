@@ -3,6 +3,7 @@
 #include <Core/RegisterBank.h>
 #include <Core/Serialization.h>
 #include "CpuZ80.h"
+#include "GameLink.h"
 #include "GB.h"
 #include "Interrupts.h"
 #include "Registers.h"
@@ -88,6 +89,7 @@ namespace
             EMU_VERIFY(updateMemoryMap());
 
             EMU_VERIFY(mInterrupts.create(mCpu, mRegistersIO, mRegistersIE));
+            EMU_VERIFY(mGameLink.create(mRegistersIO));
 
             reset();
 
@@ -96,6 +98,7 @@ namespace
 
         void destroy()
         {
+            mGameLink.destroy();
             mInterrupts.destroy();
             mRegistersIE.destroy();
             mRegistersIO.destroy();
@@ -117,6 +120,8 @@ namespace
         {
             mClock.reset();
             mCpu.reset();
+            mInterrupts.reset();
+            mGameLink.reset();
         }
 
         virtual void setController(uint32_t /*index*/, uint32_t /*buttons*/)
@@ -228,6 +233,7 @@ namespace
         emu::RegisterBank       mRegistersIO;
         emu::RegisterBank       mRegistersIE;
         gb::Interrupts          mInterrupts;
+        gb::GameLink            mGameLink;
     };
 }
 
