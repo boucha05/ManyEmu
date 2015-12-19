@@ -37,34 +37,28 @@ namespace gb
         uint8_t readIE(int32_t tick, uint16_t addr);
         void writeIE(int32_t tick, uint16_t addr, uint8_t value);
 
-        static uint8_t readIF(void* context, int32_t tick, uint16_t addr)
-        {
-            return static_cast<Interrupts*>(context)->readIF(tick, addr);
-        }
-
-        static void writeIF(void* context, int32_t tick, uint16_t addr, uint8_t value)
-        {
-            static_cast<Interrupts*>(context)->writeIF(tick, addr, value);
-        }
-
-        static uint8_t readIE(void* context, int32_t tick, uint16_t addr)
-        {
-            return static_cast<Interrupts*>(context)->readIE(tick, addr);
-        }
-
-        static void writeIE(void* context, int32_t tick, uint16_t addr, uint8_t value)
-        {
-            static_cast<Interrupts*>(context)->writeIE(tick, addr, value);
-        }
-
         void onCpuInterruptEnable(int32_t tick);
         void onCpuInterruptDisable(int32_t tick);
         void checkInterrupts(int32_t tick);
 
         class CpuInterruptListener;
+        struct RegisterAccessors
+        {
+            struct
+            {
+                emu::RegisterRead   IE;
+                emu::RegisterRead   IF;
+            }                       read;
+            struct
+            {
+                emu::RegisterWrite  IE;
+                emu::RegisterWrite  IF;
+            }                       write;
+        };
 
         gb::CpuZ80*             mCpu;
         CpuInterruptListener*   mInterruptListener;
+        RegisterAccessors       mRegisterAccessors;
         uint8_t                 mMask;
         uint8_t                 mRegIE;
         uint8_t                 mRegIF;

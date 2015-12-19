@@ -14,15 +14,18 @@ namespace gb
     {
     }
 
-    bool GameLink::create(emu::RegisterBank& registersIO)
+    bool GameLink::create(emu::RegisterBank& registers)
     {
-        EMU_VERIFY(registersIO.addRegister(0x01, this, &GameLink::readSB, &GameLink::writeSB, "SB", "Serial Transfer Data"));
-        EMU_VERIFY(registersIO.addRegister(0x02, this, &GameLink::readSC, &GameLink::writeSC, "SC", "Serial Transfer Control"));
+        EMU_VERIFY(mRegisterAccessors.read.SB.create(registers, 0x01, *this, &GameLink::readSB));
+        EMU_VERIFY(mRegisterAccessors.write.SB.create(registers, 0x01, *this, &GameLink::writeSB));
+        EMU_VERIFY(mRegisterAccessors.read.SC.create(registers, 0x02, *this, &GameLink::readSC));
+        EMU_VERIFY(mRegisterAccessors.write.SC.create(registers, 0x02, *this, &GameLink::writeSC));
         return true;
     }
 
     void GameLink::destroy()
     {
+        mRegisterAccessors = RegisterAccessors();
     }
 
     void GameLink::reset()

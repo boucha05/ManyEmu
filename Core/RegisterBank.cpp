@@ -33,25 +33,33 @@ namespace
 
 namespace emu
 {
-    RegisterBank::Register::Register()
+    RegisterBank::Reader::Reader()
         : mContext(nullptr)
-        , mRead8(nullRead8)
-        , mWrite8(nullWrite8)
-        , mName("???")
-        , mDescription("")
-        , mReadCount(0)
-        , mWriteCount(0)
+        , mFunc(nullRead8)
+        , mCount(0)
     {
     }
 
-    RegisterBank::Register::Register(void* context, Read8Func read8, Write8Func write8, const std::string& name, const std::string& description)
+    RegisterBank::Reader::Reader(void* context, Read8Func func)
         : mContext(context)
-        , mRead8(read8)
-        , mWrite8(write8)
-        , mName(name)
-        , mDescription(description)
-        , mReadCount(0)
-        , mWriteCount(0)
+        , mFunc(func)
+        , mCount(0)
+    {
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    RegisterBank::Writer::Writer()
+        : mContext(nullptr)
+        , mFunc(nullWrite8)
+        , mCount(0)
+    {
+    }
+
+    RegisterBank::Writer::Writer(void* context, Write8Func func)
+        : mContext(context)
+        , mFunc(func)
+        , mCount(0)
     {
     }
 
@@ -103,60 +111,188 @@ namespace emu
         mRegisters.resize(size);
     }
 
-    bool RegisterBank::addRegister(uint16_t addr, void* context, Read8Func read8Func, const char* name, const char* description)
-    {
-        return addRegister(addr, context, read8Func, nullWrite8, name, description);
-    }
-
-    bool RegisterBank::addRegister(uint16_t addr, void* context, Read8Func read8Func, Write8Func write8Func, const char* name, const char* description)
+    bool RegisterBank::addReader(uint16_t addr, void* context, Read8Func func)
     {
         uint16_t offset = addr - mBase;
-        EMU_VERIFY(mMemory && (offset < mRegisters.size()) && name && description);
-        mRegisters[offset] = Register(context, read8Func, write8Func, name, description);
+        EMU_VERIFY(mMemory && (offset < mRegisters.size()));
+        mRegisters[offset].reader = Reader(context, func);
         return true;
     }
 
-    bool RegisterBank::addRegister(uint16_t addr, void* context, Write8Func write8Func, const char* name, const char* description)
+    bool RegisterBank::addWriter(uint16_t addr, void* context, Write8Func func)
     {
-        return addRegister(addr, context, nullRead8, write8Func, name, description);
+        uint16_t offset = addr - mBase;
+        EMU_VERIFY(mMemory && (offset < mRegisters.size()));
+        mRegisters[offset].writer = Writer(context, func);
+        return true;
     }
 
-    void RegisterBank::removeRegister(uint16_t addr)
+    void RegisterBank::removeReader(uint16_t addr)
     {
         uint16_t offset = addr - mBase;
         if (offset < mRegisters.size())
-            mRegisters[offset] = Register();
+            mRegisters[offset].reader = Reader();
+    }
+
+    void RegisterBank::removeWriter(uint16_t addr)
+    {
+        uint16_t offset = addr - mBase;
+        if (offset < mRegisters.size())
+            mRegisters[offset].writer = Writer();
     }
 
     uint8_t RegisterBank::read8(int32_t ticks, uint16_t addr)
     {
         uint16_t offset = addr - mBase;
         EMU_ASSERT(offset < mRegisters.size());
-        auto& reg = mRegisters[offset];
+        auto& reg = mRegisters[offset].reader;
 #if REPORT_INVALID_REGISTERS
-        if (reg.mRead8 == &nullRead8)
+        if (reg.mFunc == &nullRead8)
         {
-            if (!reg.mReadCount)
+            if (!reg.mCount)
                 printf("Register read not implemented: $%04X\n", mBase + addr);
         }
-        ++reg.mReadCount;
+        ++reg.mCount;
 #endif
-        return reg.mRead8(reg.mContext, ticks, addr);
+        return reg.mFunc(reg.mContext, ticks, addr);
     }
 
     void RegisterBank::write8(int32_t ticks, uint16_t addr, uint8_t value)
     {
         uint16_t offset = addr - mBase;
         EMU_ASSERT(offset < mRegisters.size());
-        auto& reg = mRegisters[offset];
+        auto& reg = mRegisters[offset].writer;
 #if REPORT_INVALID_REGISTERS
-        if (reg.mWrite8 == &nullWrite8)
+        if (reg.mFunc == &nullWrite8)
         {
-            if (!reg.mWriteCount)
+            if (!reg.mCount)
                 printf("Register write not implemented: $%04X, $%02X\n", mBase + addr, value);
         }
-        ++reg.mWriteCount;
+        ++reg.mCount;
 #endif
-        return reg.mWrite8(reg.mContext, ticks, addr, value);
+        return reg.mFunc(reg.mContext, ticks, addr, value);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    RegisterRead::RegisterRead()
+    {
+        initialize();
+    }
+
+    RegisterRead::~RegisterRead()
+    {
+        destroy();
+    }
+
+    void RegisterRead::initialize()
+    {
+        mBank = nullptr;
+        mAddr = 0;
+        mRead8Method = [](int32_t ticks, uint16_t addr)
+        {
+            return 0;
+        };
+    }
+
+    bool RegisterRead::create(emu::RegisterBank& bank, uint16_t addr, Read8Method read8)
+    {
+        mBank = &bank;
+        mAddr = addr;
+        mRead8Method = read8;
+        return mBank->addReader(mAddr, this, onRead8);
+    }
+
+    bool RegisterRead::create(emu::RegisterBank& bank, uint16_t addr, void* context, emu::RegisterBank::Read8Func func)
+    {
+        return create(bank, addr, [=](int32_t tick, uint16_t addr)
+        {
+            return func(context, tick, addr);
+        });
+    }
+
+    void RegisterRead::destroy()
+    {
+        if (mBank)
+        {
+            mBank->removeReader(mAddr);
+        }
+        initialize();
+    }
+
+    RegisterRead& RegisterRead::operator = (const RegisterRead& other)
+    {
+        destroy();
+        mBank = other.mBank;
+        mAddr = other.mAddr;
+        mRead8Method = other.mRead8Method;
+        return *this;
+    }
+
+    uint8_t RegisterRead::onRead8(void* context, int32_t ticks, uint16_t addr)
+    {
+        auto& object = *static_cast<RegisterRead*>(context);
+        return object.mRead8Method(ticks, addr);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    RegisterWrite::RegisterWrite()
+    {
+        initialize();
+    }
+
+    RegisterWrite::~RegisterWrite()
+    {
+        destroy();
+    }
+
+    void RegisterWrite::initialize()
+    {
+        mBank = nullptr;
+        mAddr = 0;
+        mWrite8Method = [](int32_t ticks, uint16_t addr, uint8_t value)
+        {
+        };
+    }
+
+    bool RegisterWrite::create(emu::RegisterBank& bank, uint16_t addr, Write8Method write8)
+    {
+        mBank = &bank;
+        mAddr = addr;
+        mWrite8Method = write8;
+        return mBank->addWriter(mAddr, this, onWrite8);
+    }
+
+    bool RegisterWrite::create(emu::RegisterBank& bank, uint16_t addr, void* context, emu::RegisterBank::Write8Func func)
+    {
+        return create(bank, addr, [=](int32_t tick, uint16_t addr, uint8_t value)
+        {
+            return func(context, tick, addr, value);
+        });
+    }
+
+    void RegisterWrite::destroy()
+    {
+        if (mBank)
+        {
+            mBank->removeWriter(mAddr);
+        }
+        initialize();
+    }
+
+    RegisterWrite& RegisterWrite::operator = (const RegisterWrite& other)
+    {
+        destroy();
+        mBank = other.mBank;
+        mAddr = other.mAddr;
+        mWrite8Method = other.mWrite8Method;
+        return *this;
+    }
+
+    void RegisterWrite::onWrite8(void* context, int32_t ticks, uint16_t addr, uint8_t value)
+    {
+        auto& object = *static_cast<RegisterWrite*>(context);
+        object.mWrite8Method(ticks, addr, value);
     }
 }

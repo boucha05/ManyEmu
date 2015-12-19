@@ -22,27 +22,23 @@ namespace gb
         uint8_t readSC(int32_t tick, uint16_t addr);
         void writeSC(int32_t tick, uint16_t addr, uint8_t value);
 
-        static uint8_t readSB(void* context, int32_t tick, uint16_t addr)
+        struct RegisterAccessors
         {
-            return static_cast<GameLink*>(context)->readSB(tick, addr);
-        }
+            struct
+            {
+                emu::RegisterRead   SB;
+                emu::RegisterRead   SC;
+            }                       read;
 
-        static void writeSB(void* context, int32_t tick, uint16_t addr, uint8_t value)
-        {
-            static_cast<GameLink*>(context)->writeSB(tick, addr, value);
-        }
+            struct
+            {
+                emu::RegisterWrite  SB;
+                emu::RegisterWrite  SC;
+            }                       write;
+        };
 
-        static uint8_t readSC(void* context, int32_t tick, uint16_t addr)
-        {
-            return static_cast<GameLink*>(context)->readSC(tick, addr);
-        }
-
-        static void writeSC(void* context, int32_t tick, uint16_t addr, uint8_t value)
-        {
-            static_cast<GameLink*>(context)->writeSC(tick, addr, value);
-        }
-
-        uint8_t                 mRegSB;
-        uint8_t                 mRegSC;
+        RegisterAccessors   mRegisterAccessors;
+        uint8_t             mRegSB;
+        uint8_t             mRegSC;
     };
 }

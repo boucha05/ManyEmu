@@ -30,18 +30,6 @@ namespace gb
         NR50  = 0x24,
         NR51  = 0x25,
         NR52  = 0x26,
-        LCDC  = 0x40,
-        STAT  = 0x41,
-        SCY   = 0x42,
-        SCX   = 0x43,
-        LY    = 0x44,
-        LYC   = 0x45,
-        DMA   = 0x46,
-        BGP   = 0x47,
-        OBP0  = 0x48,
-        OBP1  = 0x49,
-        WY    = 0x4A,
-        WX    = 0x4B,
         KEY1  = 0x4D,
         VBK   = 0x4F,
         HDMA1 = 0x51,
@@ -91,18 +79,6 @@ namespace gb
         defineRegister(gb::REG::NR50,   ACCESS_RW,  "NR50",     "Channel control / ON-OFF / Volume");
         defineRegister(gb::REG::NR51,   ACCESS_RW,  "NR51",     "Selection of Sound output terminal");
         defineRegister(gb::REG::NR52,   ACCESS_RW,  "NR52",     "Sound on/off");
-        defineRegister(gb::REG::LCDC,   ACCESS_RW,  "LCDC",     "LCD Control");
-        defineRegister(gb::REG::STAT,   ACCESS_RW,  "STAT",     "LCDC Status");
-        defineRegister(gb::REG::SCY,    ACCESS_RW,  "SCY",      "Scroll Y");
-        defineRegister(gb::REG::SCX,    ACCESS_RW,  "SCX",      "Scroll X");
-        defineRegister(gb::REG::LY,     ACCESS_R,   "LY",       "LCDC Y-Coordinate");
-        defineRegister(gb::REG::LYC,    ACCESS_RW,  "LYC",      "LY Compare");
-        defineRegister(gb::REG::DMA,    ACCESS_W,   "DMA",      "DMA Transfer and Start Address");
-        defineRegister(gb::REG::BGP,    ACCESS_RW,  "BGP",      "BG Palette Data");
-        defineRegister(gb::REG::OBP0,   ACCESS_RW,  "OBP0",     "Object Palette 0 Data");
-        defineRegister(gb::REG::OBP1,   ACCESS_RW,  "OBP1",     "Object Palette 1 Data");
-        defineRegister(gb::REG::WY,     ACCESS_RW,  "WY",       "Window Y Position");
-        defineRegister(gb::REG::WX,     ACCESS_RW,  "WX",       "Window X Position minus 7");
         defineRegister(gb::REG::KEY1,   ACCESS_RW,  "KEY1",     "CGB Mode Only - Prepare Speed Switch");
         defineRegister(gb::REG::VBK,    ACCESS_RW,  "VBK",      "CGB Mode Only - VRAM Bank");
         defineRegister(gb::REG::HDMA1,  ACCESS_RW,  "HDMA1",    "CGB Mode Only - New DMA Source, High");

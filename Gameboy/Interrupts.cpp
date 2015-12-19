@@ -72,8 +72,11 @@ namespace gb
     bool Interrupts::create(CpuZ80& cpu, emu::RegisterBank& registersIO, emu::RegisterBank& registersIE)
     {
         mCpu = &cpu;
-        EMU_VERIFY(registersIO.addRegister(0x0f, this, &Interrupts::readIF, &Interrupts::writeIF, "IF", "Interrupt Flag"));
-        EMU_VERIFY(registersIE.addRegister(0x00, this, &Interrupts::readIE, &Interrupts::writeIE, "IE", "Interrupt Enable"));
+
+        EMU_VERIFY(mRegisterAccessors.read.IF.create(registersIO, 0x0f, *this, &Interrupts::readIF));
+        EMU_VERIFY(mRegisterAccessors.write.IF.create(registersIO, 0x0f, *this, &Interrupts::writeIF));
+        EMU_VERIFY(mRegisterAccessors.read.IE.create(registersIE, 0x00, *this, &Interrupts::readIE));
+        EMU_VERIFY(mRegisterAccessors.write.IE.create(registersIE, 0x00, *this, &Interrupts::writeIE));
 
         mInterruptListener = new CpuInterruptListener(*mCpu, *this);
 
@@ -87,6 +90,9 @@ namespace gb
             delete mInterruptListener;
             mInterruptListener = nullptr;
         }
+
+        mRegisterAccessors = RegisterAccessors();
+
         mCpu = nullptr;
     }
 
