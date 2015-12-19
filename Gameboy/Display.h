@@ -30,56 +30,15 @@ namespace gb
         class ClockListener : public emu::Clock::IListener
         {
         public:
-            ClockListener()
-            {
-                initialize();
-            }
-
-            ~ClockListener()
-            {
-                destroy();
-            }
-
-            void initialize()
-            {
-                mClock = nullptr;
-                mDisplay = nullptr;
-            }
-
-            bool create(emu::Clock& clock, Display& display)
-            {
-                mClock = &clock;
-                mDisplay = &display;
-                mClock->addListener(*this);
-                return true;
-            }
-
-            void destroy()
-            {
-                if (mClock)
-                    mClock->removeListener(*this);
-                initialize();
-            }
-
-            virtual void execute() override
-            {
-                mDisplay->execute();
-            }
-
-            virtual void resetClock() override
-            {
-                mDisplay->resetClock();
-            }
-
-            virtual void advanceClock(int32_t tick) override
-            {
-                mDisplay->advanceClock(tick);
-            }
-
-            virtual void setDesiredTicks(int32_t tick) override
-            {
-                mDisplay->setDesiredTicks(tick);
-            }
+            ClockListener();
+            ~ClockListener();
+            void initialize();
+            bool create(emu::Clock& clock, Display& display);
+            void destroy();
+            virtual void execute() override;
+            virtual void resetClock() override;
+            virtual void advanceClock(int32_t tick) override;
+            virtual void setDesiredTicks(int32_t tick) override;
 
         private:
             emu::Clock*     mClock;

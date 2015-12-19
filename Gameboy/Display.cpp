@@ -24,10 +24,65 @@ namespace
 
 namespace gb
 {
+    Display::ClockListener::ClockListener()
+    {
+        initialize();
+    }
+
+    Display::ClockListener::~ClockListener()
+    {
+        destroy();
+    }
+
+    void Display::ClockListener::initialize()
+    {
+        mClock = nullptr;
+        mDisplay = nullptr;
+    }
+
+    bool Display::ClockListener::create(emu::Clock& clock, Display& display)
+    {
+        mClock = &clock;
+        mDisplay = &display;
+        mClock->addListener(*this);
+        return true;
+    }
+
+    void Display::ClockListener::destroy()
+    {
+        if (mClock)
+            mClock->removeListener(*this);
+        initialize();
+    }
+
+    void Display::ClockListener::execute()
+    {
+        mDisplay->execute();
+    }
+
+    void Display::ClockListener::resetClock()
+    {
+        mDisplay->resetClock();
+    }
+
+    void Display::ClockListener::advanceClock(int32_t tick)
+    {
+        mDisplay->advanceClock(tick);
+    }
+
+    void Display::ClockListener::setDesiredTicks(int32_t tick)
+    {
+        mDisplay->setDesiredTicks(tick);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
     Display::Config::Config()
         : useFastDma(true)
     {
     }
+
+    ////////////////////////////////////////////////////////////////////////////
 
     Display::Display()
     {
