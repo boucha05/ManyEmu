@@ -31,9 +31,10 @@ namespace gb
         void destroy();
         void reset();
         void interrupt(int32_t tick, uint16_t addr);
-        void advanceClock(int32_t ticks);
-        void setDesiredTicks(int32_t ticks);
-        void execute();
+        virtual void resetClock() override;
+        virtual void advanceClock(int32_t ticks) override;
+        virtual void setDesiredTicks(int32_t ticks) override;
+        virtual void execute() override;
         uint16_t disassemble(char* buffer, size_t size, uint16_t addr);
         void serialize(emu::ISerializer& serializer);
         void addInterruptListener(IInterruptListener& listener);

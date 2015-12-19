@@ -6,27 +6,35 @@
 namespace gb
 {
     Display::Display()
-        : mRegLCDC(0x00)
-        , mRegSTAT(0x00)
-        , mRegSCY(0x00)
-        , mRegSCX(0x00)
-        , mRegLY(0x00)
-        , mRegLYC(0x00)
-        , mRegDMA(0x00)
-        , mRegBGP(0x00)
-        , mRegOBP0(0x00)
-        , mRegOBP1(0x00)
-        , mRegWY(0x00)
-        , mRegWX(0x00)
     {
+        initialize();
     }
 
     Display::~Display()
     {
+        destroy();
     }
 
-    bool Display::create(Interrupts& interrupts, emu::RegisterBank& registers)
+    void Display::initialize()
     {
+        resetClock();
+        mRegLCDC = 0x00;
+        mRegSTAT = 0x00;
+        mRegSCY  = 0x00;
+        mRegSCX  = 0x00;
+        mRegLY   = 0x00;
+        mRegLYC  = 0x00;
+        mRegDMA  = 0x00;
+        mRegBGP  = 0x00;
+        mRegOBP0 = 0x00;
+        mRegOBP1 = 0x00;
+        mRegWY   = 0x00;
+        mRegWX   = 0x00;
+    }
+
+    bool Display::create(emu::Clock& clock, Interrupts& interrupts, emu::RegisterBank& registers)
+    {
+        EMU_VERIFY(mClockListener.create(clock, *this));
         EMU_VERIFY(mRegisterAccessors.read.LCDC.create(registers, 0x40, *this, &Display::readLCDC));
         EMU_VERIFY(mRegisterAccessors.read.STAT.create(registers, 0x41, *this, &Display::readSTAT));
         EMU_VERIFY(mRegisterAccessors.read.SCY.create(registers, 0x42, *this, &Display::readSCY));
@@ -53,6 +61,38 @@ namespace gb
         EMU_VERIFY(mRegisterAccessors.write.WX.create(registers, 0x4b, *this, &Display::writeWX));
 
         return true;
+    }
+
+    void Display::destroy()
+    {
+        mClockListener.destroy();
+        mRegisterAccessors = RegisterAccessors();
+        initialize();
+    }
+
+    void Display::execute()
+    {
+        if (mSimulatedTick < mDesiredTick)
+            mSimulatedTick = mDesiredTick;
+    }
+
+    void Display::resetClock()
+    {
+        mSimulatedTick = 0;
+        mRenderedTick = 0;
+        mDesiredTick = 0;
+    }
+
+    void Display::advanceClock(int32_t tick)
+    {
+        mSimulatedTick -= tick;
+        mRenderedTick -= tick;
+        mDesiredTick -= tick;
+    }
+
+    void Display::setDesiredTicks(int32_t tick)
+    {
+        mDesiredTick = tick;
     }
 
     uint8_t Display::readLCDC(int32_t ticks, uint16_t addr)
@@ -193,11 +233,6 @@ namespace gb
         mRegWX = value;
     }
 
-    void Display::destroy()
-    {
-        mRegisterAccessors = RegisterAccessors();
-    }
-
     void Display::reset()
     {
         mRegLCDC = 0x00;
@@ -214,10 +249,6 @@ namespace gb
         mRegWX   = 0x00;
     }
 
-    void Display::execute()
-    {
-    }
-
     void Display::serialize(emu::ISerializer& serializer)
     {
         serializer.serialize(mRegLCDC);
@@ -232,5 +263,13 @@ namespace gb
         serializer.serialize(mRegOBP1);
         serializer.serialize(mRegWY);
         serializer.serialize(mRegWX);
+    }
+
+    void Display::render(int32_t tick)
+    {
+        if (mRenderedTick < tick)
+        {
+            mRenderedTick = tick;
+        }
     }
 }

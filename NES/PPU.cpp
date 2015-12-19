@@ -186,13 +186,12 @@ namespace nes
         mFineX = 0;
         mWriteToggle = false;
         mDataReadBuffer = 0;
-        mLastTickRendered = 0;
-        mLastTickUpdated = 0;
         mScanlineNumber = 0;
         mScanlineBaseTick = 0;
         mScanlineOffsetTick = 0;
         mScanlineType = SCANLINE_TYPE_PRESCAN;
         mScanlineEventIndex = 0;
+        resetClock();
     }
 
     bool PPU::create(emu::Clock& clock, uint32_t masterClockDivider, uint32_t createFlags, uint32_t visibleLines)
@@ -366,6 +365,12 @@ namespace nes
     MEM_ACCESS* PPU::getNameTableWrite(uint32_t index)
     {
         return index < NAME_TABLE_COUNT ? &mNameTableWrite[index] : nullptr;
+    }
+
+    void PPU::resetClock()
+    {
+        mLastTickRendered = 0;
+        mLastTickUpdated = 0;
     }
 
     void PPU::advanceClock(int32_t ticks)
@@ -1092,8 +1097,7 @@ namespace nes
 
     void PPU::startFrame()
     {
-        mLastTickRendered = 0;
-        mLastTickUpdated = 0;
+        resetClock();
         mScanlineNumber = 0;
         mScanlineBaseTick = 0;
         mScanlineOffsetTick = 0;

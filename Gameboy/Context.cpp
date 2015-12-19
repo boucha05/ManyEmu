@@ -91,7 +91,7 @@ namespace
 
             EMU_VERIFY(mInterrupts.create(mCpu, mRegistersIO, mRegistersIE));
             EMU_VERIFY(mGameLink.create(mRegistersIO));
-            EMU_VERIFY(mDisplay.create(mInterrupts, mRegistersIO));
+            EMU_VERIFY(mDisplay.create(mClock, mInterrupts, mRegistersIO));
 
             reset();
 
@@ -142,14 +142,7 @@ namespace
 
         virtual void update()
         {
-            mClock.setTargetExecution(DISPLAY_CLOCK_PER_FRAME);
-            while (mClock.canExecute())
-            {
-                mClock.beginExecute();
-                mCpu.execute();
-                mDisplay.execute();
-                mClock.endExecute();
-            }
+            mClock.execute(DISPLAY_CLOCK_PER_FRAME);
             mClock.advance();
             mClock.clearEvents();
         }

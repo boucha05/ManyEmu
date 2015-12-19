@@ -174,21 +174,6 @@ namespace
                 return false;
 
             reset();
-
-#if 0
-            // TODO: REMOVE THIS ONCE THE CPU AND MEMORY ARE MORE RELIABLE
-            clock.setTargetExecution(100 * MASTER_CLOCK_CPU_DIVIDER_NTSC);
-            clock.addEvent(startVBlank, this, 80 * MASTER_CLOCK_CPU_DIVIDER_NTSC);
-            while (clock.canExecute())
-            {
-                clock.beginExecute();
-                cpu.execute();
-                ppu.execute();
-                clock.endExecute();
-            }
-            reset();
-#endif
-
             return true;
         }
 
@@ -247,16 +232,8 @@ namespace
         {
             ppu.beginFrame();
             apu.beginFrame();
-            clock.setTargetExecution(MASTER_CLOCK_PER_FRAME_NTSC);
             mapper->beginFrame();
-            while (clock.canExecute())
-            {
-                clock.beginExecute();
-                cpu.execute();
-                ppu.execute();
-                apu.execute();
-                clock.endExecute();
-            }
+            clock.execute(MASTER_CLOCK_PER_FRAME_NTSC);
             clock.advance();
             clock.clearEvents();
         }

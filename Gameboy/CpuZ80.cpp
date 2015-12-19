@@ -571,8 +571,7 @@ namespace gb
         SP = 0xfffe;
         PC = 0x0100;
         setIME(false);
-        mExecutedTicks = 0;
-        mDesiredTicks = 0;
+        resetClock();
     }
 
     void CpuZ80::interrupt(int32_t tick, uint16_t addr)
@@ -580,6 +579,12 @@ namespace gb
         push16(PC);
         PC = addr;
         setIME(false);
+    }
+
+    void CpuZ80::resetClock()
+    {
+        mExecutedTicks = 0;
+        mDesiredTicks = 0;
     }
 
     void CpuZ80::advanceClock(int32_t ticks)

@@ -103,6 +103,13 @@ namespace nes
     {
     }
 
+    void APU::resetClock()
+    {
+        mBufferTick = 0;
+        mSampleTick = 0;
+        mSequenceTick = 0;
+    }
+
     void APU::advanceClock(int32_t ticks)
     {
         advanceBuffer(ticks);

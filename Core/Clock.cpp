@@ -37,6 +37,21 @@ namespace emu
         mDesiredTicks = 0;
         setDesiredTicks(0);
         mTimers.clear();
+
+        for (auto listener : mListeners)
+            listener->resetClock();
+    }
+
+    void Clock::execute(int32_t tick)
+    {
+        setTargetExecution(tick);
+        while (canExecute())
+        {
+            beginExecute();
+            for (auto listener : mListeners)
+                listener->execute();
+            endExecute();
+        }
     }
 
     bool Clock::setTargetExecution(int32_t ticks)
@@ -122,6 +137,8 @@ namespace emu
 
     void Clock::addListener(IListener& listener)
     {
+        listener.resetClock();
+        listener.setDesiredTicks(mDesiredTicks);
         mListeners.push_back(&listener);
     }
 

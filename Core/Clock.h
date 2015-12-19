@@ -17,6 +17,8 @@ namespace emu
         class IListener
         {
         public:
+            virtual void execute() = 0;
+            virtual void resetClock() = 0;
             virtual void advanceClock(int32_t ticks) = 0;
             virtual void setDesiredTicks(int32_t ticks) = 0;
         };
@@ -26,10 +28,7 @@ namespace emu
         bool create();
         void destroy();
         void reset();
-        bool setTargetExecution(int32_t ticks);
-        bool canExecute() const;
-        void beginExecute();
-        void endExecute();
+        void execute(int32_t tick);
         void advance();
         void addEvent(TimerCallback callback, void* context, int32_t ticks);
         void clearEvents();
@@ -51,6 +50,10 @@ namespace emu
         typedef std::multimap<int32_t, TimerEvent> TimerQueue;
         typedef std::vector<IListener*> ListenerQueue;
 
+        bool setTargetExecution(int32_t ticks);
+        bool canExecute() const;
+        void beginExecute();
+        void endExecute();
         void setDesiredTicks(int32_t ticks);
 
         TimerQueue              mTimers;

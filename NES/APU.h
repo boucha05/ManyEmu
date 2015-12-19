@@ -22,9 +22,10 @@ namespace nes
         void destroy();
         void reset();
         void beginFrame();
-        void execute();
-        virtual void advanceClock(int32_t ticks);
-        virtual void setDesiredTicks(int32_t ticks);
+        virtual void execute() override;
+        virtual void resetClock() override;
+        virtual void advanceClock(int32_t ticks) override;
+        virtual void setDesiredTicks(int32_t ticks) override;
         uint8_t regRead(int32_t ticks, uint32_t addr);
         void regWrite(int32_t ticks, uint32_t addr, uint8_t value);
         void setController(uint32_t index, uint8_t buttons);

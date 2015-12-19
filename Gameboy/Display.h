@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Core/Clock.h>
 #include <Core/Core.h>
 #include <Core/RegisterBank.h>
 #include "GB.h"
@@ -13,13 +14,18 @@ namespace gb
     public:
         Display();
         ~Display();
-        bool create(Interrupts& interrupts, emu::RegisterBank& registers);
+        bool create(emu::Clock& clock, Interrupts& interrupts, emu::RegisterBank& registers);
         void destroy();
         void reset();
-        void execute();
         void serialize(emu::ISerializer& serializer);
 
     private:
+        void initialize();
+        void execute();
+        void resetClock();
+        void advanceClock(int32_t tick);
+        void setDesiredTicks(int32_t tick);
+
         uint8_t readLCDC(int32_t ticks, uint16_t addr);
         void writeLCDC(int32_t ticks, uint16_t addr, uint8_t value);
         uint8_t readSTAT(int32_t ticks, uint16_t addr);
@@ -43,6 +49,65 @@ namespace gb
         void writeWY(int32_t ticks, uint16_t addr, uint8_t value);
         uint8_t readWX(int32_t ticks, uint16_t addr);
         void writeWX(int32_t ticks, uint16_t addr, uint8_t value);
+
+        class ClockListener : public emu::Clock::IListener
+        {
+        public:
+            ClockListener()
+            {
+                initialize();
+            }
+
+            ~ClockListener()
+            {
+                destroy();
+            }
+
+            void initialize()
+            {
+                mClock = nullptr;
+                mDisplay = nullptr;
+            }
+
+            bool create(emu::Clock& clock, Display& display)
+            {
+                mClock = &clock;
+                mDisplay = &display;
+                mClock->addListener(*this);
+                return true;
+            }
+
+            void destroy()
+            {
+                if (mClock)
+                    mClock->removeListener(*this);
+                initialize();
+            }
+
+            virtual void execute() override
+            {
+                mDisplay->execute();
+            }
+
+            virtual void resetClock() override
+            {
+                mDisplay->resetClock();
+            }
+
+            virtual void advanceClock(int32_t ticks) override
+            {
+                mDisplay->advanceClock(ticks);
+            }
+
+            virtual void setDesiredTicks(int32_t ticks) override
+            {
+                mDisplay->setDesiredTicks(ticks);
+            }
+
+        private:
+            emu::Clock*     mClock;
+            Display*        mDisplay;
+        };
 
         struct RegisterAccessors
         {
@@ -78,7 +143,13 @@ namespace gb
             }                       write;
         };
 
+        void render(int32_t tick);
+
+        ClockListener       mClockListener;
         RegisterAccessors   mRegisterAccessors;
+        int32_t             mSimulatedTick;
+        int32_t             mRenderedTick;
+        int32_t             mDesiredTick;
         uint8_t             mRegLCDC;
         uint8_t             mRegSTAT;
         uint8_t             mRegSCY;

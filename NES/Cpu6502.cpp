@@ -1306,8 +1306,7 @@ namespace nes
     void Cpu6502::reset()
     {
         cpu_reset(mState);
-        mState.executed_ticks = 0;
-        mState.desired_ticks = 0;
+        resetClock();
     }
 
     void Cpu6502::irq(bool active)
@@ -1318,6 +1317,12 @@ namespace nes
     void Cpu6502::nmi()
     {
         cpu_nmi(mState);
+    }
+
+    void Cpu6502::resetClock()
+    {
+        mState.executed_ticks = 0;
+        mState.desired_ticks = 0;
     }
 
     void Cpu6502::advanceClock(int32_t ticks)
