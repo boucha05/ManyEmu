@@ -12,44 +12,21 @@ namespace gb
     class Display
     {
     public:
+        struct Config
+        {
+            Config();
+
+            bool    useFastDma;
+        };
+
         Display();
         ~Display();
-        bool create(emu::Clock& clock, Interrupts& interrupts, emu::RegisterBank& registers);
+        bool create(Config& config, emu::Clock& clock, uint32_t master_clock_divider, emu::MemoryBus& memory, Interrupts& interrupts, emu::RegisterBank& registers);
         void destroy();
         void reset();
         void serialize(emu::ISerializer& serializer);
 
     private:
-        void initialize();
-        void execute();
-        void resetClock();
-        void advanceClock(int32_t tick);
-        void setDesiredTicks(int32_t tick);
-
-        uint8_t readLCDC(int32_t ticks, uint16_t addr);
-        void writeLCDC(int32_t ticks, uint16_t addr, uint8_t value);
-        uint8_t readSTAT(int32_t ticks, uint16_t addr);
-        void writeSTAT(int32_t ticks, uint16_t addr, uint8_t value);
-        uint8_t readSCY(int32_t ticks, uint16_t addr);
-        void writeSCY(int32_t ticks, uint16_t addr, uint8_t value);
-        uint8_t readSCX(int32_t ticks, uint16_t addr);
-        void writeSCX(int32_t ticks, uint16_t addr, uint8_t value);
-        uint8_t readLY(int32_t ticks, uint16_t addr);
-        void writeLY(int32_t ticks, uint16_t addr, uint8_t value);
-        uint8_t readLYC(int32_t ticks, uint16_t addr);
-        void writeLYC(int32_t ticks, uint16_t addr, uint8_t value);
-        void writeDMA(int32_t ticks, uint16_t addr, uint8_t value);
-        uint8_t readBGP(int32_t ticks, uint16_t addr);
-        void writeBGP(int32_t ticks, uint16_t addr, uint8_t value);
-        uint8_t readOBP0(int32_t ticks, uint16_t addr);
-        void writeOBP0(int32_t ticks, uint16_t addr, uint8_t value);
-        uint8_t readOBP1(int32_t ticks, uint16_t addr);
-        void writeOBP1(int32_t ticks, uint16_t addr, uint8_t value);
-        uint8_t readWY(int32_t ticks, uint16_t addr);
-        void writeWY(int32_t ticks, uint16_t addr, uint8_t value);
-        uint8_t readWX(int32_t ticks, uint16_t addr);
-        void writeWX(int32_t ticks, uint16_t addr, uint8_t value);
-
         class ClockListener : public emu::Clock::IListener
         {
         public:
@@ -94,14 +71,14 @@ namespace gb
                 mDisplay->resetClock();
             }
 
-            virtual void advanceClock(int32_t ticks) override
+            virtual void advanceClock(int32_t tick) override
             {
-                mDisplay->advanceClock(ticks);
+                mDisplay->advanceClock(tick);
             }
 
-            virtual void setDesiredTicks(int32_t ticks) override
+            virtual void setDesiredTicks(int32_t tick) override
             {
-                mDisplay->setDesiredTicks(ticks);
+                mDisplay->setDesiredTicks(tick);
             }
 
         private:
@@ -143,13 +120,51 @@ namespace gb
             }                       write;
         };
 
+        void initialize();
+        void execute();
+        void resetClock();
+        void advanceClock(int32_t tick);
+        void setDesiredTicks(int32_t tick);
+
+        uint8_t readLCDC(int32_t tick, uint16_t addr);
+        void writeLCDC(int32_t tick, uint16_t addr, uint8_t value);
+        uint8_t readSTAT(int32_t tick, uint16_t addr);
+        void writeSTAT(int32_t tick, uint16_t addr, uint8_t value);
+        uint8_t readSCY(int32_t tick, uint16_t addr);
+        void writeSCY(int32_t tick, uint16_t addr, uint8_t value);
+        uint8_t readSCX(int32_t tick, uint16_t addr);
+        void writeSCX(int32_t tick, uint16_t addr, uint8_t value);
+        uint8_t readLY(int32_t tick, uint16_t addr);
+        void writeLY(int32_t tick, uint16_t addr, uint8_t value);
+        uint8_t readLYC(int32_t tick, uint16_t addr);
+        void writeLYC(int32_t tick, uint16_t addr, uint8_t value);
+        void writeDMA(int32_t tick, uint16_t addr, uint8_t value);
+        uint8_t readBGP(int32_t tick, uint16_t addr);
+        void writeBGP(int32_t tick, uint16_t addr, uint8_t value);
+        uint8_t readOBP0(int32_t tick, uint16_t addr);
+        void writeOBP0(int32_t tick, uint16_t addr, uint8_t value);
+        uint8_t readOBP1(int32_t tick, uint16_t addr);
+        void writeOBP1(int32_t tick, uint16_t addr, uint8_t value);
+        uint8_t readWY(int32_t tick, uint16_t addr);
+        void writeWY(int32_t tick, uint16_t addr, uint8_t value);
+        uint8_t readWX(int32_t tick, uint16_t addr);
+        void writeWX(int32_t tick, uint16_t addr, uint8_t value);
+
+        void upateRasterPos(int32_t tick);
         void render(int32_t tick);
 
+        emu::Clock*         mClock;
+        MEMORY_BUS*         mMemory;
+        Config              mConfig;
         ClockListener       mClockListener;
         RegisterAccessors   mRegisterAccessors;
         int32_t             mSimulatedTick;
         int32_t             mRenderedTick;
         int32_t             mDesiredTick;
+        uint32_t            mTicksPerLine;
+        uint32_t            mUpdateRasterPosFast;
+        uint32_t            mLineFirstTick;
+        uint32_t            mLineTick;
         uint8_t             mRegLCDC;
         uint8_t             mRegSTAT;
         uint8_t             mRegSCY;

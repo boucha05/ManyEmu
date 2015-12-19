@@ -46,7 +46,7 @@ namespace
     static const uint32_t HRAM_SIZE = 0x7f;
 }
 
-namespace
+namespace gb_context
 {
     class ContextImpl : public gb::Context
     {
@@ -66,12 +66,15 @@ namespace
             mModel = gb::Model::GBC;
 
             bool isGBC = mModel >= gb::Model::GBC;
+            gb::Display::Config displayConfig;
 
             mRom = &rom;
 
+            uint32_t masterClockDivider = MASTER_CLOCK_CPU_DIVIDER;
+
             EMU_VERIFY(mClock.create());
             EMU_VERIFY(mMemory.create(MEM_SIZE_LOG2, MEM_PAGE_SIZE_LOG2));
-            mCpu.create(mClock, mMemory.getState(), MASTER_CLOCK_CPU_DIVIDER);
+            mCpu.create(mClock, mMemory.getState(), masterClockDivider);
 
             mVRAM.resize(isGBC ? VRAM_SIZE_GBC : VRAM_SIZE_GB, 0);
             mWRAM.resize(isGBC ? WRAM_SIZE_GBC : WRAM_SIZE_GB, 0);
@@ -91,7 +94,7 @@ namespace
 
             EMU_VERIFY(mInterrupts.create(mCpu, mRegistersIO, mRegistersIE));
             EMU_VERIFY(mGameLink.create(mRegistersIO));
-            EMU_VERIFY(mDisplay.create(mClock, mInterrupts, mRegistersIO));
+            EMU_VERIFY(mDisplay.create(displayConfig, mClock, masterClockDivider, mMemory, mInterrupts, mRegistersIO));
 
             reset();
 
@@ -240,7 +243,7 @@ namespace gb
 {
     Context* Context::create(const Rom& rom)
     {
-        ContextImpl* context = new ContextImpl;
+        gb_context::ContextImpl* context = new gb_context::ContextImpl;
         if (!context->create(rom))
         {
             context->dispose();
