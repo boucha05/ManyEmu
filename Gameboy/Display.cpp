@@ -5,6 +5,14 @@
 
 namespace
 {
+    static const uint32_t VRAM_BANK_SIZE = 0x2000;
+    static const uint32_t VRAM_BANK_START = 0x8000;
+    static const uint32_t VRAM_BANK_END = VRAM_BANK_START + VRAM_BANK_SIZE - 1;
+    static const uint32_t VRAM_SIZE_GB = 0x2000;
+    static const uint32_t VRAM_SIZE_GBC = 0x4000;
+
+    static const uint32_t OAM_SIZE = 0xa0;
+
     static const uint8_t STAT_LYC_LY_INT = 0x40;
     static const uint8_t STAT_OAM_INT = 0x20;
     static const uint8_t STAT_VBLANK_INT = 0x10;
@@ -15,11 +23,9 @@ namespace
     static const uint8_t STAT_WRITE_MASK = STAT_LYC_LY_INT | STAT_OAM_INT | STAT_VBLANK_INT | STAT_HBLANK_INT;
 
     static const uint8_t DMA_SIZE = 0xa0;
-    static const uint16_t DMA_DEST = 0xfe00;
 
     static const uint32_t TICKS_PER_LINE = 456;
     static const uint32_t UPDATE_RASTER_POS_FAST = TICKS_PER_LINE * 8;
-
 }
 
 namespace gb
@@ -78,7 +84,8 @@ namespace gb
     ////////////////////////////////////////////////////////////////////////////
 
     Display::Config::Config()
-        : useFastDma(true)
+        : model(Model::GBC)
+        , useFastDma(true)
     {
     }
 
@@ -100,6 +107,7 @@ namespace gb
         mMemory                 = nullptr;
         mTicksPerLine           = 0;
         mUpdateRasterPosFast    = 0;
+        mBankVRAM               = 0;
         mRegLCDC                = 0x00;
         mRegSTAT                = 0x00;
         mRegSCY                 = 0x00;
@@ -126,6 +134,13 @@ namespace gb
 
         EMU_VERIFY(mClockListener.create(clock, *this));
 
+        bool isGBC = mConfig.model >= gb::Model::GBC;
+        mVRAM.resize(isGBC ? VRAM_SIZE_GBC : VRAM_SIZE_GB, 0);
+        EMU_VERIFY(memory.addMemoryRange(VRAM_BANK_START, VRAM_BANK_END, mMemoryVRAM.setReadWriteMemory(mVRAM.data() + mBankVRAM * VRAM_BANK_SIZE)));
+
+        mOAM.resize(OAM_SIZE, 0);
+        EMU_VERIFY(memory.addMemoryRange(0xfe00, 0xfe9f, mMemoryOAM.setReadWriteMemory(mOAM.data())));
+        
         EMU_VERIFY(mRegisterAccessors.read.LCDC.create(registers, 0x40, *this, &Display::readLCDC));
         EMU_VERIFY(mRegisterAccessors.read.STAT.create(registers, 0x41, *this, &Display::readSTAT));
         EMU_VERIFY(mRegisterAccessors.read.SCY.create(registers, 0x42, *this, &Display::readSCY));
@@ -156,6 +171,8 @@ namespace gb
 
     void Display::destroy()
     {
+        mOAM.clear();
+        mVRAM.clear();
         mClockListener.destroy();
         mRegisterAccessors = RegisterAccessors();
         initialize();
@@ -293,12 +310,11 @@ namespace gb
         // Fast DMA implementation: transfer all data in the same tick
         render(tick);
         uint16_t read_addr = value << 8;
-        uint16_t write_addr = DMA_DEST;
 
         for (uint8_t index = 0; index < DMA_SIZE; ++index)
         {
             uint8_t dma_value = memory_bus_read8(*mMemory, tick, read_addr + index);
-            memory_bus_write8(*mMemory, tick, write_addr + index, dma_value);
+            mOAM[index] = dma_value;
         }
 
         mRegDMA = value;
@@ -392,6 +408,16 @@ namespace gb
 
     void Display::serialize(emu::ISerializer& serializer)
     {
+        serializer.serialize(mVRAM);
+        serializer.serialize(mOAM);
+        serializer.serialize(mSimulatedTick);
+        serializer.serialize(mRenderedTick);
+        serializer.serialize(mDesiredTick);
+        serializer.serialize(mTicksPerLine);
+        serializer.serialize(mUpdateRasterPosFast);
+        serializer.serialize(mLineFirstTick);
+        serializer.serialize(mLineTick);
+        serializer.serialize(mBankVRAM);
         serializer.serialize(mRegLCDC);
         serializer.serialize(mRegSTAT);
         serializer.serialize(mRegSCY);

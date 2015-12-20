@@ -16,6 +16,7 @@ namespace gb
         {
             Config();
 
+            Model   model;
             bool    useFastDma;
         };
 
@@ -112,29 +113,34 @@ namespace gb
         void upateRasterPos(int32_t tick);
         void render(int32_t tick);
 
-        emu::Clock*         mClock;
-        MEMORY_BUS*         mMemory;
-        Config              mConfig;
-        ClockListener       mClockListener;
-        RegisterAccessors   mRegisterAccessors;
-        int32_t             mSimulatedTick;
-        int32_t             mRenderedTick;
-        int32_t             mDesiredTick;
-        uint32_t            mTicksPerLine;
-        uint32_t            mUpdateRasterPosFast;
-        uint32_t            mLineFirstTick;
-        uint32_t            mLineTick;
-        uint8_t             mRegLCDC;
-        uint8_t             mRegSTAT;
-        uint8_t             mRegSCY;
-        uint8_t             mRegSCX;
-        uint8_t             mRegLY;
-        uint8_t             mRegLYC;
-        uint8_t             mRegDMA;
-        uint8_t             mRegBGP;
-        uint8_t             mRegOBP0;
-        uint8_t             mRegOBP1;
-        uint8_t             mRegWY;
-        uint8_t             mRegWX;
+        emu::Clock*             mClock;
+        MEMORY_BUS*             mMemory;
+        Config                  mConfig;
+        ClockListener           mClockListener;
+        RegisterAccessors       mRegisterAccessors;
+        MEM_ACCESS_READ_WRITE   mMemoryVRAM;
+        MEM_ACCESS_READ_WRITE   mMemoryOAM;
+        std::vector<uint8_t>    mVRAM;
+        std::vector<uint8_t>    mOAM;
+        int32_t                 mSimulatedTick;
+        int32_t                 mRenderedTick;
+        int32_t                 mDesiredTick;
+        uint32_t                mTicksPerLine;
+        uint32_t                mUpdateRasterPosFast;
+        uint32_t                mLineFirstTick;
+        uint32_t                mLineTick;
+        uint8_t                 mBankVRAM;
+        uint8_t                 mRegLCDC;
+        uint8_t                 mRegSTAT;
+        uint8_t                 mRegSCY;
+        uint8_t                 mRegSCX;
+        uint8_t                 mRegLY;
+        uint8_t                 mRegLYC;
+        uint8_t                 mRegDMA;
+        uint8_t                 mRegBGP;
+        uint8_t                 mRegOBP0;
+        uint8_t                 mRegOBP1;
+        uint8_t                 mRegWY;
+        uint8_t                 mRegWX;
     };
 }

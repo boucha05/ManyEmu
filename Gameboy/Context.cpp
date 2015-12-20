@@ -31,17 +31,11 @@ namespace
 
     static const uint32_t ROM_BANK_SIZE = 0x4000;
 
-    static const uint32_t VRAM_SIZE_GB = 0x2000;
-    static const uint32_t VRAM_SIZE_GBC = 0x4000;
-    static const uint32_t VRAM_BANK_SIZE = 0x2000;
-
     static const uint32_t BANK_SIZE_EXTERNAL_RAM = 0x2000;
 
     static const uint32_t WRAM_SIZE_GB = 0x2000;
     static const uint32_t WRAM_SIZE_GBC = 0x8000;
     static const uint32_t WRAM_BANK_SIZE = 0x1000;
-
-    static const uint32_t OAM_SIZE = 0xa0;
 
     static const uint32_t HRAM_SIZE = 0x7f;
 }
@@ -63,10 +57,11 @@ namespace gb_context
 
         bool create(const gb::Rom& rom)
         {
-            mModel = gb::Model::GBC;
+            mModel = gb::Model::GB;
 
             bool isGBC = mModel >= gb::Model::GBC;
             gb::Display::Config displayConfig;
+            displayConfig.model = mModel;
 
             mRom = &rom;
 
@@ -76,14 +71,11 @@ namespace gb_context
             EMU_VERIFY(mMemory.create(MEM_SIZE_LOG2, MEM_PAGE_SIZE_LOG2));
             mCpu.create(mClock, mMemory.getState(), masterClockDivider);
 
-            mVRAM.resize(isGBC ? VRAM_SIZE_GBC : VRAM_SIZE_GB, 0);
             mWRAM.resize(isGBC ? WRAM_SIZE_GBC : WRAM_SIZE_GB, 0);
-            mOAM.resize(OAM_SIZE, 0);
             mHRAM.resize(HRAM_SIZE, 0);
 
             mBankROM[0] = 0;
             mBankROM[1] = 1;
-            mBankVRAM = 0;
             mBankExternalRAM = 0xff;
             mBankWRAM[0] = 0;
             mBankWRAM[1] = 1;
@@ -108,10 +100,8 @@ namespace gb_context
             mInterrupts.destroy();
             mRegistersIE.destroy();
             mRegistersIO.destroy();
-            mVRAM.clear();
             mExternalRAM.clear();
             mWRAM.clear();
-            mOAM.clear();
             mHRAM.clear();
             mMemory.destroy();
             mRom = nullptr;
@@ -170,11 +160,8 @@ namespace gb_context
             uint32_t version = 1;
             mClock.serialize(serializer);
             mCpu.serialize(serializer);
-            serializer.serialize(mVRAM);
-            serializer.serialize(mOAM);
             serializer.serialize(mHRAM);
             serializer.serialize(mBankROM, EMU_ARRAY_SIZE(mBankROM));
-            serializer.serialize(mBankVRAM);
             serializer.serialize(mBankExternalRAM);
             serializer.serialize(mBankWRAM, EMU_ARRAY_SIZE(mBankWRAM));
         }
@@ -195,7 +182,6 @@ namespace gb_context
             const auto& romContent = mRom->getContent();
             EMU_VERIFY(mMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0x0000, 0x3fff, mMemoryROM[0].setReadMemory(romContent.rom + mBankROM[0] * ROM_BANK_SIZE)));
             EMU_VERIFY(mMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0x4000, 0x7fff, mMemoryROM[1].setReadMemory(romContent.rom + mBankROM[1] * ROM_BANK_SIZE)));
-            EMU_VERIFY(mMemory.addMemoryRange(0x8000, 0x9fff, mMemoryVRAM.setReadWriteMemory(mVRAM.data() + mBankVRAM * VRAM_BANK_SIZE)));
             if (!mExternalRAM.empty())
             {
                 EMU_VERIFY(mMemory.addMemoryRange(0xa000, 0xbfff, mMemoryExternalRAM.setReadWriteMemory(mExternalRAM.data())));
@@ -204,7 +190,6 @@ namespace gb_context
             EMU_VERIFY(mMemory.addMemoryRange(0xd000, 0xdfff, mMemoryWRAM[1].setReadWriteMemory(mWRAM.data() + mBankWRAM[1] * WRAM_BANK_SIZE)));
             EMU_VERIFY(mMemory.addMemoryRange(0xe000, 0xefff, mMemoryWRAM[2].setReadWriteMemory(mWRAM.data() + mBankWRAM[0] * WRAM_BANK_SIZE)));
             EMU_VERIFY(mMemory.addMemoryRange(0xf000, 0xfdff, mMemoryWRAM[3].setReadWriteMemory(mWRAM.data() + mBankWRAM[1] * WRAM_BANK_SIZE)));
-            EMU_VERIFY(mMemory.addMemoryRange(0xfe00, 0xfe9f, mMemoryOAM.setReadWriteMemory(mOAM.data())));
             EMU_VERIFY(mMemory.addMemoryRange(0xff80, 0xfffe, mMemoryHRAM.setReadWriteMemory(mHRAM.data())));
             return true;
         }
@@ -215,20 +200,15 @@ namespace gb_context
         emu::MemoryBus          mMemory;
         gb::CpuZ80              mCpu;
         MEM_ACCESS              mMemoryROM[2];
-        MEM_ACCESS_READ_WRITE   mMemoryVRAM;
         MEM_ACCESS_READ_WRITE   mMemoryExternalRAM;
         MEM_ACCESS_READ_WRITE   mMemoryWRAM[4];
-        MEM_ACCESS_READ_WRITE   mMemoryOAM;
         MEM_ACCESS_READ_WRITE   mMemoryIO;
         MEM_ACCESS_READ_WRITE   mMemoryHRAM;
         MEM_ACCESS_READ_WRITE   mMemoryIntEnable;
-        std::vector<uint8_t>    mVRAM;
         std::vector<uint8_t>    mExternalRAM;
         std::vector<uint8_t>    mWRAM;
-        std::vector<uint8_t>    mOAM;
         std::vector<uint8_t>    mHRAM;
         uint8_t                 mBankROM[2];
-        uint8_t                 mBankVRAM;
         uint8_t                 mBankExternalRAM;
         uint8_t                 mBankWRAM[2];
         emu::RegisterBank       mRegistersIO;
