@@ -131,6 +131,7 @@ namespace gb_context
 
         virtual void setRenderSurface(void* surface, size_t pitch)
         {
+            mDisplay.setRenderSurface(surface, pitch);
         }
 
         virtual void update()

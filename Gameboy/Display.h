@@ -17,7 +17,8 @@ namespace gb
             Config();
 
             Model   model;
-            bool    useFastDma;
+            bool    fastDma;
+            bool    fastLineRendering;
         };
 
         Display();
@@ -26,6 +27,7 @@ namespace gb
         void destroy();
         void reset();
         void serialize(emu::ISerializer& serializer);
+        void setRenderSurface(void* surface, size_t pitch);
 
     private:
         class ClockListener : public emu::Clock::IListener
@@ -111,6 +113,10 @@ namespace gb
         void writeWX(int32_t tick, uint16_t addr, uint8_t value);
 
         void upateRasterPos(int32_t tick);
+        void fetchTileRow(uint8_t* dest, const uint8_t* map, uint8_t bias, uint32_t tileX, uint32_t tileY, uint32_t count);
+        void drawTiles(uint8_t* dest, const uint8_t* tiles, const uint8_t* attributes, const uint8_t* patterns, uint16_t count);
+        void blitLine(uint32_t* dest, uint8_t* src, uint32_t count, const uint32_t* palette, uint32_t paletteSize);
+        void renderLinesMono(uint32_t firstLine, uint32_t lastLine);
         void render(int32_t tick);
 
         emu::Clock*             mClock;
@@ -122,13 +128,18 @@ namespace gb
         MEM_ACCESS_READ_WRITE   mMemoryOAM;
         std::vector<uint8_t>    mVRAM;
         std::vector<uint8_t>    mOAM;
+        uint8_t*                mSurface;
+        size_t                  mPitch;
         int32_t                 mSimulatedTick;
+        uint8_t                 mRenderedLine;
+        uint8_t                 mRenderedLineFirstTick;
         int32_t                 mRenderedTick;
         int32_t                 mDesiredTick;
         uint32_t                mTicksPerLine;
         uint32_t                mUpdateRasterPosFast;
         uint32_t                mLineFirstTick;
         uint32_t                mLineTick;
+        uint8_t                 mRasterLine;
         uint8_t                 mBankVRAM;
         uint8_t                 mRegLCDC;
         uint8_t                 mRegSTAT;

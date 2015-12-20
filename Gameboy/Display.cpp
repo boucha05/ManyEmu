@@ -13,6 +13,15 @@ namespace
 
     static const uint32_t OAM_SIZE = 0xa0;
 
+    static const uint8_t LCDC_LCD_ENABLE = 0x80;
+    static const uint8_t LCDC_WINDOW_TILE_MAP = 0x40;
+    static const uint8_t LCDC_WINDOW_ENABLE = 0x20;
+    static const uint8_t LCDC_TILE_DATA = 0x10;
+    static const uint8_t LCDC_BG_TILE_MAP = 0x08;
+    static const uint8_t LCDC_SPRITES_SIZE = 0x04;
+    static const uint8_t LCDC_SPRITES_ENABLE = 0x02;
+    static const uint8_t LCDC_BG_ENABLE = 0x01;
+
     static const uint8_t STAT_LYC_LY_INT = 0x40;
     static const uint8_t STAT_OAM_INT = 0x20;
     static const uint8_t STAT_VBLANK_INT = 0x10;
@@ -26,6 +35,40 @@ namespace
 
     static const uint32_t TICKS_PER_LINE = 456;
     static const uint32_t UPDATE_RASTER_POS_FAST = TICKS_PER_LINE * 8;
+
+    static const uint32_t DISPLAY_VBLANK_SIZE = 10;
+    static const uint32_t DISPLAY_SIZE_X = 160;
+    static const uint32_t DISPLAY_SIZE_Y = 144;
+    static const uint32_t DISPLAY_LINE_COUNT = DISPLAY_SIZE_Y + DISPLAY_VBLANK_SIZE;
+
+    static const uint32_t RENDER_ROW_STORAGE = DISPLAY_SIZE_X + 16;
+    static const uint32_t RENDER_TILE_COUNT = DISPLAY_SIZE_X / 8;
+    static const uint32_t RENDER_TILE_STORAGE = RENDER_TILE_COUNT + 1;
+
+    static const uint8_t kMonoPalette[4][4] =
+    {
+        { 0x00, 0x00, 0x00, 0x00 },
+        { 0x55, 0x55, 0x55, 0xff },
+        { 0xbb, 0xbb, 0xbb, 0xff },
+        { 0xff, 0xff, 0xff, 0xff },
+    };
+
+    static uint8_t patternMask[256][8];
+
+    bool initializePatternTable()
+    {
+        for (uint32_t pattern = 0; pattern < 256; ++pattern)
+        {
+            for (uint32_t bit = 0; bit < 8; ++bit)
+            {
+                uint8_t mask = ((pattern << bit) & 0x80) ? 0xff : 0x00;
+                patternMask[pattern][bit] = mask;
+            }
+        }
+        return true;
+    }
+
+    bool patternTableInitialized = initializePatternTable();
 }
 
 namespace gb
@@ -85,7 +128,8 @@ namespace gb
 
     Display::Config::Config()
         : model(Model::GBC)
-        , useFastDma(true)
+        , fastDma(true)
+        , fastLineRendering(true)
     {
     }
 
@@ -105,8 +149,14 @@ namespace gb
     {
         mClock                  = nullptr;
         mMemory                 = nullptr;
+        mSurface                = nullptr;
+        mPitch                  = 0;
+        mRenderedLine           = 0;
+        mRenderedLineFirstTick  = 0;
+        mRenderedTick           = 0;
         mTicksPerLine           = 0;
         mUpdateRasterPosFast    = 0;
+        mRasterLine             = 0;
         mBankVRAM               = 0;
         mRegLCDC                = 0x00;
         mRegSTAT                = 0x00;
@@ -187,6 +237,8 @@ namespace gb
     void Display::resetClock()
     {
         mSimulatedTick = 0;
+        mRenderedLine = 0;
+        mRenderedLineFirstTick = 0;
         mRenderedTick = 0;
         mDesiredTick = 0;
         mLineFirstTick = 0;
@@ -195,9 +247,16 @@ namespace gb
 
     void Display::advanceClock(int32_t tick)
     {
+        render(tick);
         mSimulatedTick -= tick;
-        mRenderedTick -= tick;
         mDesiredTick -= tick;
+        mLineFirstTick -= tick;
+        mLineTick -= tick;
+        mRasterLine -= DISPLAY_LINE_COUNT;
+
+        mRenderedLine = 0;
+        mRenderedLineFirstTick = 0;
+        mRenderedTick = 0;
     }
 
     void Display::setDesiredTicks(int32_t tick)
@@ -302,7 +361,7 @@ namespace gb
 
     void Display::writeDMA(int32_t tick, uint16_t addr, uint8_t value)
     {
-        if (!mConfig.useFastDma)
+        if (!mConfig.fastDma)
         {
             EMU_NOT_IMPLEMENTED();
         }
@@ -432,12 +491,19 @@ namespace gb
         serializer.serialize(mRegWX);
     }
 
+    void Display::setRenderSurface(void* surface, size_t pitch)
+    {
+        mSurface = static_cast<uint8_t*>(surface);
+        mPitch = pitch;
+    }
+
     void Display::upateRasterPos(int32_t tick)
     {
         if (tick - mLineFirstTick <= mUpdateRasterPosFast)
         {
             while (tick - mLineFirstTick >= mTicksPerLine)
             {
+                ++mRasterLine;
                 ++mRegLY;
                 mLineFirstTick += mTicksPerLine;
             }
@@ -445,8 +511,96 @@ namespace gb
         }
         else
         {
-            mRegLY = tick / mTicksPerLine;
+            uint8_t rasterLine = tick / mTicksPerLine;
+            uint8_t deltaLine = rasterLine - mRasterLine;
+            mRasterLine = rasterLine;
+            mRegLY += rasterLine;
             mLineTick = tick % mTicksPerLine;
+            mLineFirstTick = tick - mLineTick;
+        }
+        if (mRegLY >= DISPLAY_LINE_COUNT)
+            mRegLY -= DISPLAY_LINE_COUNT;
+    }
+
+    void Display::fetchTileRow(uint8_t* dest, const uint8_t* map, uint8_t bias, uint32_t tileX, uint32_t tileY, uint32_t count)
+    {
+        uint32_t base = (tileY & 0x1f) << 5;
+        for (uint32_t index = 0; index < count; ++index)
+        {
+            uint32_t offset = (tileX + index) & 0x1f;
+            //uint8_t value = (map[base + offset] + bias) & 0xff;
+            uint32_t posX = tileX + index;
+            uint32_t posY = tileY;
+            uint8_t value = ((posX & 0x0f) + ((posY & 0x0f) * 16)) & 0xff;
+            dest[index] = value;
+        }
+    }
+
+    void Display::drawTiles(uint8_t* dest, const uint8_t* tiles, const uint8_t* attributes, const uint8_t* patterns, uint16_t count)
+    {
+        for (uint32_t index = 0; index < count; ++index)
+        {
+            uint32_t tile = tiles[index];
+            uint32_t patternBase = tile << 4;
+            auto pattern0 = &patternMask[patterns[patternBase + 0]][0];
+            auto pattern1 = &patternMask[patterns[patternBase + 1]][0];
+            for (uint32_t offsetX = 0; offsetX < 8; ++offsetX)
+            {
+                auto value = pattern0[offsetX] + (pattern1[offsetX] << 1);
+                dest[offsetX] = value & 0x03;
+            }
+            dest += 8;
+        }
+    }
+
+    void Display::blitLine(uint32_t* dest, uint8_t* src, uint32_t count, const uint32_t* palette, uint32_t paletteSize)
+    {
+        for (uint32_t index = 0; index < count; ++index)
+        {
+            uint8_t value = src[index];
+            EMU_ASSERT(value < paletteSize);
+            uint32_t color = palette[value];
+            dest[index] = color;
+        }
+    }
+
+    void Display::renderLinesMono(uint32_t firstLine, uint32_t lastLine)
+    {
+        uint8_t rowStorage[RENDER_ROW_STORAGE];
+        uint8_t tileRowStorage[RENDER_TILE_STORAGE];
+
+        memset(rowStorage, 0, RENDER_ROW_STORAGE);
+
+        static bool firstTileMap = true;
+        static bool firstTilePattern = true;
+
+        uint8_t tileX = (mRegSCX >> 3) & 0xff;
+        uint8_t tileOffsetX = mRegSCX & 0x07;
+        uint8_t lineY = (mRegSCY + firstLine) & 0xff;
+        uint8_t tileYold = 0xff;
+
+        auto tileMap = mVRAM.data() + (firstTileMap ? 0x1800 : 0x1c00);
+        auto tileBias = firstTileMap ? 0x00 : 0x80;
+        auto tilePatterns = mVRAM.data() + (firstTilePattern ? 0x0800 : 0x0c00);
+        auto tileDest = rowStorage + 8 - tileOffsetX;
+
+        auto dest = mSurface + mPitch * firstLine;
+        auto palette = reinterpret_cast<const uint32_t*>(kMonoPalette);
+        uint32_t paletteSize = 4;
+        for (uint32_t line = firstLine; line <= lastLine; ++line)
+        {
+            uint8_t tileY = lineY >> 3;
+            uint8_t tileOffsetY = lineY & 0x07;
+            if (tileYold != tileY)
+            {
+                tileYold = tileY;
+                fetchTileRow(tileRowStorage, tileMap, tileBias, tileX, tileY, RENDER_TILE_STORAGE);
+            }
+            drawTiles(tileDest, tileRowStorage, nullptr, tilePatterns + (tileOffsetY << 1), RENDER_TILE_STORAGE);
+
+            blitLine(reinterpret_cast<uint32_t*>(dest), rowStorage + 8, DISPLAY_SIZE_X, palette, paletteSize);
+            dest += mPitch;
+            ++lineY;
         }
     }
 
@@ -454,7 +608,32 @@ namespace gb
     {
         if (mRenderedTick < tick)
         {
+            if (!mConfig.fastLineRendering)
+            {
+                EMU_NOT_IMPLEMENTED();
+            }
+
+            upateRasterPos(tick);
+            if (mSurface)
+            {
+                // Find first line
+                uint32_t firstLine = mRenderedLine;
+                if (mRenderedTick > mRenderedLineFirstTick)
+                    ++firstLine;
+
+                // Find last line
+                uint32_t lastLine = mRasterLine;
+                if (lastLine >= DISPLAY_LINE_COUNT)
+                    lastLine = DISPLAY_LINE_COUNT - 1;
+
+                if (firstLine <= lastLine)
+                {
+                    renderLinesMono(firstLine, lastLine);
+                }
+            }
+            mRenderedLine = mRasterLine;
             mRenderedTick = tick;
+            mRenderedLineFirstTick = mLineFirstTick;
         }
     }
 }
