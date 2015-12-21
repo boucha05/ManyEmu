@@ -1759,10 +1759,12 @@ namespace gb
     void CpuZ80::trace()
     {
 #if 0
-        static int traceStart = 0x3000;
-        static int traceBreak = 0x3000;
+        //static FILE* log = fopen("..\\gb.log", "w");
+        static FILE* log = nullptr;
+        static int traceStart = 0x0000;
+        static int traceBreak = 0x0000;
         static int traceCount = 0;
-        if (traceCount++ >= traceStart)
+        if (log && (traceCount++ >= traceStart))
         {
             char temp[32];
             auto nextPC = disassemble(temp, sizeof(temp), PC);
@@ -1771,7 +1773,7 @@ namespace gb
             char* temp2Pos = temp2;
             for (uint16_t offset = 0; offset < byteCount; ++offset)
                 temp2Pos += sprintf(temp2Pos, "%02X ", read8(PC + offset));
-            printf("%04X  %-9s %-20s  AF:%04X BC:%04X DE:%04X HL:%04X SP:%04X\n",
+            fprintf(log, "%04X  %-9s %-20s  AF:%04X BC:%04X DE:%04X HL:%04X SP:%04X\n",
                 PC, temp2, temp, AF, BC, DE, HL, SP);
         }
 
@@ -1798,7 +1800,6 @@ namespace gb
         auto data = peek8(pc);
         auto insnType = static_cast<INSN_TYPE>(insnTypeMain[data]);
         auto addrMode = static_cast<ADDR_MODE>(addrModeMain[data]);
-        auto opcode = insnName[insnType];
         if (insnType == INSN_PREFIX)
         {
             data = peek8(pc);
@@ -1806,6 +1807,7 @@ namespace gb
             const auto& addrModeTable = (data > 0x40) ? addrModeCB2 : addrModeCB1;
             addrMode = static_cast<ADDR_MODE>(addrModeTable[data & 7]);
         }
+        auto opcode = insnName[insnType];
 
         // Format
         char temp[32];

@@ -27,6 +27,7 @@ namespace gb
         void destroy();
         void reset();
         void serialize(emu::ISerializer& serializer);
+        void beginFrame();
         void setRenderSurface(void* surface, size_t pitch);
 
     private:
@@ -112,6 +113,7 @@ namespace gb
         uint8_t readWX(int32_t tick, uint16_t addr);
         void writeWX(int32_t tick, uint16_t addr, uint8_t value);
 
+        void onVBlankStart(int32_t tick);
         void upateRasterPos(int32_t tick);
         void fetchTileRow(uint8_t* dest, const uint8_t* map, uint8_t bias, uint32_t tileX, uint32_t tileY, uint32_t count);
         void drawTiles(uint8_t* dest, const uint8_t* tiles, const uint8_t* attributes, const uint8_t* patterns, uint16_t count);
@@ -119,8 +121,14 @@ namespace gb
         void renderLinesMono(uint32_t firstLine, uint32_t lastLine);
         void render(int32_t tick);
 
+        static void onVBlankStart(void* context, int32_t tick)
+        {
+            static_cast<Display*>(context)->onVBlankStart(tick);
+        }
+
         emu::Clock*             mClock;
         MEMORY_BUS*             mMemory;
+        Interrupts*             mInterrupts;
         Config                  mConfig;
         ClockListener           mClockListener;
         RegisterAccessors       mRegisterAccessors;
@@ -136,6 +144,7 @@ namespace gb
         int32_t                 mRenderedTick;
         int32_t                 mDesiredTick;
         uint32_t                mTicksPerLine;
+        uint32_t                mVBlankStartTick;
         uint32_t                mUpdateRasterPosFast;
         uint32_t                mLineFirstTick;
         uint32_t                mLineTick;

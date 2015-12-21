@@ -8,6 +8,8 @@ namespace
     static const uint8_t INT_MASK_ALL = 0x1f;
     static const uint8_t INT_BIT_COUNT = 5;
 
+    static const uint8_t INT_NOT_IMPLEMENTED = 0xfe;
+
     static const uint8_t intBitMask[INT_BIT_COUNT] = { 0x01, 0x02, 0x04, 0x08, 0x10 };
     static const uint16_t intVector[INT_BIT_COUNT] = { 0x40, 0x48, 0x50, 0x58, 0x60 };
 }
@@ -153,6 +155,10 @@ namespace gb
 
     void Interrupts::checkInterrupts(int32_t tick)
     {
+        if (mMask & mRegIE & INT_NOT_IMPLEMENTED)
+        {
+            EMU_NOT_IMPLEMENTED();
+        }
         uint8_t signaled = mMask & mRegIE & mRegIF;
         if (signaled)
         {

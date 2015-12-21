@@ -136,6 +136,7 @@ namespace gb_context
 
         virtual void update()
         {
+            mDisplay.beginFrame();
             mClock.execute(DISPLAY_CLOCK_PER_FRAME);
             mClock.advance();
             mClock.clearEvents();

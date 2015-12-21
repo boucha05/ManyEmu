@@ -149,12 +149,14 @@ namespace gb
     {
         mClock                  = nullptr;
         mMemory                 = nullptr;
+        mInterrupts             = nullptr;
         mSurface                = nullptr;
         mPitch                  = 0;
         mRenderedLine           = 0;
         mRenderedLineFirstTick  = 0;
         mRenderedTick           = 0;
         mTicksPerLine           = 0;
+        mVBlankStartTick        = 0;
         mUpdateRasterPosFast    = 0;
         mRasterLine             = 0;
         mBankVRAM               = 0;
@@ -176,10 +178,12 @@ namespace gb
     bool Display::create(Config& config, emu::Clock& clock, uint32_t master_clock_divider, emu::MemoryBus& memory, Interrupts& interrupts, emu::RegisterBank& registers)
     {
         mTicksPerLine = TICKS_PER_LINE * master_clock_divider;
+        mVBlankStartTick = DISPLAY_SIZE_Y * mTicksPerLine;
         mUpdateRasterPosFast = UPDATE_RASTER_POS_FAST * master_clock_divider;
 
         mClock = &clock;
         mMemory = &memory.getState();
+        mInterrupts = &interrupts;
         mConfig = config;
 
         EMU_VERIFY(mClockListener.create(clock, *this));
@@ -252,16 +256,20 @@ namespace gb
         mDesiredTick -= tick;
         mLineFirstTick -= tick;
         mLineTick -= tick;
-        mRasterLine -= DISPLAY_LINE_COUNT;
-
-        mRenderedLine = 0;
-        mRenderedLineFirstTick = 0;
-        mRenderedTick = 0;
     }
 
     void Display::setDesiredTicks(int32_t tick)
     {
         mDesiredTick = tick;
+    }
+
+    void Display::beginFrame()
+    {
+        mClock->addEvent(onVBlankStart, this, mVBlankStartTick);
+        mRasterLine -= DISPLAY_LINE_COUNT;
+        mRenderedLine = 0;
+        mRenderedLineFirstTick = 0;
+        mRenderedTick = 0;
     }
 
     uint8_t Display::readLCDC(int32_t tick, uint16_t addr)
@@ -472,6 +480,7 @@ namespace gb
         serializer.serialize(mSimulatedTick);
         serializer.serialize(mRenderedTick);
         serializer.serialize(mDesiredTick);
+        serializer.serialize(mVBlankStartTick);
         serializer.serialize(mTicksPerLine);
         serializer.serialize(mUpdateRasterPosFast);
         serializer.serialize(mLineFirstTick);
@@ -495,6 +504,12 @@ namespace gb
     {
         mSurface = static_cast<uint8_t*>(surface);
         mPitch = pitch;
+    }
+
+    void Display::onVBlankStart(int32_t tick)
+    {
+        render(tick);
+        mInterrupts->setInterrupt(tick, gb::Interrupts::Signal::VBlank);
     }
 
     void Display::upateRasterPos(int32_t tick)
@@ -528,10 +543,10 @@ namespace gb
         for (uint32_t index = 0; index < count; ++index)
         {
             uint32_t offset = (tileX + index) & 0x1f;
-            //uint8_t value = (map[base + offset] + bias) & 0xff;
-            uint32_t posX = tileX + index;
-            uint32_t posY = tileY;
-            uint8_t value = ((posX & 0x0f) + ((posY & 0x0f) * 16)) & 0xff;
+            uint8_t value = (map[base + offset] + bias) & 0xff;
+            //uint32_t posX = tileX + index;
+            //uint32_t posY = tileY;
+            //uint8_t value = ((posX & 0x0f) + ((posY & 0x0f) * 16)) & 0xff;
             dest[index] = value;
         }
     }
@@ -569,19 +584,25 @@ namespace gb
         uint8_t rowStorage[RENDER_ROW_STORAGE];
         uint8_t tileRowStorage[RENDER_TILE_STORAGE];
 
-        memset(rowStorage, 0, RENDER_ROW_STORAGE);
+        static bool firstBGTileMap = true;
+        static bool firstTilePattern = false;
+        static bool lcdEnabled = true;
 
-        static bool firstTileMap = true;
-        static bool firstTilePattern = true;
+        //firstBGTileMap = (mRegLCDC & LCDC_BG_TILE_MAP) == 0;
+        //firstTilePattern = (mRegLCDC & LCDC_TILE_DATA) == 0;
+        //lcdEnabled = (mRegLCDC & LCDC_LCD_ENABLE) != 0;
+
+        if (!lcdEnabled)
+            memset(rowStorage, 0, RENDER_ROW_STORAGE);
 
         uint8_t tileX = (mRegSCX >> 3) & 0xff;
         uint8_t tileOffsetX = mRegSCX & 0x07;
         uint8_t lineY = (mRegSCY + firstLine) & 0xff;
         uint8_t tileYold = 0xff;
 
-        auto tileMap = mVRAM.data() + (firstTileMap ? 0x1800 : 0x1c00);
-        auto tileBias = firstTileMap ? 0x00 : 0x80;
-        auto tilePatterns = mVRAM.data() + (firstTilePattern ? 0x0800 : 0x0c00);
+        auto tileMap = mVRAM.data() + (firstBGTileMap ? 0x1800 : 0x1c00);
+        auto tileBias = firstBGTileMap ? 0x00 : 0x80;
+        auto tilePatterns = mVRAM.data() + (firstTilePattern ? 0x0800 : 0x0000);
         auto tileDest = rowStorage + 8 - tileOffsetX;
 
         auto dest = mSurface + mPitch * firstLine;
@@ -589,15 +610,17 @@ namespace gb
         uint32_t paletteSize = 4;
         for (uint32_t line = firstLine; line <= lastLine; ++line)
         {
-            uint8_t tileY = lineY >> 3;
-            uint8_t tileOffsetY = lineY & 0x07;
-            if (tileYold != tileY)
+            if (lcdEnabled)
             {
-                tileYold = tileY;
-                fetchTileRow(tileRowStorage, tileMap, tileBias, tileX, tileY, RENDER_TILE_STORAGE);
+                uint8_t tileY = lineY >> 3;
+                uint8_t tileOffsetY = lineY & 0x07;
+                if (tileYold != tileY)
+                {
+                    tileYold = tileY;
+                    fetchTileRow(tileRowStorage, tileMap, tileBias, tileX, tileY, RENDER_TILE_STORAGE);
+                }
+                drawTiles(tileDest, tileRowStorage, nullptr, tilePatterns + (tileOffsetY << 1), RENDER_TILE_STORAGE);
             }
-            drawTiles(tileDest, tileRowStorage, nullptr, tilePatterns + (tileOffsetY << 1), RENDER_TILE_STORAGE);
-
             blitLine(reinterpret_cast<uint32_t*>(dest), rowStorage + 8, DISPLAY_SIZE_X, palette, paletteSize);
             dest += mPitch;
             ++lineY;
