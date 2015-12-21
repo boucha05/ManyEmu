@@ -14,6 +14,7 @@ public:
     IBackend* getBackend() { return mBackend; }
     bool loadRom(IBackend& backend, const std::string& path, const std::string& saveDirectory);
     void unloadRom();
+    bool getDisplaySize(uint32_t& sizeX, uint32_t& sizeY);
     bool loadGameData();
     bool saveGameData();
     bool loadGameState();

@@ -26,6 +26,13 @@ namespace nes
         static_cast<Context&>(context).dispose();
     }
 
+    bool Emulator::getDisplaySize(emu::Context& context, uint32_t& sizeX, uint32_t& sizeY)
+    {
+        sizeX = nes::Context::DisplaySizeX;
+        sizeY = nes::Context::DisplaySizeY;
+        return true;
+    }
+
     bool Emulator::serializeGameData(emu::Context& context, emu::ISerializer& serializer)
     {
         static_cast<Context&>(context).serializeGameData(serializer);

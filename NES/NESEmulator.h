@@ -14,6 +14,7 @@ namespace nes
         virtual void unloadRom(emu::Rom& rom) override;
         virtual emu::Context* createContext(const emu::Rom& rom) override;
         virtual void destroyContext(emu::Context& context) override;
+        virtual bool getDisplaySize(emu::Context& context, uint32_t& sizeX, uint32_t& sizeY) override;
         virtual bool serializeGameData(emu::Context& context, emu::ISerializer& serializer) override;
         virtual bool serializeGameState(emu::Context& context, emu::ISerializer& serializer) override;
         virtual bool setRenderBuffer(emu::Context& context, void* buffer, size_t pitch) override;

@@ -28,6 +28,13 @@ namespace
             static_cast<gb::Context&>(context).dispose();
         }
 
+        virtual bool getDisplaySize(emu::Context& context, uint32_t& sizeX, uint32_t& sizeY) override
+        {
+            sizeX = gb::Context::DisplaySizeX;
+            sizeY = gb::Context::DisplaySizeY;
+            return true;
+        }
+
         virtual bool serializeGameData(emu::Context& context, emu::ISerializer& serializer) override
         {
             static_cast<gb::Context&>(context).serializeGameData(serializer);

@@ -162,6 +162,7 @@ namespace emu
         virtual void unloadRom(Rom& rom) = 0;
         virtual Context* createContext(const Rom& rom) = 0;
         virtual void destroyContext(Context& context) = 0;
+        virtual bool getDisplaySize(emu::Context& context, uint32_t& sizeX, uint32_t& sizeY) = 0;
         virtual bool serializeGameData(Context& context, emu::ISerializer& serializer) = 0;
         virtual bool serializeGameState(Context& context, emu::ISerializer& serializer) = 0;
         virtual bool setRenderBuffer(Context& context, void* buffer, size_t pitch) = 0;

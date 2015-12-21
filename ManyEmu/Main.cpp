@@ -220,6 +220,8 @@ bool Application::create()
     if (!mRenderer)
         return false;
 
+    //SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
+
     mScreen = SDL_GetWindowSurface(mWindow);
     if (!mScreen)
         return false;
@@ -664,7 +666,50 @@ void Application::render()
 
     if (visible)
     {
-        SDL_RenderCopy(mRenderer, mTexture[mBufferIndex], nullptr, nullptr);
+        int screenSizeX = 0;
+        int screenSizeY = 0;
+        SDL_RenderClear(mRenderer);
+        SDL_GetRendererOutputSize(mRenderer, &screenSizeX, &screenSizeY);
+
+        SDL_Rect imageRect;
+        imageRect.x = 0;
+        imageRect.y = 0;
+        SDL_QueryTexture(mTexture[mBufferIndex], nullptr, nullptr, &imageRect.w, &imageRect.h);
+
+        if (mActiveGameSession <= mGameSessions.size())
+        {
+            auto& gameSession = *mGameSessions[mActiveGameSession];
+            if (gameSession.isValid())
+            {
+                uint32_t sizeX;
+                uint32_t sizeY;
+                gameSession.getDisplaySize(sizeX, sizeY);
+                imageRect.w = sizeX;
+                imageRect.h = sizeY;
+            }
+        }
+
+        SDL_Rect screenRect;
+        screenRect.w = 0;
+        screenRect.h = 0;
+        screenRect.x = 0;
+        screenRect.y = 0;
+
+        int scaledX = screenSizeY * imageRect.w / imageRect.h;
+        if (screenSizeX > scaledX)
+        {
+            screenRect.w = scaledX;
+            screenRect.h = screenSizeY;
+            screenRect.x = (screenSizeX - screenRect.w + 1) >> 1;
+        }
+        else
+        {
+            screenRect.w = screenSizeX;
+            screenRect.h = screenSizeX * imageRect.h / imageRect.w;
+            screenRect.y = (screenSizeY - screenRect.h + 1) >> 1;
+        }
+
+        SDL_RenderCopy(mRenderer, mTexture[mBufferIndex], &imageRect, &screenRect);
         SDL_RenderPresent(mRenderer);
     }
 }

@@ -87,6 +87,9 @@ namespace gb
         static const uint32_t ButtonRight = 0x80;
         static const uint32_t ButtonAll = 0xff;
 
+        static const uint32_t DisplaySizeX = 160;
+        static const uint32_t DisplaySizeY = 144;
+
         virtual void reset() = 0;
         virtual void setController(uint32_t index, uint32_t buttons) = 0;
         virtual void setSoundBuffer(int16_t* buffer, size_t size) = 0;

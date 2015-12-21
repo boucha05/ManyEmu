@@ -80,6 +80,13 @@ void GameSession::unloadRom()
     mEmulator = nullptr;
 }
 
+bool GameSession::getDisplaySize(uint32_t& sizeX, uint32_t& sizeY)
+{
+    if (!mValid)
+        return false;
+    return mEmulator->getDisplaySize(*mContext, sizeX, sizeY);
+}
+
 bool GameSession::loadGameData()
 {
     if (!mValid)
