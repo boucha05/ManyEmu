@@ -17,10 +17,10 @@ namespace emu
         class IListener
         {
         public:
-            virtual void execute() = 0;
-            virtual void resetClock() = 0;
-            virtual void advanceClock(int32_t ticks) = 0;
-            virtual void setDesiredTicks(int32_t ticks) = 0;
+            virtual void execute() {}
+            virtual void resetClock() {}
+            virtual void advanceClock(int32_t ticks) {}
+            virtual void setDesiredTicks(int32_t ticks) {}
         };
 
         Clock();

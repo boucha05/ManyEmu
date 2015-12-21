@@ -4,6 +4,7 @@
 #include <Core/Serialization.h>
 #include "CpuZ80.h"
 #include "Display.h"
+#include "Joypad.h"
 #include "GameLink.h"
 #include "GB.h"
 #include "Interrupts.h"
@@ -87,6 +88,7 @@ namespace gb_context
             EMU_VERIFY(mInterrupts.create(mCpu, mRegistersIO, mRegistersIE));
             EMU_VERIFY(mGameLink.create(mRegistersIO));
             EMU_VERIFY(mDisplay.create(displayConfig, mClock, masterClockDivider, mMemory, mInterrupts, mRegistersIO));
+            EMU_VERIFY(mJoypad.create(mClock, mInterrupts, mRegistersIO));
 
             reset();
 
@@ -95,6 +97,7 @@ namespace gb_context
 
         void destroy()
         {
+            mJoypad.destroy();
             mDisplay.destroy();
             mGameLink.destroy();
             mInterrupts.destroy();
@@ -119,10 +122,12 @@ namespace gb_context
             mInterrupts.reset();
             mGameLink.reset();
             mDisplay.reset();
+            mJoypad.reset();
         }
 
-        virtual void setController(uint32_t /*index*/, uint32_t /*buttons*/)
+        virtual void setController(uint32_t index, uint32_t buttons)
         {
+            mJoypad.setController(index, buttons);
         }
 
         virtual void setSoundBuffer(int16_t* /*buffer*/, size_t /*size*/)
@@ -162,6 +167,10 @@ namespace gb_context
             uint32_t version = 1;
             mClock.serialize(serializer);
             mCpu.serialize(serializer);
+            mInterrupts.serialize(serializer);
+            mGameLink.serialize(serializer);
+            mDisplay.serialize(serializer);
+            mJoypad.serialize(serializer);
             serializer.serialize(mHRAM);
             serializer.serialize(mBankROM, EMU_ARRAY_SIZE(mBankROM));
             serializer.serialize(mBankExternalRAM);
@@ -218,6 +227,7 @@ namespace gb_context
         gb::Interrupts          mInterrupts;
         gb::GameLink            mGameLink;
         gb::Display             mDisplay;
+        gb::Joypad              mJoypad;
     };
 }
 

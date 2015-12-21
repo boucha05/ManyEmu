@@ -85,6 +85,7 @@ namespace gb
         static const uint32_t ButtonDown = 0x20;
         static const uint32_t ButtonLeft = 0x40;
         static const uint32_t ButtonRight = 0x80;
+        static const uint32_t ButtonAll = 0xff;
 
         virtual void reset() = 0;
         virtual void setController(uint32_t index, uint32_t buttons) = 0;
