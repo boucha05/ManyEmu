@@ -9,6 +9,7 @@
 #include "GB.h"
 #include "Interrupts.h"
 #include "Registers.h"
+#include "Timer.h"
 #include <vector>
 
 namespace
@@ -67,6 +68,7 @@ namespace gb_context
             mRom = &rom;
 
             uint32_t masterClockDivider = MASTER_CLOCK_CPU_DIVIDER;
+            uint32_t masterClockFrequency = MASTER_CLOCK_FREQUENCY_GB * masterClockDivider;
 
             EMU_VERIFY(mClock.create());
             EMU_VERIFY(mMemory.create(MEM_SIZE_LOG2, MEM_PAGE_SIZE_LOG2));
@@ -89,6 +91,7 @@ namespace gb_context
             EMU_VERIFY(mGameLink.create(mRegistersIO));
             EMU_VERIFY(mDisplay.create(displayConfig, mClock, masterClockDivider, mMemory, mInterrupts, mRegistersIO));
             EMU_VERIFY(mJoypad.create(mClock, mInterrupts, mRegistersIO));
+            EMU_VERIFY(mTimer.create(mClock, masterClockFrequency, mInterrupts, mRegistersIO));
 
             reset();
 
@@ -97,6 +100,7 @@ namespace gb_context
 
         void destroy()
         {
+            mTimer.destroy();
             mJoypad.destroy();
             mDisplay.destroy();
             mGameLink.destroy();
@@ -123,6 +127,7 @@ namespace gb_context
             mGameLink.reset();
             mDisplay.reset();
             mJoypad.reset();
+            mTimer.reset();
         }
 
         virtual void setController(uint32_t index, uint32_t buttons)
@@ -171,6 +176,7 @@ namespace gb_context
             mGameLink.serialize(serializer);
             mDisplay.serialize(serializer);
             mJoypad.serialize(serializer);
+            mTimer.serialize(serializer);
             serializer.serialize(mHRAM);
             serializer.serialize(mBankROM, EMU_ARRAY_SIZE(mBankROM));
             serializer.serialize(mBankExternalRAM);
@@ -228,6 +234,7 @@ namespace gb_context
         gb::GameLink            mGameLink;
         gb::Display             mDisplay;
         gb::Joypad              mJoypad;
+        gb::Timer               mTimer;
     };
 }
 

@@ -31,6 +31,7 @@ namespace emu
         void execute(int32_t tick);
         void advance();
         void addEvent(TimerCallback callback, void* context, int32_t ticks);
+        void addSync(int32_t ticks);
         void clearEvents();
         void addListener(IListener& listener);
         void removeListener(IListener& listener);

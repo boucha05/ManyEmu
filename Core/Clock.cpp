@@ -119,13 +119,15 @@ namespace emu
 
     void Clock::addEvent(TimerCallback callback, void* context, int32_t ticks)
     {
-        // Add event to queue
         TimerEvent timerEvent;
         timerEvent.callback = callback;
         timerEvent.context = context;
         mTimers.insert(std::pair<int32_t, TimerEvent>(ticks, timerEvent));
+        addSync(ticks);
+    }
 
-        // Adjust desired ticks
+    void Clock::addSync(int32_t ticks)
+    {
         if (ticks < mDesiredTicks)
             setDesiredTicks(ticks);
     }
