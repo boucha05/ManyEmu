@@ -8,7 +8,10 @@ namespace
     static const uint8_t INT_MASK_ALL = 0x1f;
     static const uint8_t INT_BIT_COUNT = 5;
 
-    static const uint8_t INT_NOT_IMPLEMENTED = 0xfe;
+    static const uint8_t INT_NOT_IMPLEMENTED =
+        (1 << static_cast<uint8_t>(gb::Interrupts::Signal::LcdStat)) |
+        (1 << static_cast<uint8_t>(gb::Interrupts::Signal::Timer)) |
+        (1 << static_cast<uint8_t>(gb::Interrupts::Signal::Serial));
 
     static const uint8_t intBitMask[INT_BIT_COUNT] = { 0x01, 0x02, 0x04, 0x08, 0x10 };
     static const uint16_t intVector[INT_BIT_COUNT] = { 0x40, 0x48, 0x50, 0x58, 0x60 };
