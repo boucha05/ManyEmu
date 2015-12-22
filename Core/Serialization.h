@@ -26,7 +26,7 @@ namespace emu
         template <typename T>
         void serialize(std::vector<T>& value)
         {
-            uint32_t size = static_cast<T>(value.size());
+            uint32_t size = static_cast<uint32_t>(value.size());
             serialize(size);
             value.resize(size, static_cast<T>(0));
 

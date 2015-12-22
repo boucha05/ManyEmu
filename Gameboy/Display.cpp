@@ -2,6 +2,7 @@
 #include <Core/Serialization.h>
 #include "Display.h"
 #include "Interrupts.h"
+#include <algorithm>
 
 namespace
 {
@@ -52,6 +53,22 @@ namespace
     static const uint32_t PALETTE_MONO_BASE_OBP0_X4 = 4;
     static const uint32_t PALETTE_MONO_BASE_OBP1_X4 = 8;
     static const uint32_t PALETTE_MONO_SIZE = 12;
+
+    static const uint32_t SPRITE_LINE_LIMIT = 10;
+    static const uint32_t SPRITE_CAPACITY = 40;
+    static const uint32_t SPRITE_VISIBLE_X_BEGIN = 8;
+    static const uint32_t SPRITE_VISIBLE_X_END = SPRITE_VISIBLE_X_BEGIN + DISPLAY_SIZE_X;
+    static const uint32_t SPRITE_VISIBLE_Y_BEGIN = 16;
+    static const uint32_t SPRITE_VISIBLE_Y_END = SPRITE_VISIBLE_Y_BEGIN + DISPLAY_SIZE_Y;
+    static const uint8_t SPRITE_FLAG_BACKGROUND = 0x80;
+    static const uint8_t SPRITE_FLAG_FLIP_Y = 0x40;
+    static const uint8_t SPRITE_FLAG_FLIP_X = 0x20;
+    static const uint8_t SPRITE_FLAG_MONO_PALETTE_MASK = 0x10;
+    static const uint8_t SPRITE_FLAG_MONO_PALETTE_SHIFT = 4;
+    static const uint8_t SPRITE_FLAG_COLOR_BANK_MASK = 0x08;
+    static const uint8_t SPRITE_FLAG_COLOR_BANK_SHIFT = 3;
+    static const uint8_t SPRITE_FLAG_COLOR_PALETTE_MASK = 0x03;
+    static const uint8_t SPRITE_FLAG_COLOR_PALETTE_SHIFT = 0;
 
     static const uint8_t kMonoPalette[4][4] =
     {
@@ -180,6 +197,8 @@ namespace gb
         mRegOBP1                = 0x00;
         mRegWY                  = 0x00;
         mRegWX                  = 0x00;
+        mActiveSprites          = 0;
+        mSortedSprites          = false;
         resetClock();
     }
 
@@ -201,7 +220,10 @@ namespace gb
         EMU_VERIFY(memory.addMemoryRange(VRAM_BANK_START, VRAM_BANK_END, mMemoryVRAM.setReadWriteMemory(mVRAM.data() + mBankVRAM * VRAM_BANK_SIZE)));
 
         mOAM.resize(OAM_SIZE, 0);
-        EMU_VERIFY(memory.addMemoryRange(0xfe00, 0xfe9f, mMemoryOAM.setReadWriteMemory(mOAM.data())));
+        mOAMOrder.resize(SPRITE_CAPACITY);
+        mMemoryOAM.read.setReadMemory(mOAM.data());
+        mMemoryOAM.write.setWriteMethod(&onWriteOAM, this);
+        EMU_VERIFY(memory.addMemoryRange(0xfe00, 0xfe9f, mMemoryOAM));
 
         if (mConfig.model >= gb::Model::GBC)
         {
@@ -239,6 +261,7 @@ namespace gb
 
     void Display::destroy()
     {
+        mOAMOrder.clear();
         mOAM.clear();
         mVRAM.clear();
         mClockListener.destroy();
@@ -296,6 +319,9 @@ namespace gb
         if (mRegLCDC != value)
         {
             render(tick);
+            bool spriteSizeChanged = ((mRegLCDC ^ value) & LCDC_SPRITES_SIZE) != 0;
+            if (spriteSizeChanged)
+                mSortedSprites = false;
             mRegLCDC = value;
         }
     }
@@ -359,7 +385,7 @@ namespace gb
 
     uint8_t Display::readLY(int32_t tick, uint16_t addr)
     {
-        upateRasterPos(tick);
+        updateRasterPos(tick);
         return mRegLY;
     }
 
@@ -397,7 +423,7 @@ namespace gb
             uint8_t dma_value = memory_bus_read8(*mMemory, tick, read_addr + index);
             mOAM[index] = dma_value;
         }
-
+        mSortedSprites = false;
         mRegDMA = value;
     }
 
@@ -474,6 +500,16 @@ namespace gb
         }
     }
 
+    void Display::writeOAM(int32_t tick, uint16_t addr, uint8_t value)
+    {
+        if (mOAM[addr] != value)
+        {
+            render(tick);
+            mOAM[addr] = value;
+            mSortedSprites = false;
+        }
+    }
+
     void Display::reset()
     {
         mRegLCDC = 0x91;
@@ -522,6 +558,8 @@ namespace gb
         serializer.serialize(mRegOBP1);
         serializer.serialize(mRegWY);
         serializer.serialize(mRegWX);
+        if (serializer.isReading())
+            mSortedSprites = false;
     }
 
     void Display::setRenderSurface(void* surface, size_t pitch)
@@ -536,7 +574,7 @@ namespace gb
         mInterrupts->setInterrupt(tick, gb::Interrupts::Signal::VBlank);
     }
 
-    void Display::upateRasterPos(int32_t tick)
+    void Display::updateRasterPos(int32_t tick)
     {
         if (tick - mLineFirstTick <= mUpdateRasterPosFast)
         {
@@ -574,6 +612,33 @@ namespace gb
         }
     }
 
+    void Display::sortMonoSprites()
+    {
+        uint16_t keys[SPRITE_CAPACITY];
+
+        mActiveSprites = 0;
+        uint8_t spriteSizeY = (mRegLCDC & LCDC_SPRITES_SIZE) ? 16 : 8;
+        for (uint32_t index = 0; index < SPRITE_CAPACITY; ++index)
+        {
+            // Check if sprite is active
+            uint8_t spriteY = mOAM[index * 4 + 0];
+            if ((spriteY >= SPRITE_VISIBLE_Y_END) || (spriteY + spriteSizeY <= SPRITE_VISIBLE_Y_BEGIN))
+                continue;
+            uint8_t spriteX = mOAM[index * 4 + 1];
+            keys[mActiveSprites++] = (spriteX << 8) | (index & 0xff);
+        }
+
+        if (mActiveSprites)
+        {
+            // Sort sprites
+            std::sort(keys, keys + mActiveSprites, [](int a, int b){ return a < b; });
+            for (uint32_t index = 0; index < mActiveSprites; ++index)
+                mOAMOrder[index] = keys[index] & 0xff;
+        }
+
+        mSortedSprites = true;
+    }
+
     void Display::fetchTileRow(uint8_t* dest, const uint8_t* map, uint32_t tileX, uint32_t tileY, uint32_t count)
     {
         uint32_t base = (tileY & 0x1f) << 5;
@@ -601,6 +666,76 @@ namespace gb
         }
     }
 
+    void Display::drawSpritesMono(uint8_t* dest, uint8_t line, uint8_t spriteSizeY)
+    {
+        // Find active sprites visible on this line (up to the line limit)
+        uint8_t sprites[SPRITE_LINE_LIMIT];
+        uint8_t active = 0;
+        line += SPRITE_VISIBLE_Y_BEGIN;
+        for (uint8_t key = 0; key < mActiveSprites; ++key)
+        {
+            uint8_t index = mOAMOrder[key];
+            uint8_t spriteY = mOAM[index * 4 + 0];
+            if ((spriteY > line) || (spriteY + spriteSizeY <= line))
+                continue;
+            sprites[active] = index;
+            if (++active >= SPRITE_LINE_LIMIT)
+                break;
+        }
+
+        // Render active sprites
+        static const uint8_t spriteSizeX = 8;
+        uint8_t tileMask = (spriteSizeY >> 4) & 1;
+        for (uint8_t key = 0; key < active; ++key)
+        {
+            // Skip sprite if it is not visible horizontally
+            uint8_t index = sprites[key];
+            uint8_t spriteX = mOAM[index * 4 + 1];
+            if ((spriteX >= SPRITE_VISIBLE_X_END) || (spriteX + spriteSizeX <= SPRITE_VISIBLE_X_BEGIN))
+                continue;
+            spriteX -= SPRITE_VISIBLE_X_BEGIN;
+
+            // Fetch attributes
+            uint8_t spriteY = mOAM[index * 4 + 0];
+            uint8_t flags = mOAM[index * 4 + 3];
+
+            // Select line to render and adjust tile number
+            uint8_t offsetY = line - spriteY;
+            if ((flags & SPRITE_FLAG_FLIP_Y) != 0)
+                offsetY = spriteSizeY - 1 - offsetY;
+
+            // Get the tile number
+            uint8_t tile = mOAM[index * 4 + 2];
+            tile = (tile & ~tileMask) | ((offsetY >> 3) & tileMask);
+
+            // Get the pattern
+            uint8_t flipX = (flags & SPRITE_FLAG_FLIP_X) ? 7 : 0;
+            uint32_t tileAddr = (tile << 4) + (offsetY << 1);
+            uint8_t pattern0 = mVRAM[tileAddr + 0];
+            uint8_t pattern1 = mVRAM[tileAddr + 1];
+            const uint8_t* patternMask0 = patternMask[pattern0];
+            const uint8_t* patternMask1 = patternMask[pattern1];
+
+            // Get the palette
+            uint8_t palette = (((flags & SPRITE_FLAG_MONO_PALETTE_MASK) >> SPRITE_FLAG_MONO_PALETTE_SHIFT) << 2) + PALETTE_MONO_BASE_OBP0;
+
+            // Render pixels
+            bool backgroundSprite = (flags & SPRITE_FLAG_BACKGROUND) != 0;
+            for (uint8_t bit = 0; bit < spriteSizeX; ++bit)
+            {
+                uint8_t offsetX = spriteX + (bit ^ flipX);
+                uint8_t src = dest[offsetX];
+
+                uint8_t value = (patternMask0[bit] & 0x01) | (patternMask1[bit] & 0x02);
+                bool transparentBackground = !src;
+                bool visible = value && (!backgroundSprite || transparentBackground);
+                value |= palette;
+                value = visible ? value : src;
+                dest[offsetX] = value;
+            }
+        }
+    }
+
     void Display::blitLine(uint32_t* dest, uint8_t* src, uint32_t count)
     {
         for (uint32_t index = 0; index < count; ++index)
@@ -621,6 +756,11 @@ namespace gb
         bool firstTilePattern = (mRegLCDC & LCDC_TILE_DATA) == 0;
         bool lcdEnabled = (mRegLCDC & LCDC_LCD_ENABLE) != 0;
         bool windowEnabled = (mRegLCDC & LCDC_WINDOW_ENABLE) != 0;
+        bool spritesEnabled = (mRegLCDC & LCDC_SPRITES_ENABLE) != 0;
+        uint8_t spriteSizeY = (mRegLCDC & LCDC_SPRITES_SIZE) ? 16 : 8;
+
+        if (spritesEnabled && !mSortedSprites)
+            sortMonoSprites();
 
         if (windowEnabled)
         {
@@ -652,6 +792,11 @@ namespace gb
                     fetchTileRow(tileRowStorage, tileMap, tileX, tileY, RENDER_TILE_STORAGE);
                 }
                 drawTiles(tileDest, tileRowStorage, nullptr, tilePatterns + (tileOffsetY << 1), RENDER_TILE_STORAGE);
+
+                // TODO: Draw window
+
+                if (spritesEnabled)
+                    drawSpritesMono(rowStorage + 8, line, spriteSizeY);
             }
             blitLine(reinterpret_cast<uint32_t*>(dest), rowStorage + 8, DISPLAY_SIZE_X);
             dest += mPitch;
@@ -668,7 +813,7 @@ namespace gb
                 EMU_NOT_IMPLEMENTED();
             }
 
-            upateRasterPos(tick);
+            updateRasterPos(tick);
             if (mSurface)
             {
                 // Find first line
