@@ -45,12 +45,20 @@ namespace
     static const uint32_t RENDER_TILE_COUNT = DISPLAY_SIZE_X / 8;
     static const uint32_t RENDER_TILE_STORAGE = RENDER_TILE_COUNT + 1;
 
+    static const uint32_t PALETTE_MONO_BASE_BGP = 0;
+    static const uint32_t PALETTE_MONO_BASE_OBP0 = 4;
+    static const uint32_t PALETTE_MONO_BASE_OBP1 = 8;
+    static const uint32_t PALETTE_MONO_BASE_BGP_X4 = 0;
+    static const uint32_t PALETTE_MONO_BASE_OBP0_X4 = 4;
+    static const uint32_t PALETTE_MONO_BASE_OBP1_X4 = 8;
+    static const uint32_t PALETTE_MONO_SIZE = 12;
+
     static const uint8_t kMonoPalette[4][4] =
     {
-        { 0x00, 0x00, 0x00, 0x00 },
-        { 0x55, 0x55, 0x55, 0xff },
-        { 0xbb, 0xbb, 0xbb, 0xff },
         { 0xff, 0xff, 0xff, 0xff },
+        { 0xbb, 0xbb, 0xbb, 0xff },
+        { 0x55, 0x55, 0x55, 0xff },
+        { 0x00, 0x00, 0x00, 0x00 },
     };
 
     static uint8_t patternMask[256][8];
@@ -194,6 +202,12 @@ namespace gb
 
         mOAM.resize(OAM_SIZE, 0);
         EMU_VERIFY(memory.addMemoryRange(0xfe00, 0xfe9f, mMemoryOAM.setReadWriteMemory(mOAM.data())));
+
+        if (mConfig.model >= gb::Model::GBC)
+        {
+            EMU_NOT_IMPLEMENTED();
+        }
+        mPalette.resize(PALETTE_MONO_SIZE, *reinterpret_cast<const uint32_t*>(&kMonoPalette[0]));
         
         EMU_VERIFY(mRegisterAccessors.read.LCDC.create(registers, 0x40, *this, &Display::readLCDC));
         EMU_VERIFY(mRegisterAccessors.read.STAT.create(registers, 0x41, *this, &Display::readSTAT));
@@ -396,6 +410,7 @@ namespace gb
     {
         if (mRegBGP != value)
         {
+            updateMonoPalette(PALETTE_MONO_BASE_BGP, value);
             render(tick);
             mRegBGP = value;
         }
@@ -410,6 +425,7 @@ namespace gb
     {
         if (mRegOBP0 != value)
         {
+            updateMonoPalette(PALETTE_MONO_BASE_OBP0, value);
             render(tick);
             mRegOBP0 = value;
         }
@@ -424,6 +440,7 @@ namespace gb
     {
         if (mRegOBP1 != value)
         {
+            updateMonoPalette(PALETTE_MONO_BASE_OBP1, value);
             render(tick);
             mRegOBP1 = value;
         }
@@ -459,32 +476,39 @@ namespace gb
 
     void Display::reset()
     {
-        mRegLCDC = 0x00;
+        mRegLCDC = 0x91;
         mRegSTAT = 0x00;
         mRegSCY  = 0x00;
         mRegSCX  = 0x00;
         mRegLY   = 0x00;
         mRegLYC  = 0x00;
         mRegDMA  = 0x00;
-        mRegBGP  = 0x00;
-        mRegOBP0 = 0x00;
-        mRegOBP1 = 0x00;
+        mRegBGP  = 0xfc;
+        mRegOBP0 = 0xff;
+        mRegOBP1 = 0xff;
         mRegWY   = 0x00;
         mRegWX   = 0x00;
+        updateMonoPalette(PALETTE_MONO_BASE_BGP, mRegBGP);
+        updateMonoPalette(PALETTE_MONO_BASE_OBP0, mRegOBP0);
+        updateMonoPalette(PALETTE_MONO_BASE_OBP1, mRegOBP1);
     }
 
     void Display::serialize(emu::ISerializer& serializer)
     {
         serializer.serialize(mVRAM);
         serializer.serialize(mOAM);
+        serializer.serialize(mPalette);
         serializer.serialize(mSimulatedTick);
+        serializer.serialize(mRenderedLine);
+        serializer.serialize(mRenderedLineFirstTick);
         serializer.serialize(mRenderedTick);
         serializer.serialize(mDesiredTick);
-        serializer.serialize(mVBlankStartTick);
         serializer.serialize(mTicksPerLine);
+        serializer.serialize(mVBlankStartTick);
         serializer.serialize(mUpdateRasterPosFast);
         serializer.serialize(mLineFirstTick);
         serializer.serialize(mLineTick);
+        serializer.serialize(mRasterLine);
         serializer.serialize(mBankVRAM);
         serializer.serialize(mRegLCDC);
         serializer.serialize(mRegSTAT);
@@ -537,16 +561,26 @@ namespace gb
             mRegLY -= DISPLAY_LINE_COUNT;
     }
 
-    void Display::fetchTileRow(uint8_t* dest, const uint8_t* map, uint8_t bias, uint32_t tileX, uint32_t tileY, uint32_t count)
+    void Display::updateMonoPalette(uint32_t base, uint8_t value)
+    {
+        if (mConfig.model == gb::Model::GB)
+        {
+            for (uint32_t index = 0; index < 4; ++index)
+            {
+                uint8_t shade = value & 0x3;
+                value >>= 2;
+                mPalette[base + index] = *reinterpret_cast<const uint32_t*>(kMonoPalette[shade]);
+            }
+        }
+    }
+
+    void Display::fetchTileRow(uint8_t* dest, const uint8_t* map, uint32_t tileX, uint32_t tileY, uint32_t count)
     {
         uint32_t base = (tileY & 0x1f) << 5;
         for (uint32_t index = 0; index < count; ++index)
         {
             uint32_t offset = (tileX + index) & 0x1f;
-            uint8_t value = (map[base + offset] + bias) & 0xff;
-            //uint32_t posX = tileX + index;
-            //uint32_t posY = tileY;
-            //uint8_t value = ((posX & 0x0f) + ((posY & 0x0f) * 16)) & 0xff;
+            uint8_t value = map[base + offset];
             dest[index] = value;
         }
     }
@@ -557,24 +591,23 @@ namespace gb
         {
             uint32_t tile = tiles[index];
             uint32_t patternBase = tile << 4;
-            auto pattern0 = &patternMask[patterns[patternBase + 0]][0];
-            auto pattern1 = &patternMask[patterns[patternBase + 1]][0];
-            for (uint32_t offsetX = 0; offsetX < 8; ++offsetX)
-            {
-                auto value = pattern0[offsetX] + (pattern1[offsetX] << 1);
-                dest[offsetX] = value & 0x03;
-            }
+            auto pattern0 = reinterpret_cast<const uint32_t*>(&patternMask[patterns[patternBase + 0]][0]);
+            auto pattern1 = reinterpret_cast<const uint32_t*>(&patternMask[patterns[patternBase + 1]][0]);
+            auto value0 = (pattern0[0] & 0x01010101) + (pattern1[0] & 0x02020202) + PALETTE_MONO_BASE_BGP_X4;
+            auto value1 = (pattern0[1] & 0x01010101) + (pattern1[1] & 0x02020202) + PALETTE_MONO_BASE_BGP_X4;
+            reinterpret_cast<uint32_t*>(dest)[0] = value0;
+            reinterpret_cast<uint32_t*>(dest)[1] = value1;
             dest += 8;
         }
     }
 
-    void Display::blitLine(uint32_t* dest, uint8_t* src, uint32_t count, const uint32_t* palette, uint32_t paletteSize)
+    void Display::blitLine(uint32_t* dest, uint8_t* src, uint32_t count)
     {
         for (uint32_t index = 0; index < count; ++index)
         {
             uint8_t value = src[index];
-            EMU_ASSERT(value < paletteSize);
-            uint32_t color = palette[value];
+            EMU_ASSERT(value < mPalette.size());
+            uint32_t color = mPalette[value];
             dest[index] = color;
         }
     }
@@ -584,13 +617,15 @@ namespace gb
         uint8_t rowStorage[RENDER_ROW_STORAGE];
         uint8_t tileRowStorage[RENDER_TILE_STORAGE];
 
-        static bool firstBGTileMap = true;
-        static bool firstTilePattern = false;
-        static bool lcdEnabled = true;
+        bool firstBGTileMap = (mRegLCDC & LCDC_BG_TILE_MAP) == 0;
+        bool firstTilePattern = (mRegLCDC & LCDC_TILE_DATA) == 0;
+        bool lcdEnabled = (mRegLCDC & LCDC_LCD_ENABLE) != 0;
+        bool windowEnabled = (mRegLCDC & LCDC_WINDOW_ENABLE) != 0;
 
-        //firstBGTileMap = (mRegLCDC & LCDC_BG_TILE_MAP) == 0;
-        //firstTilePattern = (mRegLCDC & LCDC_TILE_DATA) == 0;
-        //lcdEnabled = (mRegLCDC & LCDC_LCD_ENABLE) != 0;
+        if (windowEnabled)
+        {
+            EMU_NOT_IMPLEMENTED();
+        }
 
         if (!lcdEnabled)
             memset(rowStorage, 0, RENDER_ROW_STORAGE);
@@ -601,13 +636,10 @@ namespace gb
         uint8_t tileYold = 0xff;
 
         auto tileMap = mVRAM.data() + (firstBGTileMap ? 0x1800 : 0x1c00);
-        auto tileBias = firstBGTileMap ? 0x00 : 0x80;
         auto tilePatterns = mVRAM.data() + (firstTilePattern ? 0x0800 : 0x0000);
         auto tileDest = rowStorage + 8 - tileOffsetX;
 
         auto dest = mSurface + mPitch * firstLine;
-        auto palette = reinterpret_cast<const uint32_t*>(kMonoPalette);
-        uint32_t paletteSize = 4;
         for (uint32_t line = firstLine; line <= lastLine; ++line)
         {
             if (lcdEnabled)
@@ -617,11 +649,11 @@ namespace gb
                 if (tileYold != tileY)
                 {
                     tileYold = tileY;
-                    fetchTileRow(tileRowStorage, tileMap, tileBias, tileX, tileY, RENDER_TILE_STORAGE);
+                    fetchTileRow(tileRowStorage, tileMap, tileX, tileY, RENDER_TILE_STORAGE);
                 }
                 drawTiles(tileDest, tileRowStorage, nullptr, tilePatterns + (tileOffsetY << 1), RENDER_TILE_STORAGE);
             }
-            blitLine(reinterpret_cast<uint32_t*>(dest), rowStorage + 8, DISPLAY_SIZE_X, palette, paletteSize);
+            blitLine(reinterpret_cast<uint32_t*>(dest), rowStorage + 8, DISPLAY_SIZE_X);
             dest += mPitch;
             ++lineY;
         }

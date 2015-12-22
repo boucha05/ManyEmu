@@ -17,16 +17,6 @@ namespace emu
             serialize(*values++);
     }
 
-    void ISerializer::serialize(std::vector<uint8_t>& value)
-    {
-        uint32_t size = static_cast<uint32_t>(value.size());
-        serialize(size);
-        value.resize(size, 0);
-
-        if (size)
-            serialize(&value[0], size * sizeof(uint8_t));
-    }
-
     ///////////////////////////////////////////////////////////////////////////
 
     BinaryReader::BinaryReader(IStream& stream)

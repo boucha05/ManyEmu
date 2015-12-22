@@ -22,7 +22,17 @@ namespace emu
         virtual void serialize(void* value, size_t size) = 0;
         void serialize(uint32_t* values, size_t size);
         void serialize(uint8_t* values, size_t size);
-        void serialize(std::vector<uint8_t>& value);
+
+        template <typename T>
+        void serialize(std::vector<T>& value)
+        {
+            uint32_t size = static_cast<T>(value.size());
+            serialize(size);
+            value.resize(size, static_cast<T>(0));
+
+            if (size)
+                serialize(&value[0], size * sizeof(T));
+        }
 
         bool isWriting() const
         {

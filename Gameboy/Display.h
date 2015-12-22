@@ -115,9 +115,10 @@ namespace gb
 
         void onVBlankStart(int32_t tick);
         void upateRasterPos(int32_t tick);
-        void fetchTileRow(uint8_t* dest, const uint8_t* map, uint8_t bias, uint32_t tileX, uint32_t tileY, uint32_t count);
+        void updateMonoPalette(uint32_t base, uint8_t value);
+        void fetchTileRow(uint8_t* dest, const uint8_t* map, uint32_t tileX, uint32_t tileY, uint32_t count);
         void drawTiles(uint8_t* dest, const uint8_t* tiles, const uint8_t* attributes, const uint8_t* patterns, uint16_t count);
-        void blitLine(uint32_t* dest, uint8_t* src, uint32_t count, const uint32_t* palette, uint32_t paletteSize);
+        void blitLine(uint32_t* dest, uint8_t* src, uint32_t count);
         void renderLinesMono(uint32_t firstLine, uint32_t lastLine);
         void render(int32_t tick);
 
@@ -136,6 +137,7 @@ namespace gb
         MEM_ACCESS_READ_WRITE   mMemoryOAM;
         std::vector<uint8_t>    mVRAM;
         std::vector<uint8_t>    mOAM;
+        std::vector<uint32_t>   mPalette;
         uint8_t*                mSurface;
         size_t                  mPitch;
         int32_t                 mSimulatedTick;
