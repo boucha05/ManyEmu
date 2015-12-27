@@ -16,6 +16,13 @@
 #include "GameSession.h"
 #include <Windows.h>
 
+#define DUMP_ROM_LIST 0
+
+#if DUMP_ROM_LIST
+#include <io.h>
+#include "Gameboy/GB.h"
+#endif
+
 namespace
 {
     bool initSDL()
@@ -789,6 +796,42 @@ int main()
     //config.autoSave = true;
     config.autoLoad = true;
     //config.profile = true;
+#endif
+
+#if DUMP_ROM_LIST
+    std::string filter = Path::join(config.romFolder, "*.gb*");
+    _finddata_t data;
+    auto handle = _findfirst(filter.c_str(), &data);
+    int valid = 1;
+    printf("File;ROM size;RAM size;Title;UseCGB;OnlyCGB;UseSGB;RAM;Battery;Timer;Rumble;Mapper;Destination;Cartridge type;Version;Licensee old;Licensee new;Manufacturer;Header checksum;Global checksum\n");
+    while (handle && valid)
+    {
+        std::string path = Path::join(config.romFolder, data.name);
+        gb::Rom::Description desc;
+        gb::Rom::readDescription(desc, path.c_str());
+        printf("%s;%d;%d;%s;%d;%d;%d;%d;%d;%d;%d;%s;%s;0x%02x;%d;0x%02x;0x%04x;0x%08x;0x%02x;0x%04x\n",
+            data.name,
+            desc.romSize,
+            desc.ramSize,
+            desc.title,
+            desc.useCGB,
+            desc.onlyCGB,
+            desc.useSGB,
+            desc.hasRam,
+            desc.hasBattery,
+            desc.hasTimer,
+            desc.hasRumble,
+            gb::Rom::getMapperName(desc.mapper),
+            gb::Rom::getDestinationName(desc.destination),
+            desc.cartridgeType,
+            desc.version,
+            desc.licenseeOld,
+            desc.licenseeNew,
+            desc.manufacturer,
+            desc.headerChecksum,
+            desc.globalChecksum);
+        valid = !_findnext(handle, &data);
+    }
 #endif
 
     Application application;

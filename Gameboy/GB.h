@@ -72,6 +72,8 @@ namespace gb
 
         static bool readDescription(Rom::Description& description, const char* path);
         static Rom* load(const char* path);
+        static const char* getMapperName(Mapper value);
+        static const char* getDestinationName(Destination value);
     };
 
     class Context : public emu::Context, public emu::IDisposable

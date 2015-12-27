@@ -10,8 +10,8 @@ namespace
     {
         uint32_t    EntryPoint;
         char        NintendoLogo[0x30];
-        char        Title[0xc];
-        uint16_t    ManufacturerCode;
+        char        Title[11];
+        uint8_t     ManufacturerCode[4];
         uint8_t     CGBFlag;
         uint16_t    NewLicenseeCode;
         uint8_t     SGBFlag;
@@ -146,7 +146,8 @@ namespace
             }
 
             memcpy(description.title, header.Title, 16);
-            description.manufacturer = emu::little_endian(header.ManufacturerCode);
+            memcpy(&description.manufacturer, &header.ManufacturerCode, sizeof(header.ManufacturerCode));
+            description.manufacturer = emu::little_endian(description.manufacturer);
             description.useCGB = (header.CGBFlag & 0x80) != 0;
             description.onlyCGB = (header.CGBFlag & 0x40) != 0;
             description.useSGB = header.SGBFlag == 0x03;
@@ -196,7 +197,6 @@ namespace
             description.version = header.MaskROMVersionNumber;
             description.licenseeOld = header.OldLicenseeCode;
             description.licenseeNew = emu::little_endian(header.NewLicenseeCode);
-            description.manufacturer = emu::little_endian(header.ManufacturerCode);
             description.headerChecksum = header.HeaderChecksum;
             description.globalChecksum = emu::little_endian(header.GlobalChecksum);
             return true;
@@ -214,8 +214,8 @@ namespace gb
     bool Rom::readDescription(Rom::Description& description, const char* path)
     {
         std::vector<char> buffer;
-        EMU_VERIFY(!readFile(buffer, path, HEADER_OFFSET + HEADER_SIZE));
-        EMU_VERIFY(RomImpl::getDescription(description, reinterpret_cast<const uint8_t*>(&buffer[HEADER_OFFSET]), buffer.size()));
+        EMU_VERIFY(readFile(buffer, path, HEADER_OFFSET + HEADER_SIZE));
+        EMU_VERIFY(RomImpl::getDescription(description, reinterpret_cast<const uint8_t*>(buffer.data()), buffer.size()));
         return true;
     }
 
@@ -232,5 +232,34 @@ namespace gb
             rom = nullptr;
         }
         return rom;
+    }
+
+    const char* Rom::getMapperName(Mapper value)
+    {
+        switch (value)
+        {
+        case Mapper::ROM: return "ROM";
+        case Mapper::MBC1: return "MBC1";
+        case Mapper::MBC2: return "MBC2";
+        case Mapper::MBC3: return "MBC3";
+        case Mapper::MBC4: return "MBC4";
+        case Mapper::MBC5: return "MBC5";
+        case Mapper::MMM01: return "MMM01";
+        case Mapper::PocketCamera: return "PocketCamera";
+        case Mapper::BandaiTama5: return "BandaiTama5";
+        case Mapper::HuC1: return "HuC1";
+        case Mapper::HuC3: return "HuC3";
+        default: return "???";
+        }
+    }
+
+    const char* Rom::getDestinationName(Destination value)
+    {
+        switch (value)
+        {
+        case Destination::Japan: return "Japan";
+        case Destination::NonJapan: return "Non Japan";
+        default: return "???";
+        }
     }
 }
