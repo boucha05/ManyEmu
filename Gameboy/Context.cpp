@@ -74,16 +74,8 @@ namespace gb_context
             EMU_VERIFY(mMemory.create(MEM_SIZE_LOG2, MEM_PAGE_SIZE_LOG2));
             EMU_VERIFY(mCpu.create(mClock, mMemory.getState(), masterClockDivider));
 
-            auto& desc = rom.getDescription();
-            switch (desc.mapper)
-            {
-            case gb::Rom::Mapper::ROM:
-                mMapper = gb::MapperROM::allocate(rom, mMemory, desc.ramSize, desc.hasBattery);
-                break;
-
-            default:
-                EMU_VERIFY(false);
-            }
+            mMapper = gb::createMapper(rom, mMemory);
+            EMU_VERIFY(mMapper);
 
             mWRAM.resize(isGBC ? WRAM_SIZE_GBC : WRAM_SIZE_GB, 0);
             mHRAM.resize(HRAM_SIZE, 0);
