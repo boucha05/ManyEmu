@@ -8,6 +8,7 @@
 #include "GameLink.h"
 #include "GB.h"
 #include "Interrupts.h"
+#include "Mappers.h"
 #include "Registers.h"
 #include "Timer.h"
 #include <vector>
@@ -31,10 +32,6 @@ namespace
     static const uint32_t MASTER_CLOCK_CPU_DIVIDER = 1;
     static const uint32_t MASTER_CLOCK_PRE_FRAME = DISPLAY_CLOCK_PER_FRAME;
 
-    static const uint32_t ROM_BANK_SIZE = 0x4000;
-
-    static const uint32_t BANK_SIZE_EXTERNAL_RAM = 0x2000;
-
     static const uint32_t WRAM_SIZE_GB = 0x2000;
     static const uint32_t WRAM_SIZE_GBC = 0x8000;
     static const uint32_t WRAM_BANK_SIZE = 0x1000;
@@ -48,13 +45,18 @@ namespace gb_context
     {
     public:
         ContextImpl()
-            : mRom(nullptr)
         {
+            initialize();
         }
 
         ~ContextImpl()
         {
             destroy();
+        }
+
+        void initialize()
+        {
+            mMapper = nullptr;
         }
 
         bool create(const gb::Rom& rom)
@@ -65,27 +67,39 @@ namespace gb_context
             gb::Display::Config displayConfig;
             displayConfig.model = mModel;
 
-            mRom = &rom;
-
             uint32_t masterClockDivider = MASTER_CLOCK_CPU_DIVIDER;
             uint32_t masterClockFrequency = MASTER_CLOCK_FREQUENCY_GB * masterClockDivider;
 
             EMU_VERIFY(mClock.create());
             EMU_VERIFY(mMemory.create(MEM_SIZE_LOG2, MEM_PAGE_SIZE_LOG2));
-            mCpu.create(mClock, mMemory.getState(), masterClockDivider);
+            EMU_VERIFY(mCpu.create(mClock, mMemory.getState(), masterClockDivider));
+
+            auto& desc = rom.getDescription();
+            switch (desc.mapper)
+            {
+            case gb::Rom::Mapper::ROM:
+                mMapper = gb::MapperROM::allocate(rom, mMemory, desc.ramSize, desc.hasBattery);
+                break;
+
+            default:
+                EMU_VERIFY(false);
+            }
 
             mWRAM.resize(isGBC ? WRAM_SIZE_GBC : WRAM_SIZE_GB, 0);
             mHRAM.resize(HRAM_SIZE, 0);
 
-            mBankROM[0] = 0;
-            mBankROM[1] = 1;
-            mBankExternalRAM = 0xff;
             mBankWRAM[0] = 0;
             mBankWRAM[1] = 1;
 
-            mRegistersIO.create(mMemory, 0xff00, 0x80, emu::RegisterBank::Access::ReadWrite);
-            mRegistersIE.create(mMemory, 0xffff, 0x01, emu::RegisterBank::Access::ReadWrite);
+            EMU_VERIFY(mRegistersIO.create(mMemory, 0xff00, 0x80, emu::RegisterBank::Access::ReadWrite));
+            EMU_VERIFY(mRegistersIE.create(mMemory, 0xffff, 0x01, emu::RegisterBank::Access::ReadWrite));
+
             EMU_VERIFY(updateMemoryMap());
+            EMU_VERIFY(mMemory.addMemoryRange(0xc000, 0xcfff, mMemoryWRAM[0]));
+            EMU_VERIFY(mMemory.addMemoryRange(0xd000, 0xdfff, mMemoryWRAM[1]));
+            EMU_VERIFY(mMemory.addMemoryRange(0xe000, 0xefff, mMemoryWRAM[2]));
+            EMU_VERIFY(mMemory.addMemoryRange(0xf000, 0xfdff, mMemoryWRAM[3]));
+            EMU_VERIFY(mMemory.addMemoryRange(0xff80, 0xfffe, mMemoryHRAM));
 
             EMU_VERIFY(mInterrupts.create(mCpu, mRegistersIO, mRegistersIE));
             EMU_VERIFY(mGameLink.create(mRegistersIO));
@@ -107,11 +121,12 @@ namespace gb_context
             mInterrupts.destroy();
             mRegistersIE.destroy();
             mRegistersIO.destroy();
-            mExternalRAM.clear();
             mWRAM.clear();
             mHRAM.clear();
+            if (mMapper)
+                delete mMapper;
             mMemory.destroy();
-            mRom = nullptr;
+            initialize();
         }
 
         virtual void dispose()
@@ -123,6 +138,8 @@ namespace gb_context
         {
             mClock.reset();
             mCpu.reset();
+            if (mMapper)
+                mMapper->reset();
             mInterrupts.reset();
             mGameLink.reset();
             mDisplay.reset();
@@ -163,8 +180,10 @@ namespace gb_context
             memory_bus_write8(mMemory.getState(), mClock.getDesiredTicks(), addr, value);
         }
 
-        virtual void serializeGameData(emu::ISerializer& /*serializer*/)
+        virtual void serializeGameData(emu::ISerializer& serializer)
         {
+            if (mMapper)
+                mMapper->serializeGameData(serializer);
         }
 
         virtual void serializeGameState(emu::ISerializer& serializer)
@@ -172,15 +191,16 @@ namespace gb_context
             uint32_t version = 1;
             mClock.serialize(serializer);
             mCpu.serialize(serializer);
+            if (mMapper)
+                mMapper->serializeGameState(serializer);
+            serializer.serialize(mWRAM);
+            serializer.serialize(mHRAM);
+            serializer.serialize(mBankWRAM, EMU_ARRAY_SIZE(mBankWRAM));
             mInterrupts.serialize(serializer);
             mGameLink.serialize(serializer);
             mDisplay.serialize(serializer);
             mJoypad.serialize(serializer);
             mTimer.serialize(serializer);
-            serializer.serialize(mHRAM);
-            serializer.serialize(mBankROM, EMU_ARRAY_SIZE(mBankROM));
-            serializer.serialize(mBankExternalRAM);
-            serializer.serialize(mBankWRAM, EMU_ARRAY_SIZE(mBankWRAM));
         }
 
         emu::RegisterBank& getRegistersIO()
@@ -196,37 +216,23 @@ namespace gb_context
     private:
         bool updateMemoryMap()
         {
-            const auto& romContent = mRom->getContent();
-            EMU_VERIFY(mMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0x0000, 0x3fff, mMemoryROM[0].setReadMemory(romContent.rom + mBankROM[0] * ROM_BANK_SIZE)));
-            EMU_VERIFY(mMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0x4000, 0x7fff, mMemoryROM[1].setReadMemory(romContent.rom + mBankROM[1] * ROM_BANK_SIZE)));
-            if (!mExternalRAM.empty())
-            {
-                EMU_VERIFY(mMemory.addMemoryRange(0xa000, 0xbfff, mMemoryExternalRAM.setReadWriteMemory(mExternalRAM.data())));
-            }
-            EMU_VERIFY(mMemory.addMemoryRange(0xc000, 0xcfff, mMemoryWRAM[0].setReadWriteMemory(mWRAM.data() + mBankWRAM[0] * WRAM_BANK_SIZE)));
-            EMU_VERIFY(mMemory.addMemoryRange(0xd000, 0xdfff, mMemoryWRAM[1].setReadWriteMemory(mWRAM.data() + mBankWRAM[1] * WRAM_BANK_SIZE)));
-            EMU_VERIFY(mMemory.addMemoryRange(0xe000, 0xefff, mMemoryWRAM[2].setReadWriteMemory(mWRAM.data() + mBankWRAM[0] * WRAM_BANK_SIZE)));
-            EMU_VERIFY(mMemory.addMemoryRange(0xf000, 0xfdff, mMemoryWRAM[3].setReadWriteMemory(mWRAM.data() + mBankWRAM[1] * WRAM_BANK_SIZE)));
-            EMU_VERIFY(mMemory.addMemoryRange(0xff80, 0xfffe, mMemoryHRAM.setReadWriteMemory(mHRAM.data())));
+            mMemoryWRAM[0].setReadWriteMemory(mWRAM.data() + mBankWRAM[0] * WRAM_BANK_SIZE);
+            mMemoryWRAM[1].setReadWriteMemory(mWRAM.data() + mBankWRAM[1] * WRAM_BANK_SIZE);
+            mMemoryWRAM[2].setReadWriteMemory(mWRAM.data() + mBankWRAM[0] * WRAM_BANK_SIZE);
+            mMemoryWRAM[3].setReadWriteMemory(mWRAM.data() + mBankWRAM[1] * WRAM_BANK_SIZE);
+            mMemoryHRAM.setReadWriteMemory(mHRAM.data());
             return true;
         }
 
         gb::Model               mModel;
-        const gb::Rom*          mRom;
         emu::Clock              mClock;
         emu::MemoryBus          mMemory;
         gb::CpuZ80              mCpu;
-        MEM_ACCESS              mMemoryROM[2];
-        MEM_ACCESS_READ_WRITE   mMemoryExternalRAM;
+        gb::IMapper*            mMapper;
         MEM_ACCESS_READ_WRITE   mMemoryWRAM[4];
-        MEM_ACCESS_READ_WRITE   mMemoryIO;
         MEM_ACCESS_READ_WRITE   mMemoryHRAM;
-        MEM_ACCESS_READ_WRITE   mMemoryIntEnable;
-        std::vector<uint8_t>    mExternalRAM;
         std::vector<uint8_t>    mWRAM;
         std::vector<uint8_t>    mHRAM;
-        uint8_t                 mBankROM[2];
-        uint8_t                 mBankExternalRAM;
         uint8_t                 mBankWRAM[2];
         emu::RegisterBank       mRegistersIO;
         emu::RegisterBank       mRegistersIE;
