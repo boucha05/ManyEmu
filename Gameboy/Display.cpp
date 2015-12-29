@@ -846,8 +846,8 @@ namespace gb
 
                 // Find last line
                 uint32_t lastLine = mRasterLine;
-                if (lastLine >= DISPLAY_LINE_COUNT)
-                    lastLine = DISPLAY_LINE_COUNT - 1;
+                if (lastLine >= DISPLAY_SIZE_Y)
+                    lastLine = DISPLAY_SIZE_Y - 1;
 
                 if (firstLine <= lastLine)
                 {
