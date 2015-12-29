@@ -1764,7 +1764,8 @@ namespace gb
         static int traceStart = 0x0000;
         static int traceBreak = 0x0000;
         static int traceCount = 0;
-        if (log && (traceCount++ >= traceStart))
+        ++traceCount;
+        if (log && (traceCount >= traceStart))
         {
             char temp[32];
             auto nextPC = disassemble(temp, sizeof(temp), PC);

@@ -153,7 +153,7 @@ namespace gb
 
     void MapperMBC1::serializeGameState(emu::ISerializer& serializer)
     {
-        MapperBase::reset();
+        MapperBase::serializeGameState(serializer);
         serializer.serialize(mRamBankMode);
     }
 

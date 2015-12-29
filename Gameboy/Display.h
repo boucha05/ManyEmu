@@ -123,7 +123,7 @@ namespace gb
         void updateRasterPos(int32_t tick);
         void updateMonoPalette(uint32_t base, uint8_t value);
         void sortMonoSprites();
-        void fetchTileRow(uint8_t* dest, const uint8_t* map, uint32_t tileX, uint32_t tileY, uint32_t count);
+        void fetchTileRow(uint8_t* dest, const uint8_t* map, uint32_t tileX, uint32_t tileY, uint8_t tileOffset, uint32_t count);
         void drawTiles(uint8_t* dest, const uint8_t* tiles, const uint8_t* attributes, const uint8_t* patterns, uint16_t count);
         void drawSpritesMono(uint8_t* dest, uint8_t line, uint8_t spriteSizeY);
         void blitLine(uint32_t* dest, uint8_t* src, uint32_t count);

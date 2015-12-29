@@ -639,14 +639,14 @@ namespace gb
         mSortedSprites = true;
     }
 
-    void Display::fetchTileRow(uint8_t* dest, const uint8_t* map, uint32_t tileX, uint32_t tileY, uint32_t count)
+    void Display::fetchTileRow(uint8_t* dest, const uint8_t* map, uint32_t tileX, uint32_t tileY, uint8_t tileOffset, uint32_t count)
     {
         uint32_t base = (tileY & 0x1f) << 5;
         for (uint32_t index = 0; index < count; ++index)
         {
             uint32_t offset = (tileX + index) & 0x1f;
             uint8_t value = map[base + offset];
-            dest[index] = value;
+            dest[index] = (value + tileOffset) & 0xff;
         }
     }
 
@@ -693,7 +693,6 @@ namespace gb
             uint8_t spriteX = mOAM[index * 4 + 1];
             if ((spriteX >= SPRITE_VISIBLE_X_END) || (spriteX + spriteSizeX <= SPRITE_VISIBLE_X_BEGIN))
                 continue;
-            spriteX -= SPRITE_VISIBLE_X_BEGIN;
 
             // Fetch attributes
             uint8_t spriteY = mOAM[index * 4 + 0];
@@ -778,6 +777,7 @@ namespace gb
         auto tileMap = mVRAM.data() + (firstBGTileMap ? 0x1800 : 0x1c00);
         auto tilePatterns = mVRAM.data() + (firstTilePattern ? 0x0800 : 0x0000);
         auto tileDest = rowStorage + 8 - tileOffsetX;
+        uint8_t tileOffset = firstTilePattern ? 0x80 : 0x00;
 
         auto dest = mSurface + mPitch * firstLine;
         for (uint32_t line = firstLine; line <= lastLine; ++line)
@@ -789,14 +789,14 @@ namespace gb
                 if (tileYold != tileY)
                 {
                     tileYold = tileY;
-                    fetchTileRow(tileRowStorage, tileMap, tileX, tileY, RENDER_TILE_STORAGE);
+                    fetchTileRow(tileRowStorage, tileMap, tileX, tileY, tileOffset, RENDER_TILE_STORAGE);
                 }
                 drawTiles(tileDest, tileRowStorage, nullptr, tilePatterns + (tileOffsetY << 1), RENDER_TILE_STORAGE);
 
                 // TODO: Draw window
 
                 if (spritesEnabled)
-                    drawSpritesMono(rowStorage + 8, line, spriteSizeY);
+                    drawSpritesMono(rowStorage, line, spriteSizeY);
             }
             blitLine(reinterpret_cast<uint32_t*>(dest), rowStorage + 8, DISPLAY_SIZE_X);
             dest += mPitch;
