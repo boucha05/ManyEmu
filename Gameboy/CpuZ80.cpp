@@ -571,6 +571,7 @@ namespace gb
         SP = 0xfffe;
         PC = 0x0100;
         setIME(false);
+        mRegs.r8.halted = false;
         resetClock();
     }
 
@@ -579,6 +580,7 @@ namespace gb
         push16(PC);
         PC = addr;
         setIME(false);
+        mRegs.r8.halted = false;
     }
 
     void CpuZ80::resetClock()
@@ -1129,7 +1131,9 @@ namespace gb
 
     void CpuZ80::insn_halt()
     {
-        EMU_NOT_IMPLEMENTED();
+        mRegs.r8.halted = true;
+        if (mExecutedTicks < mDesiredTicks)
+            mExecutedTicks = mDesiredTicks;
     }
 
     void CpuZ80::insn_stop()
@@ -1787,6 +1791,9 @@ namespace gb
 
     void CpuZ80::execute()
     {
+        if (mRegs.r8.halted && (mExecutedTicks < mDesiredTicks))
+            mExecutedTicks = mDesiredTicks;
+
         while (mExecutedTicks < mDesiredTicks)
         {
             trace();
@@ -1894,6 +1901,8 @@ namespace gb
         serializer.serialize(HL);
         serializer.serialize(SP);
         serializer.serialize(PC);
+        serializer.serialize(IME);
+        serializer.serialize(mRegs.r8.halted);
     }
 
     void CpuZ80::setIME(bool enable)

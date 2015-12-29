@@ -208,6 +208,7 @@ namespace gb
                 uint16_t    reserved_sp;
                 uint16_t    reserved_pc;
                 uint8_t     ime;
+                uint8_t     halted;
             }               r8;
         };
 
