@@ -749,58 +749,81 @@ namespace gb
     void Display::renderLinesMono(uint32_t firstLine, uint32_t lastLine)
     {
         uint8_t rowStorage[RENDER_ROW_STORAGE];
-        uint8_t tileRowStorage[RENDER_TILE_STORAGE];
+        uint8_t bgTileRowStorage[RENDER_TILE_STORAGE];
+        uint8_t windowTileRowStorage[RENDER_TILE_STORAGE];
 
-        bool firstBGTileMap = (mRegLCDC & LCDC_BG_TILE_MAP) == 0;
-        bool firstTilePattern = (mRegLCDC & LCDC_TILE_DATA) == 0;
         bool lcdEnabled = (mRegLCDC & LCDC_LCD_ENABLE) != 0;
+        uint16_t windowTileMapOffset = (mRegLCDC & LCDC_WINDOW_TILE_MAP) ? 0x1c00 : 0x1800;
         bool windowEnabled = (mRegLCDC & LCDC_WINDOW_ENABLE) != 0;
-        bool spritesEnabled = (mRegLCDC & LCDC_SPRITES_ENABLE) != 0;
+        bool firstTilePattern = (mRegLCDC & LCDC_TILE_DATA) == 0;
+        uint16_t bgTileMapOffset = (mRegLCDC & LCDC_BG_TILE_MAP) ? 0x1c00 : 0x1800;
+        bool bgEnabled = (mRegLCDC & LCDC_BG_ENABLE) != 0;
         uint8_t spriteSizeY = (mRegLCDC & LCDC_SPRITES_SIZE) ? 16 : 8;
+        bool spritesEnabled = (mRegLCDC & LCDC_SPRITES_ENABLE) != 0;
 
         if (spritesEnabled && !mSortedSprites)
             sortMonoSprites();
 
-        if (windowEnabled)
-        {
-            EMU_NOT_IMPLEMENTED();
-        }
-
-        if (!lcdEnabled)
+        if (!lcdEnabled || !bgEnabled)
             memset(rowStorage, 0, RENDER_ROW_STORAGE);
 
-        uint8_t tileX = (mRegSCX >> 3) & 0xff;
-        uint8_t tileOffsetX = mRegSCX & 0x07;
-        uint8_t lineY = (mRegSCY + firstLine) & 0xff;
-        uint8_t tileYold = 0xff;
+        uint16_t tilePatternOffset = firstTilePattern ? 0x0800 : 0x0000;
+        uint8_t tileBias = firstTilePattern ? 0x80 : 0x00;
+        auto tilePatterns = mVRAM.data() + tilePatternOffset;
 
-        auto tileMap = mVRAM.data() + (firstBGTileMap ? 0x1800 : 0x1c00);
-        auto tilePatterns = mVRAM.data() + (firstTilePattern ? 0x0800 : 0x0000);
-        auto tileDest = rowStorage + 8 - tileOffsetX;
-        uint8_t tileOffset = firstTilePattern ? 0x80 : 0x00;
+        uint8_t windowTileCountX = (windowEnabled && (mRegWX < DISPLAY_SIZE_X + 7)) ? (DISPLAY_SIZE_X + 7 - mRegWX + 7) >> 3 : 0;
+        uint8_t windowPrevTileY = 0xff;
+        auto windowTileMap = mVRAM.data() + windowTileMapOffset;
+        auto windowTileOffset = 8 - 7 + (mRegWX & 0x07);
+        auto windowTileDest = rowStorage + windowTileOffset;
+        EMU_ASSERT(windowTileCountX <= RENDER_TILE_STORAGE);
+        EMU_ASSERT(windowTileOffset + (windowTileCountX << 3) <= RENDER_ROW_STORAGE);
+
+        uint8_t bgTileX = (mRegSCX >> 3) & 0xff;
+        uint8_t bgTileOffsetX = mRegSCX & 0x07;
+        uint8_t bgLineY = (mRegSCY + firstLine) & 0xff;
+        uint8_t bgPrevTileY = 0xff;
+        auto bgTileMap = mVRAM.data() + bgTileMapOffset;
+        auto bgTileDest = rowStorage + 8 - bgTileOffsetX;
 
         auto dest = mSurface + mPitch * firstLine;
         for (uint32_t line = firstLine; line <= lastLine; ++line)
         {
             if (lcdEnabled)
             {
-                uint8_t tileY = lineY >> 3;
-                uint8_t tileOffsetY = lineY & 0x07;
-                if (tileYold != tileY)
-                {
-                    tileYold = tileY;
-                    fetchTileRow(tileRowStorage, tileMap, tileX, tileY, tileOffset, RENDER_TILE_STORAGE);
-                }
-                drawTiles(tileDest, tileRowStorage, nullptr, tilePatterns + (tileOffsetY << 1), RENDER_TILE_STORAGE);
+                bool hasWindow = windowEnabled && (line >= mRegWY);
 
-                // TODO: Draw window
+                if (bgEnabled)
+                {
+                    uint8_t bgTileY = bgLineY >> 3;
+                    uint8_t bgTileOffsetY = bgLineY & 0x07;
+                    if (bgPrevTileY != bgTileY)
+                    {
+                        bgPrevTileY = bgTileY;
+                        fetchTileRow(bgTileRowStorage, bgTileMap, bgTileX, bgTileY, tileBias, RENDER_TILE_STORAGE);
+                    }
+                    drawTiles(bgTileDest, bgTileRowStorage, nullptr, tilePatterns + (bgTileOffsetY << 1), RENDER_TILE_STORAGE);
+                    ++bgLineY;
+                }
+
+                if (hasWindow)
+                {
+                    uint8_t windowLineY = line - mRegWY;
+                    uint8_t windowTileY = windowLineY >> 3;
+                    uint8_t windowTileOffsetY = windowLineY & 0x07;
+                    if (windowPrevTileY != windowTileY)
+                    {
+                        windowPrevTileY = windowTileY;
+                        fetchTileRow(windowTileRowStorage, windowTileMap, 0, windowTileY, tileBias, windowTileCountX);
+                    }
+                    drawTiles(windowTileDest, windowTileRowStorage, nullptr, tilePatterns + (windowTileOffsetY << 1), windowTileCountX);
+                }
 
                 if (spritesEnabled)
                     drawSpritesMono(rowStorage, line, spriteSizeY);
             }
             blitLine(reinterpret_cast<uint32_t*>(dest), rowStorage + 8, DISPLAY_SIZE_X);
             dest += mPitch;
-            ++lineY;
         }
     }
 
