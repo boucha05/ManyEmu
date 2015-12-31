@@ -42,6 +42,11 @@ namespace
     static const uint32_t DISPLAY_SIZE_Y = 144;
     static const uint32_t DISPLAY_LINE_COUNT = DISPLAY_SIZE_Y + DISPLAY_VBLANK_SIZE;
 
+    static const uint32_t MODE0_START_TICK = 252;
+    static const uint32_t MODE1_START_TICK = TICKS_PER_LINE * DISPLAY_SIZE_Y;
+    static const uint32_t MODE2_START_TICK = 0;
+    static const uint32_t MODE3_START_TICK = 80;
+
     static const uint32_t RENDER_ROW_STORAGE = DISPLAY_SIZE_X + 16;
     static const uint32_t RENDER_TILE_COUNT = DISPLAY_SIZE_X / 8;
     static const uint32_t RENDER_TILE_STORAGE = RENDER_TILE_COUNT + 1;
@@ -182,6 +187,8 @@ namespace gb
         mRenderedTick           = 0;
         mTicksPerLine           = 0;
         mVBlankStartTick        = 0;
+        mMode0StartTick         = 0;
+        mMode3StartTick         = 0;
         mUpdateRasterPosFast    = 0;
         mRasterLine             = 0;
         mBankVRAM               = 0;
@@ -205,7 +212,9 @@ namespace gb
     bool Display::create(Config& config, emu::Clock& clock, uint32_t master_clock_divider, emu::MemoryBus& memory, Interrupts& interrupts, emu::RegisterBank& registers)
     {
         mTicksPerLine = TICKS_PER_LINE * master_clock_divider;
-        mVBlankStartTick = DISPLAY_SIZE_Y * mTicksPerLine;
+        mVBlankStartTick = MODE1_START_TICK * master_clock_divider;
+        mMode0StartTick = MODE0_START_TICK * master_clock_divider;
+        mMode3StartTick = MODE3_START_TICK * master_clock_divider;
         mUpdateRasterPosFast = UPDATE_RASTER_POS_FAST * master_clock_divider;
 
         mClock = &clock;
@@ -331,8 +340,10 @@ namespace gb
 
     uint8_t Display::readSTAT(int32_t tick, uint16_t addr)
     {
-        EMU_NOT_IMPLEMENTED();
-        return mRegSTAT;
+        uint8_t mode = getMode(tick);
+        uint8_t coincidence = mRegLY == mRegLYC ? STAT_LYC_LY_STATUS : 0;
+        uint8_t value = mRegSTAT | mode | coincidence;
+        return value;
     }
 
     void Display::writeSTAT(int32_t tick, uint16_t addr, uint8_t value)
@@ -542,8 +553,6 @@ namespace gb
         serializer.serialize(mRenderedLineFirstTick);
         serializer.serialize(mRenderedTick);
         serializer.serialize(mDesiredTick);
-        serializer.serialize(mTicksPerLine);
-        serializer.serialize(mVBlankStartTick);
         serializer.serialize(mUpdateRasterPosFast);
         serializer.serialize(mLineFirstTick);
         serializer.serialize(mLineTick);
@@ -600,6 +609,18 @@ namespace gb
         }
         if (mRegLY >= DISPLAY_LINE_COUNT)
             mRegLY -= DISPLAY_LINE_COUNT;
+    }
+
+    uint8_t Display::getMode(int32_t tick)
+    {
+        updateRasterPos(tick);
+        if (tick >= mVBlankStartTick)
+            return 1;
+        if (mLineTick < mMode3StartTick)
+            return 2;
+        if (mLineTick < mMode0StartTick)
+            return 3;
+        return 0;
     }
 
     void Display::updateMonoPalette(uint32_t base, uint8_t value)
@@ -758,7 +779,7 @@ namespace gb
         bool lcdEnabled = (mRegLCDC & LCDC_LCD_ENABLE) != 0;
         uint16_t windowTileMapOffset = (mRegLCDC & LCDC_WINDOW_TILE_MAP) ? 0x1c00 : 0x1800;
         bool windowEnabled = (mRegLCDC & LCDC_WINDOW_ENABLE) != 0;
-        bool firstTilePattern = (mRegLCDC & LCDC_TILE_DATA) == 0;
+        bool bgFirstTilePattern = (mRegLCDC & LCDC_TILE_DATA) != 0;
         uint16_t bgTileMapOffset = (mRegLCDC & LCDC_BG_TILE_MAP) ? 0x1c00 : 0x1800;
         bool bgEnabled = (mRegLCDC & LCDC_BG_ENABLE) != 0;
         uint8_t spriteSizeY = (mRegLCDC & LCDC_SPRITES_SIZE) ? 16 : 8;
@@ -770,9 +791,14 @@ namespace gb
         if (!lcdEnabled || !bgEnabled)
             memset(rowStorage, 0, RENDER_ROW_STORAGE);
 
-        uint16_t tilePatternOffset = firstTilePattern ? 0x0800 : 0x0000;
-        uint8_t tileBias = firstTilePattern ? 0x80 : 0x00;
-        auto tilePatterns = mVRAM.data() + tilePatternOffset;
+        uint8_t spritesTileBias = 0x00;
+        auto spritesTilePatterns = mVRAM.data() + 0x0000;
+
+        uint8_t windowTileBias = 0x80;
+        auto windowTilePatterns = mVRAM.data() + 0x0800;
+
+        uint8_t bgTileBias = bgFirstTilePattern ? spritesTileBias : windowTileBias;
+        auto bgTilePatterns = bgFirstTilePattern ? spritesTilePatterns : windowTilePatterns;
 
         uint8_t windowTileCountX = (windowEnabled && (mRegWX < DISPLAY_SIZE_X + 7)) ? (DISPLAY_SIZE_X + 7 - mRegWX + 7) >> 3 : 0;
         uint8_t windowPrevTileY = 0xff;
@@ -803,9 +829,9 @@ namespace gb
                     if (bgPrevTileY != bgTileY)
                     {
                         bgPrevTileY = bgTileY;
-                        fetchTileRow(bgTileRowStorage, bgTileMap, bgTileX, bgTileY, tileBias, RENDER_TILE_STORAGE);
+                        fetchTileRow(bgTileRowStorage, bgTileMap, bgTileX, bgTileY, bgTileBias, RENDER_TILE_STORAGE);
                     }
-                    drawTiles(bgTileDest, bgTileRowStorage, nullptr, tilePatterns + (bgTileOffsetY << 1), RENDER_TILE_STORAGE);
+                    drawTiles(bgTileDest, bgTileRowStorage, nullptr, bgTilePatterns + (bgTileOffsetY << 1), RENDER_TILE_STORAGE);
                     ++bgLineY;
                 }
 
@@ -817,9 +843,9 @@ namespace gb
                     if (windowPrevTileY != windowTileY)
                     {
                         windowPrevTileY = windowTileY;
-                        fetchTileRow(windowTileRowStorage, windowTileMap, 0, windowTileY, tileBias, windowTileCountX);
+                        fetchTileRow(windowTileRowStorage, windowTileMap, 0, windowTileY, windowTileBias, windowTileCountX);
                     }
-                    drawTiles(windowTileDest, windowTileRowStorage, nullptr, tilePatterns + (windowTileOffsetY << 1), windowTileCountX);
+                    drawTiles(windowTileDest, windowTileRowStorage, nullptr, windowTilePatterns + (windowTileOffsetY << 1), windowTileCountX);
                 }
 
                 if (spritesEnabled)

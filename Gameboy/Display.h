@@ -125,6 +125,7 @@ namespace gb
 
         void onVBlankStart(int32_t tick);
         void updateRasterPos(int32_t tick);
+        uint8_t getMode(int32_t tick);
         void updateMonoPalette(uint32_t base, uint8_t value);
         void sortMonoSprites();
         void fetchTileRow(uint8_t* dest, const uint8_t* map, uint32_t tileX, uint32_t tileY, uint8_t tileOffset, uint32_t count);
@@ -159,11 +160,13 @@ namespace gb
         uint8_t                 mRenderedLineFirstTick;
         int32_t                 mRenderedTick;
         int32_t                 mDesiredTick;
-        uint32_t                mTicksPerLine;
-        uint32_t                mVBlankStartTick;
-        uint32_t                mUpdateRasterPosFast;
-        uint32_t                mLineFirstTick;
-        uint32_t                mLineTick;
+        int32_t                 mTicksPerLine;
+        int32_t                 mVBlankStartTick;
+        int32_t                 mMode0StartTick;
+        int32_t                 mMode3StartTick;
+        int32_t                 mUpdateRasterPosFast;
+        int32_t                 mLineFirstTick;
+        int32_t                 mLineTick;
         uint8_t                 mRasterLine;
         uint8_t                 mBankVRAM;
         uint8_t                 mRegLCDC;
