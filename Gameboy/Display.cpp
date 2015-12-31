@@ -225,6 +225,9 @@ namespace gb
         mMemoryOAM.write.setWriteMethod(&onWriteOAM, this);
         EMU_VERIFY(memory.addMemoryRange(0xfe00, 0xfe9f, mMemoryOAM));
 
+        mMemoryNotUsable.write.setWriteMethod(&onWriteNotUsable, this, 0);
+        EMU_VERIFY(memory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, 0xfea0, 0xfeff, mMemoryNotUsable.write));
+
         if (mConfig.model >= gb::Model::GBC)
         {
             EMU_NOT_IMPLEMENTED();
@@ -591,7 +594,7 @@ namespace gb
             uint8_t rasterLine = tick / mTicksPerLine;
             uint8_t deltaLine = rasterLine - mRasterLine;
             mRasterLine = rasterLine;
-            mRegLY += rasterLine;
+            mRegLY = rasterLine;
             mLineTick = tick % mTicksPerLine;
             mLineFirstTick = tick - mLineTick;
         }

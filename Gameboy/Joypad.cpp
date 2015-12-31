@@ -137,7 +137,7 @@ namespace gb
             if (mButtons & gb::Context::ButtonRight)
                 nextJOYP &= ~JOYP_RIGHT;
         }
-        mRegJOYP = nextJOYP;
+        mRegJOYP = (value & ~JOYP_ALL_RELEASED) | nextJOYP;
     }
 
     void Joypad::serialize(emu::ISerializer& serializer)

@@ -31,7 +31,7 @@ namespace emu
             value.resize(size, static_cast<T>(0));
 
             if (size)
-                serialize(&value[0], size * sizeof(T));
+                serialize(&value[0], size);
         }
 
         bool isWriting() const

@@ -43,7 +43,7 @@ uint8_t memory_bus_read8(const MEMORY_BUS& bus, int32_t ticks, uint16_t addr)
         }
         page = page->next;
     }
-    //ASSERT(false);
+    ASSERT(false);
     return 0;
 }
 
@@ -73,7 +73,7 @@ void memory_bus_write8(const MEMORY_BUS& bus, int32_t ticks, uint16_t addr, uint
         }
         page = page->next;
     }
-    //ASSERT(false);
+    ASSERT(false);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

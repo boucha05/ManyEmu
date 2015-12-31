@@ -193,6 +193,7 @@ namespace gb_context
             mDisplay.serialize(serializer);
             mJoypad.serialize(serializer);
             mTimer.serialize(serializer);
+            updateMemoryMap();
         }
 
         emu::RegisterBank& getRegistersIO()

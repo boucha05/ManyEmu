@@ -765,10 +765,14 @@ int main()
     // Configuration for Gameboy development
     config.saveFolder = "C:\\Emu\\Gameboy\\save";
     config.romFolder = "C:\\Emu\\Gameboy\\roms";
-    //config.roms.push_back("Tetris (V1.1) (JU) [!].gb");
-    config.roms.push_back("Metroid 2 - Return of Samus (UA) [b1].gb");
+    config.roms.push_back("Tetris (V1.1) (JU) [!].gb");
+    //config.roms.push_back("Metroid 2 - Return of Samus (UA) [b1].gb");
+    //config.recorded = "recorded.dat";
+    //config.playback = true;
     //config.frameSkip = 600;
     //config.display = false;
+    //config.autoSave = true;
+    //config.autoLoad = true;
     //config.romFolder = "..\\Gameboy\\ROMs\\cpu_instrs\\individual";
     //config.roms.push_back("01-special.gb");             // passed
     //config.roms.push_back("02-interrupts.gb");          // Failed #4

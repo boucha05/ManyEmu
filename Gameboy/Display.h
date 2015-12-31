@@ -119,6 +119,10 @@ namespace gb
             static_cast<Display*>(context)->writeOAM(tick, addr, value);
         }
 
+        static void onWriteNotUsable(void* context, int32_t tick, uint32_t addr, uint8_t value)
+        {
+        }
+
         void onVBlankStart(int32_t tick);
         void updateRasterPos(int32_t tick);
         void updateMonoPalette(uint32_t base, uint8_t value);
@@ -143,6 +147,7 @@ namespace gb
         RegisterAccessors       mRegisterAccessors;
         MEM_ACCESS_READ_WRITE   mMemoryVRAM;
         MEM_ACCESS_READ_WRITE   mMemoryOAM;
+        MEM_ACCESS_READ_WRITE   mMemoryNotUsable;
         std::vector<uint8_t>    mVRAM;
         std::vector<uint8_t>    mOAM;
         std::vector<uint8_t>    mOAMOrder;

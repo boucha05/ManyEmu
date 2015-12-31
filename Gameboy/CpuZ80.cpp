@@ -398,10 +398,10 @@ PC (program counter)                   C - Carry Flag
         8,  8,  8,  8,  8,  8,  16, 8
     };
 
-    static const uint8_t refTicksCond_call = 12;
-    static const uint8_t refTicksCond_ret = 12;
-    static const uint8_t refTicksCond_jp = 4;
-    static const uint8_t refTicksCond_jr = 4;
+    static const uint8_t refTicksCond_call = 24 - 12;
+    static const uint8_t refTicksCond_ret = 20 - 8;
+    static const uint8_t refTicksCond_jp = 16 - 12;
+    static const uint8_t refTicksCond_jr = 12 - 8;
 
     static const uint8_t FLAG_Z = 0x80;
     static const uint8_t FLAG_N = 0x40;
@@ -1231,7 +1231,7 @@ namespace gb
     void CpuZ80::executeCB()
     {
         auto opcode = fetch8();
-        mExecutedTicks += mTicksCB[opcode] & 7;
+        mExecutedTicks += mTicksCB[opcode & 7];
         switch (opcode)
         {
         case 0x00: insn_rlc(B); break;
@@ -1778,6 +1778,9 @@ namespace gb
             char* temp2Pos = temp2;
             for (uint16_t offset = 0; offset < byteCount; ++offset)
                 temp2Pos += sprintf(temp2Pos, "%02X ", read8(PC + offset));
+#if 1
+            fprintf(log, "%06d ", mExecutedTicks);
+#endif
             fprintf(log, "%04X  %-9s %-20s  AF:%04X BC:%04X DE:%04X HL:%04X SP:%04X\n",
                 PC, temp2, temp, AF, BC, DE, HL, SP);
         }
