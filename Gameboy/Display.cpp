@@ -207,6 +207,10 @@ namespace gb
         mActiveSprites          = 0;
         mSortedSprites          = false;
         resetClock();
+        mLineIntTick = 0;
+        mLineIntLastLY = 0;
+        mLineIntLastLYC = 0;
+        mLineIntLastEnabled = false;
     }
 
     bool Display::create(Config& config, emu::Clock& clock, uint32_t master_clock_divider, emu::MemoryBus& memory, Interrupts& interrupts, emu::RegisterBank& registers)
@@ -284,7 +288,10 @@ namespace gb
     void Display::execute()
     {
         if (mSimulatedTick < mDesiredTick)
+        {
+            updateRasterPos(mDesiredTick);
             mSimulatedTick = mDesiredTick;
+        }
     }
 
     void Display::resetClock()
@@ -319,6 +326,8 @@ namespace gb
         mRenderedLine = 0;
         mRenderedLineFirstTick = 0;
         mRenderedTick = 0;
+        mLineIntLastEnabled = false;
+        updateLineInterrupt(mSimulatedTick);
     }
 
     uint8_t Display::readLCDC(int32_t tick, uint16_t addr)
@@ -328,13 +337,17 @@ namespace gb
 
     void Display::writeLCDC(int32_t tick, uint16_t addr, uint8_t value)
     {
-        if (mRegLCDC != value)
+        uint8_t modified = mRegLCDC ^ value;
+        if (modified)
         {
             render(tick);
             bool spriteSizeChanged = ((mRegLCDC ^ value) & LCDC_SPRITES_SIZE) != 0;
             if (spriteSizeChanged)
                 mSortedSprites = false;
             mRegLCDC = value;
+
+            if (modified & LCDC_LCD_ENABLE)
+                updateLineInterrupt(tick);
         }
     }
 
@@ -348,25 +361,23 @@ namespace gb
 
     void Display::writeSTAT(int32_t tick, uint16_t addr, uint8_t value)
     {
-        uint8_t masked = value & STAT_WRITE_MASK;
-        uint8_t modified = mRegSTAT ^ masked;
-        if (modified & masked & STAT_LYC_LY_INT)
+        value &= STAT_WRITE_MASK;
+        uint8_t modified = mRegSTAT ^ value;
+        if (modified & STAT_OAM_INT)
         {
             EMU_NOT_IMPLEMENTED();
         }
-        if (modified & masked & STAT_OAM_INT)
+        if (modified & STAT_VBLANK_INT)
         {
             EMU_NOT_IMPLEMENTED();
         }
-        if (modified & masked & STAT_VBLANK_INT)
+        if (modified & STAT_HBLANK_INT)
         {
             EMU_NOT_IMPLEMENTED();
         }
-        if (modified & masked & STAT_HBLANK_INT)
-        {
-            EMU_NOT_IMPLEMENTED();
-        }
-        mRegSTAT = masked;
+        mRegSTAT = value;
+        if (modified & STAT_LYC_LY_INT)
+            updateLineInterrupt(tick);
     }
 
     uint8_t Display::readSCY(int32_t tick, uint16_t addr)
@@ -417,8 +428,11 @@ namespace gb
 
     void Display::writeLYC(int32_t tick, uint16_t addr, uint8_t value)
     {
-        EMU_NOT_IMPLEMENTED();
-        mRegLYC = value;
+        if (mRegLYC != value)
+        {
+            mRegLYC = value;
+            updateLineInterrupt(tick);
+        }
     }
 
     void Display::writeDMA(int32_t tick, uint16_t addr, uint8_t value)
@@ -541,6 +555,10 @@ namespace gb
         updateMonoPalette(PALETTE_MONO_BASE_BGP, mRegBGP);
         updateMonoPalette(PALETTE_MONO_BASE_OBP0, mRegOBP0);
         updateMonoPalette(PALETTE_MONO_BASE_OBP1, mRegOBP1);
+        mLineIntTick = 0;
+        mLineIntLastLY = 0;
+        mLineIntLastLYC = 0;
+        mLineIntLastEnabled = false;
     }
 
     void Display::serialize(emu::ISerializer& serializer)
@@ -570,6 +588,10 @@ namespace gb
         serializer.serialize(mRegOBP1);
         serializer.serialize(mRegWY);
         serializer.serialize(mRegWX);
+        serializer.serialize(mLineIntTick);
+        serializer.serialize(mLineIntLastLY);
+        serializer.serialize(mLineIntLastLYC);
+        serializer.serialize(mLineIntLastEnabled);
         if (serializer.isReading())
             mSortedSprites = false;
     }
@@ -609,6 +631,7 @@ namespace gb
         }
         if (mRegLY >= DISPLAY_LINE_COUNT)
             mRegLY -= DISPLAY_LINE_COUNT;
+        updateLineInterrupt(tick);
     }
 
     uint8_t Display::getMode(int32_t tick)
@@ -621,6 +644,34 @@ namespace gb
         if (mLineTick < mMode0StartTick)
             return 3;
         return 0;
+    }
+
+    void Display::updateLineInterrupt(int32_t tick)
+    {
+        bool enabled = (mRegLCDC & LCDC_LCD_ENABLE) && (mRegSTAT & STAT_LYC_LY_INT) && (mRegLYC < DISPLAY_LINE_COUNT);
+        bool modifiedEnabled = enabled && !mLineIntLastEnabled;
+
+        bool modifiedLYC = mLineIntLastLYC != mRegLYC;
+        if (modifiedLYC)
+            mLineIntTick = mRegLYC * mTicksPerLine;
+
+        bool lineIntTriggered = (mLineIntLastLY < mRegLYC) && (mRegLY >= mRegLYC);
+
+        mLineIntLastLY = mRegLY;
+        mLineIntLastLYC = mRegLYC;
+        mLineIntLastEnabled = enabled;
+
+        if (enabled)
+        {
+            if (modifiedEnabled | modifiedLYC)
+            {
+                if (mRegLY < mRegLYC)
+                    mClock->addSync(mLineIntTick);
+            }
+
+            if (lineIntTriggered)
+                mInterrupts->setInterrupt(tick, gb::Interrupts::Signal::LcdStat);
+        }
     }
 
     void Display::updateMonoPalette(uint32_t base, uint8_t value)

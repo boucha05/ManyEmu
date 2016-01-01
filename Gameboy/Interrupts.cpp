@@ -9,7 +9,6 @@ namespace
     static const uint8_t INT_BIT_COUNT = 5;
 
     static const uint8_t INT_NOT_IMPLEMENTED =
-        (1 << static_cast<uint8_t>(gb::Interrupts::Signal::LcdStat)) |
         (1 << static_cast<uint8_t>(gb::Interrupts::Signal::Timer)) |
         (1 << static_cast<uint8_t>(gb::Interrupts::Signal::Serial));
 
@@ -130,6 +129,10 @@ namespace gb
 
     void Interrupts::writeIF(int32_t tick, uint16_t addr, uint8_t value)
     {
+        if (value & INT_NOT_IMPLEMENTED)
+        {
+            EMU_NOT_IMPLEMENTED();
+        }
         mRegIF = value;
         checkInterrupts(tick);
     }
@@ -141,6 +144,10 @@ namespace gb
 
     void Interrupts::writeIE(int32_t tick, uint16_t addr, uint8_t value)
     {
+        if (value & INT_NOT_IMPLEMENTED)
+        {
+            EMU_NOT_IMPLEMENTED();
+        }
         mRegIE = value;
         checkInterrupts(tick);
     }

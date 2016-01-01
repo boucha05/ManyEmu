@@ -123,13 +123,13 @@ namespace emu
         timerEvent.callback = callback;
         timerEvent.context = context;
         mTimers.insert(std::pair<int32_t, TimerEvent>(ticks, timerEvent));
-        addSync(ticks);
+        if (ticks < mDesiredTicks)
+            setDesiredTicks(ticks);
     }
 
     void Clock::addSync(int32_t ticks)
     {
-        if (ticks < mDesiredTicks)
-            setDesiredTicks(ticks);
+        addEvent([](void* context, int32_t tick) {}, nullptr, ticks);
     }
 
     void Clock::clearEvents()
