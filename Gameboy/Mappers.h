@@ -55,6 +55,7 @@ namespace gb
         emu::MemoryBus*         mMemory;
         MEM_ACCESS              mMemoryROM[2];
         MEM_ACCESS_READ_WRITE   mMemoryExternalRAM;
+        MEM_ACCESS_READ_WRITE   mMemoryExternalRAMEmpty;
         std::vector<uint8_t>    mExternalRAM;
         uint8_t                 mBankROM[2];
         uint8_t                 mBankExternalRAM;

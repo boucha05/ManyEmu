@@ -64,12 +64,17 @@ namespace gb
 
         EMU_VERIFY(mMemory->addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0x0000, 0x3fff, mMemoryROM[0]));
         EMU_VERIFY(mMemory->addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0x4000, 0x7fff, mMemoryROM[1]));
+        uint16_t size = 0;
         if (!mExternalRAM.empty())
         {
             uint16_t size = static_cast<uint16_t>(mExternalRAM.size());
             if (size > BANK_SIZE_EXTERNAL_RAM)
                 size = BANK_SIZE_EXTERNAL_RAM;
             EMU_VERIFY(mMemory->addMemoryRange(0xa000, 0xa000 + size - 1, mMemoryExternalRAM));
+        }
+        if (size < BANK_SIZE_EXTERNAL_RAM)
+        {
+            EMU_VERIFY(mMemory->addMemoryRange(0xa000, 0xa000 + BANK_SIZE_EXTERNAL_RAM - size - 1, mMemoryExternalRAMEmpty));
         }
         return true;
     }
@@ -99,16 +104,17 @@ namespace gb
         const auto& romContent = mRom->getContent();
         mMemoryROM[0].setReadMemory(romContent.rom + mBankROM[0] * ROM_BANK_SIZE);
         mMemoryROM[1].setReadMemory(romContent.rom + mBankROM[1] * ROM_BANK_SIZE);
-        if (!mExternalRAM.empty())
+        if (!mExternalRAM.empty() && (mEnableExternalRAM || !mRom->getDescription().hasBattery))
         {
-            if (mEnableExternalRAM)
-                mMemoryExternalRAM.setReadWriteMemory(mExternalRAM.data());
-            else
-            {
-                mMemoryExternalRAM.read.setReadMethod(&read8null, this);
-                mMemoryExternalRAM.write.setWriteMethod(&write8null, this);
-            }
+            mMemoryExternalRAM.setReadWriteMemory(mExternalRAM.data());
         }
+        else
+        {
+            mMemoryExternalRAM.read.setReadMethod(&read8null, this);
+            mMemoryExternalRAM.write.setWriteMethod(&write8null, this);
+        }
+        mMemoryExternalRAMEmpty.read.setReadMethod(&read8null, this);
+        mMemoryExternalRAMEmpty.write.setWriteMethod(&write8null, this);
         return true;
     }
 
