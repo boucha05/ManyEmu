@@ -854,7 +854,7 @@ namespace gb
         uint8_t windowTileCountX = (windowEnabled && (mRegWX < DISPLAY_SIZE_X + 7)) ? (DISPLAY_SIZE_X + 7 - mRegWX + 7) >> 3 : 0;
         uint8_t windowPrevTileY = 0xff;
         auto windowTileMap = mVRAM.data() + windowTileMapOffset;
-        auto windowTileOffset = 8 - 7 + (mRegWX & 0x07);
+        auto windowTileOffset = 8 - 7 + mRegWX;
         auto windowTileDest = rowStorage + windowTileOffset;
         EMU_ASSERT(windowTileCountX <= RENDER_TILE_STORAGE);
         EMU_ASSERT(windowTileOffset + (windowTileCountX << 3) <= RENDER_ROW_STORAGE);
