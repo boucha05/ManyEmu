@@ -766,8 +766,9 @@ int main()
     config.saveFolder = "C:\\Emu\\Gameboy\\save";
     config.romFolder = "C:\\Emu\\Gameboy\\roms";
     //config.roms.push_back("mario & yoshi (e) [o2].gb");
-    //config.roms.push_back("Super Mario 4 (Unl) [h3].gb");
-    config.roms.push_back("super mario land (v1.1) (jua) [t1].gb");
+    config.roms.push_back("Asterix - Search for Dogmatix (E) (M6) [C][!].gbc");
+    //config.roms.push_back("Donkey Kong Land 2 (UE) [S][b2].gb");
+    //config.roms.push_back("super mario land (v1.1) (jua) [t1].gb");
     //config.roms.push_back("Tetris (V1.1) (JU) [!].gb");
     //config.roms.push_back("Metroid 2 - Return of Samus (UA) [b1].gb");
     //config.recorded = "recorded.dat";

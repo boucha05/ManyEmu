@@ -18,6 +18,13 @@ namespace
 
     static const uint8_t MBC1_RAM_BANK_MODE = 0x01;
 
+    static const uint8_t MBC5_RAM_ENABLE_MASK = 0x0f;
+    static const uint8_t MBC5_RAM_ENABLE_VALUE = 0x0a;
+
+    static const uint16_t MBC5_ROM_BANK_LOW_MASK = 0x00ff;
+    static const uint16_t MBC5_ROM_BANK_HIGH_MASK = 0x0100;
+    static const uint16_t MBC5_ROM_BANK_HIGH_SHIFT = 8;
+
     uint8_t read8null(void* context, int32_t tick, uint32_t addr)
     {
         EMU_INVOKE_ONCE(printf("External RAM read disabled!\n"));
@@ -175,7 +182,7 @@ namespace gb
         }
         case 1:
         {
-            uint8_t bank = getRomBank();
+            uint16_t bank = getRomBank();
             bank = (bank & ~MBC1_ROM_BANK_LOW_MASK) | (value & MBC1_ROM_BANK_LOW_MASK);
             if ((bank & MBC1_ROM_BANK_INVALID_MASK) == bank)
                 bank |= MBC1_ROM_BANK_INVALID_ADJ;
@@ -184,7 +191,7 @@ namespace gb
         }
         case 2:
         {
-            uint8_t bank = getRomBank();
+            uint16_t bank = getRomBank();
             bank = (bank & ~MBC1_ROM_BANK_HIGH_MASK) | ((value << MBC1_ROM_BANK_HIGH_SHIFT) & MBC1_ROM_BANK_HIGH_MASK);
             if ((bank & MBC1_ROM_BANK_INVALID_MASK) == bank)
                 bank |= MBC1_ROM_BANK_INVALID_ADJ;
@@ -194,6 +201,67 @@ namespace gb
         case 3:
         {
             mRamBankMode = (value & MBC1_RAM_BANK_MODE) != 0;
+            break;
+        }
+        default:
+            EMU_ASSERT(false);
+        }
+
+        updateMemoryMap();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    MapperMBC5::MapperMBC5()
+    {
+    }
+
+    bool MapperMBC5::create(const Rom& rom, emu::MemoryBus& memory)
+    {
+        EMU_VERIFY(MapperBase::create(rom, memory));
+        EMU_VERIFY(mMemory->addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, 0x0000, 0x7fff, mMemoryControlRegs.setWriteMethod(&MapperMBC5::write8, this)));
+        return true;
+    }
+
+    void MapperMBC5::reset()
+    {
+        MapperBase::reset();
+        mRamBankMode = false;
+    }
+
+    void MapperMBC5::serializeGameState(emu::ISerializer& serializer)
+    {
+        MapperBase::serializeGameState(serializer);
+        serializer.serialize(mRamBankMode);
+    }
+
+    void MapperMBC5::write8(int32_t tick, uint32_t addr, uint8_t value)
+    {
+        switch (addr >> 13)
+        {
+        case 0:
+        {
+            bool enable = (value & MBC5_RAM_ENABLE_MASK) == MBC5_RAM_ENABLE_VALUE;
+            enableRam(enable);
+            break;
+        }
+        case 1:
+        {
+            uint16_t bank = getRomBank();
+            bank = (bank & ~MBC5_ROM_BANK_LOW_MASK) | (value & MBC5_ROM_BANK_LOW_MASK);
+            setRomBank(bank);
+            break;
+        }
+        case 2:
+        {
+            uint16_t bank = getRomBank();
+            bank = (bank & ~MBC5_ROM_BANK_HIGH_MASK) | ((value << MBC5_ROM_BANK_HIGH_SHIFT) & MBC5_ROM_BANK_HIGH_MASK);
+            setRomBank(bank);
+            break;
+        }
+        case 3:
+        {
+            setRamBank(value);
             break;
         }
         default:
@@ -223,6 +291,15 @@ namespace gb
         case Rom::Mapper::MBC1:
         {
             auto mapper = new MapperMBC1();
+            if (mapper->create(rom, memory))
+                return mapper;
+            delete mapper;
+            break;
+        }
+
+        case Rom::Mapper::MBC5:
+        {
+            auto mapper = new MapperMBC5();
             if (mapper->create(rom, memory))
                 return mapper;
             delete mapper;

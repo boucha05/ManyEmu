@@ -23,7 +23,7 @@ namespace
 
         virtual emu::IEmulator& getEmulator() override
         {
-            return gb::getEmulator();
+            return gb::getEmulatorGB();
         }
 
         virtual void configureController(StandardController& controller, uint32_t player)
@@ -43,6 +43,11 @@ namespace
         virtual const char* getExtension() override
         {
             return "gbc";
+        }
+
+        virtual emu::IEmulator& getEmulator() override
+        {
+            return gb::getEmulatorGBC();
         }
     };
 

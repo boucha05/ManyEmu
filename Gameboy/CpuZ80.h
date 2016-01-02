@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <map>
 #include <vector>
+#include "GB.h"
 
 struct MEMORY_BUS;
 
@@ -27,7 +28,7 @@ namespace gb
         
         CpuZ80();
         ~CpuZ80();
-        bool create(emu::Clock& clock, MEMORY_BUS& bus, uint32_t master_clock_divider);
+        bool create(emu::Clock& clock, MEMORY_BUS& bus, uint32_t master_clock_divider, uint8_t defaultA);
         void destroy();
         void reset();
         void interrupt(int32_t tick, uint16_t addr);
@@ -215,6 +216,7 @@ namespace gb
         typedef std::vector<IInterruptListener*> InterruptListeners;
 
         Registers               mRegs;
+        uint8_t                 mDefaultA;
         int32_t                 mDesiredTicks;
         int32_t                 mExecutedTicks;
         MEMORY_BUS*             mMemory;

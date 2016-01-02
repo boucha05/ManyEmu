@@ -102,10 +102,11 @@ namespace gb
         virtual void serializeGameData(emu::ISerializer& serializer) = 0;
         virtual void serializeGameState(emu::ISerializer& serializer) = 0;
 
-        static Context* create(const Rom& rom);
+        static Context* create(const Rom& rom, Model model);
     };
 
-    emu::IEmulator& getEmulator();
+    emu::IEmulator& getEmulatorGB();
+    emu::IEmulator& getEmulatorGBC();
 }
 
 #endif

@@ -19,6 +19,9 @@ namespace
     static const uint32_t MEM_SIZE = 1 << MEM_SIZE_LOG2;
     static const uint32_t MEM_PAGE_SIZE_LOG2 = 10;
 
+    static const uint8_t CPU_DEFAULT_A_GB = 0x01;
+    static const uint8_t CPU_DEFAULT_A_CGB = 0x11;
+
     static const uint32_t DISPLAY_CLOCK_PER_LINE = 456;
     static const uint32_t DISPLAY_VISIBLE_LINES = 144;
     static const uint32_t DISPLAY_VBLANK_LINES = 10;
@@ -59,9 +62,9 @@ namespace gb_context
             mMapper = nullptr;
         }
 
-        bool create(const gb::Rom& rom)
+        bool create(const gb::Rom& rom, gb::Model model)
         {
-            mModel = gb::Model::GB;
+            mModel = model;
 
             bool isGBC = mModel >= gb::Model::GBC;
             gb::Display::Config displayConfig;
@@ -72,7 +75,7 @@ namespace gb_context
 
             EMU_VERIFY(mClock.create());
             EMU_VERIFY(mMemory.create(MEM_SIZE_LOG2, MEM_PAGE_SIZE_LOG2));
-            EMU_VERIFY(mCpu.create(mClock, mMemory.getState(), masterClockDivider));
+            EMU_VERIFY(mCpu.create(mClock, mMemory.getState(), masterClockDivider, isGBC ? CPU_DEFAULT_A_CGB : CPU_DEFAULT_A_GB));
 
             mMapper = gb::createMapper(rom, mMemory);
             EMU_VERIFY(mMapper);
@@ -240,10 +243,10 @@ namespace gb_context
 
 namespace gb
 {
-    Context* Context::create(const Rom& rom)
+    Context* Context::create(const Rom& rom, Model model)
     {
         gb_context::ContextImpl* context = new gb_context::ContextImpl;
-        if (!context->create(rom))
+        if (!context->create(rom, model))
         {
             context->dispose();
             context = nullptr;

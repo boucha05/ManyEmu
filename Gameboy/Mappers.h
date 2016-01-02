@@ -26,22 +26,22 @@ namespace gb
         virtual void serializeGameData(emu::ISerializer& serializer) override;
         virtual void serializeGameState(emu::ISerializer& serializer) override;
 
-        uint8_t getRomBank()
+        uint16_t getRomBank()
         {
             return mBankROM[1];
         }
 
-        void setRomBank(uint8_t value)
+        void setRomBank(uint16_t value)
         {
             mBankROM[1] = value;
         }
 
-        uint8_t getRamBank()
+        uint16_t getRamBank()
         {
             return mBankExternalRAM;
         }
 
-        void setRamBank(uint8_t value)
+        void setRamBank(uint16_t value)
         {
             mBankExternalRAM = value;
         }
@@ -57,8 +57,8 @@ namespace gb
         MEM_ACCESS_READ_WRITE   mMemoryExternalRAM;
         MEM_ACCESS_READ_WRITE   mMemoryExternalRAMEmpty;
         std::vector<uint8_t>    mExternalRAM;
-        uint8_t                 mBankROM[2];
-        uint8_t                 mBankExternalRAM;
+        uint16_t                mBankROM[2];
+        uint16_t                mBankExternalRAM;
         bool                    mEnableExternalRAM;
     };
 
@@ -82,6 +82,26 @@ namespace gb
         static void write8(void* context, int32_t tick, uint32_t addr, uint8_t value)
         {
             static_cast<MapperMBC1*>(context)->write8(tick, addr, value);
+        }
+
+        MEM_ACCESS              mMemoryControlRegs;
+        bool                    mRamBankMode;
+    };
+
+    class MapperMBC5 : public MapperBase
+    {
+    public:
+        MapperMBC5();
+        virtual bool create(const Rom& rom, emu::MemoryBus& memory) override;
+        virtual void reset() override;
+        virtual void serializeGameState(emu::ISerializer& serializer) override;
+
+    private:
+        void write8(int32_t tick, uint32_t addr, uint8_t value);
+
+        static void write8(void* context, int32_t tick, uint32_t addr, uint8_t value)
+        {
+            static_cast<MapperMBC5*>(context)->write8(tick, addr, value);
         }
 
         MEM_ACCESS              mMemoryControlRegs;

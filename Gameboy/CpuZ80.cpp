@@ -530,7 +530,7 @@ namespace gb
         destroy();
     }
 
-    bool CpuZ80::create(emu::Clock& clock, MEMORY_BUS& bus, uint32_t master_clock_divider)
+    bool CpuZ80::create(emu::Clock& clock, MEMORY_BUS& bus, uint32_t master_clock_divider, uint8_t defaultA)
     {
         mClock = &clock;
         mClock->addListener(*this);
@@ -545,6 +545,7 @@ namespace gb
         mTicksCond_jp = refTicksCond_jp * master_clock_divider;
         mTicksCond_jr = refTicksCond_jr * master_clock_divider;
 
+        mDefaultA = defaultA;
         IME = 0;
         reset();
         return true;
@@ -564,7 +565,8 @@ namespace gb
 
     void CpuZ80::reset()
     {
-        AF = 0x01b0;
+        A = mDefaultA;
+        FLAGS = 0xb0;
         BC = 0x0013;
         DE = 0x00d8;
         HL = 0x014d;

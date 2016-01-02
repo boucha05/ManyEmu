@@ -5,7 +5,7 @@
 
 namespace
 {
-    class Emulator : public emu::IEmulator
+    class EmulatorGB : public emu::IEmulator
     {
     public:
         virtual emu::Rom* loadRom(const char* path) override
@@ -20,7 +20,7 @@ namespace
 
         virtual emu::Context* createContext(const emu::Rom& rom) override
         {
-            return gb::Context::create(static_cast<const gb::Rom&>(rom));
+            return gb::Context::create(static_cast<const gb::Rom&>(rom), gb::Model::GB);
         }
 
         virtual void destroyContext(emu::Context& context) override
@@ -77,13 +77,28 @@ namespace
             return true;
         }
     };
+
+    class EmulatorGBC : public EmulatorGB
+    {
+    public:
+        virtual emu::Context* createContext(const emu::Rom& rom) override
+        {
+            return gb::Context::create(static_cast<const gb::Rom&>(rom), gb::Model::GBC);
+        }
+    };
 }
 
 namespace gb
 {
-    emu::IEmulator& getEmulator()
+    emu::IEmulator& getEmulatorGB()
     {
-        static Emulator instance;
+        static EmulatorGB instance;
+        return instance;
+    }
+
+    emu::IEmulator& getEmulatorGBC()
+    {
+        static EmulatorGBC instance;
         return instance;
     }
 }
