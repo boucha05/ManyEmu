@@ -54,10 +54,16 @@ namespace
     static const uint32_t PALETTE_MONO_BASE_BGP = 0;
     static const uint32_t PALETTE_MONO_BASE_OBP0 = 4;
     static const uint32_t PALETTE_MONO_BASE_OBP1 = 8;
-    static const uint32_t PALETTE_MONO_BASE_BGP_X4 = 0;
-    static const uint32_t PALETTE_MONO_BASE_OBP0_X4 = 4;
-    static const uint32_t PALETTE_MONO_BASE_OBP1_X4 = 8;
+    static const uint32_t PALETTE_MONO_BASE_BGP_X4 = 0x00000000;
+    static const uint32_t PALETTE_MONO_BASE_OBP0_X4 = 0x04040404;
+    static const uint32_t PALETTE_MONO_BASE_OBP1_X4 = 0x08080808;
     static const uint32_t PALETTE_MONO_SIZE = 12;
+
+    static const uint32_t PALETTE_COLOR_BASE_BGP = 0;
+    static const uint32_t PALETTE_COLOR_BASE_OBP = 0x20;
+    static const uint32_t PALETTE_COLOR_BASE_BGP_X4 = 0x00000000;
+    static const uint32_t PALETTE_COLOR_BASE_OBP_X4 = 0x20202020;
+    static const uint32_t PALETTE_COLOR_SIZE = 64;
 
     static const uint32_t SPRITE_LINE_LIMIT = 10;
     static const uint32_t SPRITE_CAPACITY = 40;
@@ -74,6 +80,12 @@ namespace
     static const uint8_t SPRITE_FLAG_COLOR_BANK_SHIFT = 3;
     static const uint8_t SPRITE_FLAG_COLOR_PALETTE_MASK = 0x03;
     static const uint8_t SPRITE_FLAG_COLOR_PALETTE_SHIFT = 0;
+
+    static const uint8_t BGPI_INDEX_MASK = 0x3f;
+    static const uint8_t BGPI_AUTO_INCR = 0x80;
+
+    static const uint8_t OBPI_INDEX_MASK = 0x3f;
+    static const uint8_t OBPI_AUTO_INCR = 0x80;
 
     static const uint8_t kMonoPalette[4][4] =
     {
@@ -204,6 +216,10 @@ namespace gb
         mRegOBP1                = 0x00;
         mRegWY                  = 0x00;
         mRegWX                  = 0x00;
+        mRegBGPI                = 0x00;
+        memset(mRegBGPD, 0, sizeof(mRegBGPD));
+        mRegOBPI                = 0x00;
+        memset(mRegOBPD, 0, sizeof(mRegOBPD));
         mActiveSprites          = 0;
         mSortedSprites          = false;
         resetClock();
@@ -243,9 +259,12 @@ namespace gb
 
         if (mConfig.model >= gb::Model::GBC)
         {
-            EMU_NOT_IMPLEMENTED();
+            mPalette.resize(PALETTE_COLOR_SIZE, *reinterpret_cast<const uint32_t*>(&kMonoPalette[0]));
         }
-        mPalette.resize(PALETTE_MONO_SIZE, *reinterpret_cast<const uint32_t*>(&kMonoPalette[0]));
+        else
+        {
+            mPalette.resize(PALETTE_MONO_SIZE, *reinterpret_cast<const uint32_t*>(&kMonoPalette[0]));
+        }
         
         EMU_VERIFY(mRegisterAccessors.read.LCDC.create(registers, 0x40, *this, &Display::readLCDC));
         EMU_VERIFY(mRegisterAccessors.read.STAT.create(registers, 0x41, *this, &Display::readSTAT));
@@ -271,6 +290,19 @@ namespace gb
         EMU_VERIFY(mRegisterAccessors.write.OBP1.create(registers, 0x49, *this, &Display::writeOBP1));
         EMU_VERIFY(mRegisterAccessors.write.WY.create(registers, 0x4a, *this, &Display::writeWY));
         EMU_VERIFY(mRegisterAccessors.write.WX.create(registers, 0x4b, *this, &Display::writeWX));
+
+        if (mConfig.model >= gb::Model::GBC)
+        {
+            EMU_VERIFY(mRegisterAccessors.read.BGPI.create(registers, 0x68, *this, &Display::readBGPI));
+            EMU_VERIFY(mRegisterAccessors.read.BGPD.create(registers, 0x69, *this, &Display::readBGPD));
+            EMU_VERIFY(mRegisterAccessors.read.OBPI.create(registers, 0x6a, *this, &Display::readOBPI));
+            EMU_VERIFY(mRegisterAccessors.read.OBPD.create(registers, 0x6b, *this, &Display::readOBPD));
+
+            EMU_VERIFY(mRegisterAccessors.write.BGPI.create(registers, 0x68, *this, &Display::writeBGPI));
+            EMU_VERIFY(mRegisterAccessors.write.BGPD.create(registers, 0x69, *this, &Display::writeBGPD));
+            EMU_VERIFY(mRegisterAccessors.write.OBPI.create(registers, 0x6a, *this, &Display::writeOBPI));
+            EMU_VERIFY(mRegisterAccessors.write.OBPD.create(registers, 0x6b, *this, &Display::writeOBPD));
+        }
 
         return true;
     }
@@ -528,6 +560,64 @@ namespace gb
         }
     }
 
+    uint8_t Display::readBGPI(int32_t tick, uint16_t addr)
+    {
+        return mRegBGPI;
+    }
+
+    void Display::writeBGPI(int32_t tick, uint16_t addr, uint8_t value)
+    {
+        mRegBGPI = value;
+    }
+
+    uint8_t Display::readBGPD(int32_t tick, uint16_t addr)
+    {
+        return mRegBGPI;
+    }
+
+    void Display::writeBGPD(int32_t tick, uint16_t addr, uint8_t value)
+    {
+        render(tick);
+        auto index = mRegBGPI & BGPI_INDEX_MASK;
+        mRegBGPD[index] = value;
+        auto base = PALETTE_COLOR_BASE_BGP + (index >> 1);
+        updateColorPalette(base, mRegBGPD[index & ~1], mRegBGPD[index | 1]);
+        if (mRegBGPI & BGPI_AUTO_INCR)
+        {
+            ++index;
+            mRegBGPI = (mRegBGPI & ~BGPI_INDEX_MASK) | (index & BGPI_INDEX_MASK);
+        }
+    }
+
+    uint8_t Display::readOBPI(int32_t tick, uint16_t addr)
+    {
+        return mRegOBPI;
+    }
+
+    void Display::writeOBPI(int32_t tick, uint16_t addr, uint8_t value)
+    {
+        mRegOBPI = value;
+    }
+
+    uint8_t Display::readOBPD(int32_t tick, uint16_t addr)
+    {
+        return mRegOBPI;
+    }
+
+    void Display::writeOBPD(int32_t tick, uint16_t addr, uint8_t value)
+    {
+        render(tick);
+        auto index = mRegOBPI & OBPI_INDEX_MASK;
+        mRegOBPD[index] = value;
+        auto base = PALETTE_COLOR_BASE_OBP + (index >> 1);
+        updateColorPalette(base, mRegOBPD[index & ~1], mRegOBPD[index | 1]);
+        if (mRegOBPI & OBPI_AUTO_INCR)
+        {
+            ++index;
+            mRegOBPI = (mRegOBPI & ~OBPI_INDEX_MASK) | (index & OBPI_INDEX_MASK);
+        }
+    }
+
     void Display::writeOAM(int32_t tick, uint16_t addr, uint8_t value)
     {
         if (mOAM[addr] != value)
@@ -684,6 +774,21 @@ namespace gb
                 value >>= 2;
                 mPalette[base + index] = *reinterpret_cast<const uint32_t*>(kMonoPalette[shade]);
             }
+        }
+    }
+
+    void Display::updateColorPalette(uint32_t base, uint8_t color_lo, uint8_t color_hi)
+    {
+        if (mConfig.model >= gb::Model::GBC)
+        {
+            emu::word16_t color;
+            color.w.l.u = color_lo;
+            color.w.h.u = color_hi;
+            uint32_t r = (color.u >> 0) & 0x1f;
+            uint32_t g = (color.u >> 5) & 0x1f;
+            uint32_t b = (color.u >> 10) & 0x1f;
+            uint8_t rgba[4] = { r << 3, g << 3, b << 3, 0xff };
+            mPalette[base] = reinterpret_cast<const uint32_t&>(rgba);
         }
     }
 

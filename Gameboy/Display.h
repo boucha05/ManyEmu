@@ -64,6 +64,10 @@ namespace gb
                 emu::RegisterRead   OBP1;
                 emu::RegisterRead   WY;
                 emu::RegisterRead   WX;
+                emu::RegisterRead   BGPI;
+                emu::RegisterRead   BGPD;
+                emu::RegisterRead   OBPI;
+                emu::RegisterRead   OBPD;
             }                       read;
 
             struct
@@ -80,6 +84,10 @@ namespace gb
                 emu::RegisterWrite  OBP1;
                 emu::RegisterWrite  WY;
                 emu::RegisterWrite  WX;
+                emu::RegisterWrite  BGPI;
+                emu::RegisterWrite  BGPD;
+                emu::RegisterWrite  OBPI;
+                emu::RegisterWrite  OBPD;
             }                       write;
         };
 
@@ -112,6 +120,14 @@ namespace gb
         void writeWY(int32_t tick, uint16_t addr, uint8_t value);
         uint8_t readWX(int32_t tick, uint16_t addr);
         void writeWX(int32_t tick, uint16_t addr, uint8_t value);
+        uint8_t readBGPI(int32_t tick, uint16_t addr);
+        void writeBGPI(int32_t tick, uint16_t addr, uint8_t value);
+        uint8_t readBGPD(int32_t tick, uint16_t addr);
+        void writeBGPD(int32_t tick, uint16_t addr, uint8_t value);
+        uint8_t readOBPI(int32_t tick, uint16_t addr);
+        void writeOBPI(int32_t tick, uint16_t addr, uint8_t value);
+        uint8_t readOBPD(int32_t tick, uint16_t addr);
+        void writeOBPD(int32_t tick, uint16_t addr, uint8_t value);
         void writeOAM(int32_t tick, uint16_t addr, uint8_t value);
 
         static void onWriteOAM(void* context, int32_t tick, uint32_t addr, uint8_t value)
@@ -128,6 +144,7 @@ namespace gb
         uint8_t getMode(int32_t tick);
         void updateLineInterrupt(int32_t tick);
         void updateMonoPalette(uint32_t base, uint8_t value);
+        void updateColorPalette(uint32_t base, uint8_t color_lo, uint8_t color_hi);
         void sortMonoSprites();
         void fetchTileRow(uint8_t* dest, const uint8_t* map, uint32_t tileX, uint32_t tileY, uint8_t tileOffset, uint32_t count);
         void drawTiles(uint8_t* dest, const uint8_t* tiles, const uint8_t* attributes, const uint8_t* patterns, uint16_t count);
@@ -183,6 +200,10 @@ namespace gb
         uint8_t                 mRegOBP1;
         uint8_t                 mRegWY;
         uint8_t                 mRegWX;
+        uint8_t                 mRegBGPI;
+        uint8_t                 mRegBGPD[64];
+        uint8_t                 mRegOBPI;
+        uint8_t                 mRegOBPD[64];
         uint8_t                 mActiveSprites;
         uint8_t                 mLineIntLastLY;
         uint8_t                 mLineIntLastLYC;

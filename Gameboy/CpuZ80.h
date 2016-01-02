@@ -25,6 +25,12 @@ namespace gb
             virtual void onInterruptEnable(int32_t tick) {}
             virtual void onInterruptDisable(int32_t tick) {}
         };
+
+        class IStopListener
+        {
+        public:
+            virtual void onStop(int32_t tick) {}
+        };
         
         CpuZ80();
         ~CpuZ80();
@@ -40,6 +46,8 @@ namespace gb
         void serialize(emu::ISerializer& serializer);
         void addInterruptListener(IInterruptListener& listener);
         void removeInterruptListener(IInterruptListener& listener);
+        void addStopListener(IStopListener& listener);
+        void removeStopListener(IStopListener& listener);
 
     private:
         inline uint8_t read8(uint16_t addr);
@@ -210,10 +218,12 @@ namespace gb
                 uint16_t    reserved_pc;
                 uint8_t     ime;
                 uint8_t     halted;
+                uint8_t     stopped;
             }               r8;
         };
 
         typedef std::vector<IInterruptListener*> InterruptListeners;
+        typedef std::vector<IStopListener*> StopListeners;
 
         Registers               mRegs;
         uint8_t                 mDefaultA;
@@ -229,5 +239,6 @@ namespace gb
         uint8_t                 mTicksCond_jr;
         int32_t                 mFrame;
         InterruptListeners      mInterruptListeners;
+        StopListeners           mStopListeners;
     };
 }

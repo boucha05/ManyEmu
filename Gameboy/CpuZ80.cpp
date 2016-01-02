@@ -556,6 +556,9 @@ namespace gb
         while (!mInterruptListeners.empty())
             removeInterruptListener(*mInterruptListeners.back());
 
+        while (!mStopListeners.empty())
+            removeStopListener(*mStopListeners.back());
+
         if (mClock)
         {
             mClock->removeListener(*this);
@@ -574,6 +577,7 @@ namespace gb
         PC = 0x0100;
         setIME(false);
         mRegs.r8.halted = false;
+        mRegs.r8.stopped = false;
         resetClock();
         mFrame = 0;
     }
@@ -584,6 +588,7 @@ namespace gb
         PC = addr;
         setIME(false);
         mRegs.r8.halted = false;
+        mRegs.r8.stopped = false;
     }
 
     void CpuZ80::resetClock()
@@ -1142,7 +1147,10 @@ namespace gb
 
     void CpuZ80::insn_stop()
     {
-        EMU_NOT_IMPLEMENTED();
+        mRegs.r8.stopped = true;
+        mClock->addSync(mExecutedTicks);
+        for (auto listener : mStopListeners)
+            listener->onStop(mExecutedTicks);
     }
 
     void CpuZ80::insn_di()
@@ -1798,7 +1806,7 @@ namespace gb
 
     void CpuZ80::execute()
     {
-        if (mRegs.r8.halted && (mExecutedTicks < mDesiredTicks))
+        if ((mRegs.r8.halted || mRegs.r8.stopped) && (mExecutedTicks < mDesiredTicks))
             mExecutedTicks = mDesiredTicks;
 
         while (mExecutedTicks < mDesiredTicks)
@@ -1910,6 +1918,7 @@ namespace gb
         serializer.serialize(PC);
         serializer.serialize(IME);
         serializer.serialize(mRegs.r8.halted);
+        serializer.serialize(mRegs.r8.stopped);
         serializer.serialize(mFrame);
     }
 
@@ -1953,5 +1962,19 @@ namespace gb
                 (*item)->onInterruptDisable(mExecutedTicks);
             mInterruptListeners.erase(item);
         }
+    }
+
+    void CpuZ80::addStopListener(IStopListener& listener)
+    {
+        mStopListeners.push_back(&listener);
+        if (mRegs.r8.stopped)
+            listener.onStop(mExecutedTicks);
+    }
+
+    void CpuZ80::removeStopListener(IStopListener& listener)
+    {
+        auto item = std::find(mStopListeners.begin(), mStopListeners.end(), &listener);
+        if (item != mStopListeners.end())
+            mStopListeners.erase(item);
     }
 }

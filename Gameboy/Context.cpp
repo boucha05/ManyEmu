@@ -40,6 +40,11 @@ namespace
     static const uint32_t WRAM_BANK_SIZE = 0x1000;
 
     static const uint32_t HRAM_SIZE = 0x7f;
+
+    static const uint8_t KEY1_SPEED_SWITCH = 0x01;
+    static const uint8_t KEY1_CURRENT_SPEED = 0x80;
+
+    static const uint8_t SVBK_BANK_MASK = 0x07;
 }
 
 namespace gb_context
@@ -85,6 +90,8 @@ namespace gb_context
 
             mBankWRAM[0] = 0;
             mBankWRAM[1] = 1;
+            mRegKEY1 = 0x00;
+            mRegSVBK = 0x01;
 
             EMU_VERIFY(mRegistersIO.create(mMemory, 0xff00, 0x80, emu::RegisterBank::Access::ReadWrite));
             EMU_VERIFY(mRegistersIE.create(mMemory, 0xffff, 0x01, emu::RegisterBank::Access::ReadWrite));
@@ -102,6 +109,17 @@ namespace gb_context
             EMU_VERIFY(mJoypad.create(mClock, mInterrupts, mRegistersIO));
             EMU_VERIFY(mTimer.create(mClock, masterClockFrequency, mInterrupts, mRegistersIO));
 
+            if (mModel >= gb::Model::GBC)
+            {
+                EMU_VERIFY(mRegisterAccessors.read.KEY1.create(mRegistersIO, 0x4d, *this, &ContextImpl::readKEY1));
+                EMU_VERIFY(mRegisterAccessors.read.SVBK.create(mRegistersIO, 0x70, *this, &ContextImpl::readSVBK));
+
+                EMU_VERIFY(mRegisterAccessors.write.KEY1.create(mRegistersIO, 0x4d, *this, &ContextImpl::writeKEY1));
+                EMU_VERIFY(mRegisterAccessors.write.SVBK.create(mRegistersIO, 0x70, *this, &ContextImpl::writeSVBK));
+            }
+
+            EMU_VERIFY(mStopListener.create(mCpu, *this));
+
             reset();
 
             return true;
@@ -109,6 +127,8 @@ namespace gb_context
 
         void destroy()
         {
+            mStopListener.destroy();
+            mRegisterAccessors = RegisterAccessors();
             mTimer.destroy();
             mJoypad.destroy();
             mDisplay.destroy();
@@ -131,6 +151,11 @@ namespace gb_context
 
         virtual void reset()
         {
+            mBankWRAM[0] = 0;
+            mBankWRAM[1] = 1;
+            mRegSVBK = mBankWRAM[1];
+            mRegKEY1 = 0x00;
+
             mClock.reset();
             mCpu.reset();
             if (mMapper)
@@ -192,6 +217,7 @@ namespace gb_context
             serializer.serialize(mWRAM);
             serializer.serialize(mHRAM);
             serializer.serialize(mBankWRAM, EMU_ARRAY_SIZE(mBankWRAM));
+            serializer.serialize(mRegSVBK);
             mInterrupts.serialize(serializer);
             mGameLink.serialize(serializer);
             mDisplay.serialize(serializer);
@@ -211,6 +237,64 @@ namespace gb_context
         }
 
     private:
+        class StopListener : public gb::CpuZ80::IStopListener
+        {
+        public:
+            StopListener()
+            {
+                initialize();
+            }
+
+            ~StopListener()
+            {
+                destroy();
+            }
+
+            void initialize()
+            {
+                mCpu = nullptr;
+                mContext = nullptr;
+            }
+
+            bool create(gb::CpuZ80& cpu, ContextImpl& context)
+            {
+                mCpu = &cpu;
+                mContext = &context;
+                mCpu->addStopListener(*this);
+                return true;
+            }
+
+            void destroy()
+            {
+                if (mCpu)
+                    mCpu->removeStopListener(*this);
+            }
+
+            virtual void onStop(int32_t tick) override
+            {
+                mContext->onStop(tick);
+            }
+
+        private:
+            gb::CpuZ80*     mCpu;
+            ContextImpl*    mContext;
+        };
+
+        struct RegisterAccessors
+        {
+            struct
+            {
+                emu::RegisterRead   KEY1;
+                emu::RegisterRead   SVBK;
+            }                       read;
+
+            struct
+            {
+                emu::RegisterWrite  KEY1;
+                emu::RegisterWrite  SVBK;
+            }                       write;
+        };
+
         bool updateMemoryMap()
         {
             mMemoryWRAM[0].setReadWriteMemory(mWRAM.data() + mBankWRAM[0] * WRAM_BANK_SIZE);
@@ -221,16 +305,49 @@ namespace gb_context
             return true;
         }
 
+        uint8_t readKEY1(int32_t tick, uint16_t addr)
+        {
+            EMU_NOT_IMPLEMENTED();
+            return mRegKEY1;
+        }
+
+        void writeKEY1(int32_t tick, uint16_t addr, uint8_t value)
+        {
+            EMU_NOT_IMPLEMENTED();
+            mRegKEY1 = value;
+        }
+
+        uint8_t readSVBK(int32_t tick, uint16_t addr)
+        {
+            return mRegSVBK;
+        }
+
+        void writeSVBK(int32_t tick, uint16_t addr, uint8_t value)
+        {
+            mRegSVBK = value;
+            mBankWRAM[1] = value & SVBK_BANK_MASK;
+            updateMemoryMap();
+        }
+
+        void onStop(int32_t tick)
+        {
+            EMU_NOT_IMPLEMENTED();
+        }
+
         gb::Model               mModel;
         emu::Clock              mClock;
         emu::MemoryBus          mMemory;
         gb::CpuZ80              mCpu;
         gb::IMapper*            mMapper;
+        RegisterAccessors       mRegisterAccessors;
+        StopListener            mStopListener;
         MEM_ACCESS_READ_WRITE   mMemoryWRAM[4];
         MEM_ACCESS_READ_WRITE   mMemoryHRAM;
         std::vector<uint8_t>    mWRAM;
         std::vector<uint8_t>    mHRAM;
         uint8_t                 mBankWRAM[2];
+        uint8_t                 mRegKEY1;
+        uint8_t                 mRegSVBK;
         emu::RegisterBank       mRegistersIO;
         emu::RegisterBank       mRegistersIE;
         gb::Interrupts          mInterrupts;
