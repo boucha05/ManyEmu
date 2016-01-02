@@ -225,6 +225,7 @@ namespace gb
         uint8_t                 mTicksCond_ret;
         uint8_t                 mTicksCond_jp;
         uint8_t                 mTicksCond_jr;
+        int32_t                 mFrame;
         InterruptListeners      mInterruptListeners;
     };
 }

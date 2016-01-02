@@ -17,6 +17,7 @@ namespace gb
         bool create(emu::Clock& clock, uint32_t clockFrequency, Interrupts& interrupts, emu::RegisterBank& registers);
         void destroy();
         void reset();
+        void beginFrame();
         void serialize(emu::ISerializer& serializer);
 
     private:
@@ -64,6 +65,11 @@ namespace gb
         void setDesiredTicks(int32_t tick);
         void scheduleNextEvent(int32_t tick);
         void advanceDIV(int32_t tick);
+        void resetTimer();
+        void updateTimerValue(int32_t tick);
+        void updateTimerSync();
+        void updateTimerPrediction();
+        void updateTimerInterrupt(int32_t tick);
 
         uint8_t readDIV(int32_t tick, uint16_t addr);
         void writeDIV(int32_t tick, uint16_t addr, uint8_t value);
@@ -87,5 +93,12 @@ namespace gb
         uint8_t                 mRegTIMA;
         uint8_t                 mRegTMA;
         uint8_t                 mRegTAC;
+        int32_t                 mTimerMasterClock;
+        int32_t                 mTimerTicksPerClock;
+        int32_t                 mTimerLastClockTick;
+        int32_t                 mTimerTick;
+        int32_t                 mTimerClock;
+        int32_t                 mTimerIntTick;
+        int32_t                 mTimerLastIntTick;
     };
 }

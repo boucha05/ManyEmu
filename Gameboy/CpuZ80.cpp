@@ -573,6 +573,7 @@ namespace gb
         setIME(false);
         mRegs.r8.halted = false;
         resetClock();
+        mFrame = 0;
     }
 
     void CpuZ80::interrupt(int32_t tick, uint16_t addr)
@@ -593,6 +594,7 @@ namespace gb
     {
         mExecutedTicks -= ticks;
         mDesiredTicks = 0;
+        ++mFrame;
     }
 
     void CpuZ80::setDesiredTicks(int32_t ticks)
@@ -1779,7 +1781,7 @@ namespace gb
             for (uint16_t offset = 0; offset < byteCount; ++offset)
                 temp2Pos += sprintf(temp2Pos, "%02X ", read8(PC + offset));
 #if 1
-            fprintf(log, "%06d ", mExecutedTicks);
+            fprintf(log, "%04x %06d ", mFrame & 0xffff, mExecutedTicks);
 #endif
             fprintf(log, "%04X  %-9s %-20s  AF:%04X BC:%04X DE:%04X HL:%04X SP:%04X\n",
                 PC, temp2, temp, AF, BC, DE, HL, SP);
@@ -1906,6 +1908,7 @@ namespace gb
         serializer.serialize(PC);
         serializer.serialize(IME);
         serializer.serialize(mRegs.r8.halted);
+        serializer.serialize(mFrame);
     }
 
     void CpuZ80::setIME(bool enable)
