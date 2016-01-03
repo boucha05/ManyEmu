@@ -89,6 +89,12 @@ namespace
     static const uint8_t OBPI_INDEX_MASK = 0x3f;
     static const uint8_t OBPI_AUTO_INCR = 0x80;
 
+    static const uint8_t HDMA5_SIZE_MASK = 0x7f;
+    static const uint8_t HDMA5_HBLANK = 0x80;
+    static const uint8_t HDMA5_DONE = 0xff;
+    static const uint16_t HDMA_DST_BASE = 0x8000;
+    static const uint16_t HDMA_DST_MASK = 0x1ff0;
+
     static const uint8_t kMonoPalette[4][4] =
     {
         { 0xff, 0xff, 0xff, 0xff },
@@ -172,7 +178,8 @@ namespace gb
 
     Display::Config::Config()
         : model(Model::GBC)
-        , fastDma(true)
+        , fastDMA(true)
+        , fastHDMA(true)
         , fastLineRendering(true)
     {
     }
@@ -222,6 +229,11 @@ namespace gb
         memset(mRegBGPD, 0, sizeof(mRegBGPD));
         mRegOBPI                = 0x00;
         memset(mRegOBPD, 0, sizeof(mRegOBPD));
+        mRegHDMA[0]             = 0x00;
+        mRegHDMA[1]             = 0x00;
+        mRegHDMA[2]             = 0x00;
+        mRegHDMA[3]             = 0x00;
+        mRegHDMA[4]             = 0x00;
         mActiveSprites          = 0;
         mSortedSprites          = false;
         resetClock();
@@ -307,6 +319,13 @@ namespace gb
             EMU_VERIFY(mRegisterAccessors.write.BGPD.create(registers, 0x69, *this, &Display::writeBGPD));
             EMU_VERIFY(mRegisterAccessors.write.OBPI.create(registers, 0x6a, *this, &Display::writeOBPI));
             EMU_VERIFY(mRegisterAccessors.write.OBPD.create(registers, 0x6b, *this, &Display::writeOBPD));
+
+            for (uint32_t index = 0; index < 5; ++index)
+            {
+                EMU_VERIFY(mRegisterAccessors.read.HDMA[index].create(registers, 0x51 + index, *this, &Display::readHDMA));
+                EMU_VERIFY(mRegisterAccessors.write.HDMA[index].create(registers, 0x51 + index, *this, &Display::writeHDMA));
+
+            }
         }
 
         return true;
@@ -479,7 +498,7 @@ namespace gb
 
     void Display::writeDMA(int32_t tick, uint16_t addr, uint8_t value)
     {
-        if (!mConfig.fastDma)
+        if (!mConfig.fastDMA)
         {
             EMU_NOT_IMPLEMENTED();
         }
@@ -639,6 +658,46 @@ namespace gb
         }
     }
 
+    uint8_t Display::readHDMA(int32_t tick, uint16_t addr)
+    {
+        uint32_t index = addr - 0x51;
+        return mRegHDMA[index];
+    }
+
+    void Display::writeHDMA(int32_t tick, uint16_t addr, uint8_t value)
+    {
+        uint32_t index = addr - 0x51;
+        if (value)
+        {
+            mRegHDMA[index] = value;
+            if (index == 4)
+            {
+                if (!mConfig.fastHDMA)
+                {
+                    EMU_NOT_IMPLEMENTED();
+                }
+
+                if (value & HDMA5_HBLANK)
+                {
+                    EMU_NOT_IMPLEMENTED();
+                }
+
+                render(tick);
+
+                uint32_t size = ((value & HDMA5_SIZE_MASK) + 1) << 4;
+                uint16_t src = (mRegHDMA[0] << 8) | mRegHDMA[1];
+                uint16_t dst = (mRegHDMA[2] << 8) | mRegHDMA[3];
+                dst = (dst & HDMA_DST_MASK) + HDMA_DST_BASE;
+                for (uint32_t pos = 0; pos < size; ++pos)
+                {
+                    uint8_t value = memory_bus_read8(*mMemory, tick, src + pos);
+                    memory_bus_write8(*mMemory, tick, dst + pos, value);
+                }
+                mRegHDMA[4] = HDMA5_DONE;
+            }
+        }
+    }
+
     void Display::writeOAM(int32_t tick, uint16_t addr, uint8_t value)
     {
         if (mOAM[addr] != value)
@@ -663,6 +722,11 @@ namespace gb
         mRegOBP1 = 0xff;
         mRegWY   = 0x00;
         mRegWX   = 0x00;
+        mRegHDMA[0] = 0x00;
+        mRegHDMA[1] = 0x00;
+        mRegHDMA[2] = 0x00;
+        mRegHDMA[3] = 0x00;
+        mRegHDMA[4] = 0xff;
         updateMonoPalette(PALETTE_MONO_BASE_BGP, mRegBGP);
         updateMonoPalette(PALETTE_MONO_BASE_OBP0, mRegOBP0);
         updateMonoPalette(PALETTE_MONO_BASE_OBP1, mRegOBP1);
@@ -703,6 +767,7 @@ namespace gb
         serializer.serialize(mRegBGPD, EMU_ARRAY_SIZE(mRegBGPD));
         serializer.serialize(mRegOBPI);
         serializer.serialize(mRegOBPD, EMU_ARRAY_SIZE(mRegBGPD));
+        serializer.serialize(mRegHDMA, EMU_ARRAY_SIZE(mRegHDMA));
         serializer.serialize(mLineIntTick);
         serializer.serialize(mLineIntLastLY);
         serializer.serialize(mLineIntLastLYC);
@@ -986,8 +1051,8 @@ namespace gb
         auto windowTileMap = mVRAM.data() + windowTileMapOffset;
         auto windowTileOffset = 8 - 7 + mRegWX;
         auto windowTileDest = rowStorage + windowTileOffset;
-        EMU_ASSERT(windowTileCountX <= RENDER_TILE_STORAGE);
-        EMU_ASSERT(windowTileOffset + (windowTileCountX << 3) <= RENDER_ROW_STORAGE);
+        EMU_ASSERT(!windowEnabled || (windowTileCountX <= RENDER_TILE_STORAGE));
+        EMU_ASSERT(!windowEnabled || (windowTileOffset + (windowTileCountX << 3) <= RENDER_ROW_STORAGE));
 
         uint8_t bgTileX = (mRegSCX >> 3) & 0xff;
         uint8_t bgTileOffsetX = mRegSCX & 0x07;

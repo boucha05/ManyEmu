@@ -17,7 +17,8 @@ namespace gb
             Config();
 
             Model   model;
-            bool    fastDma;
+            bool    fastDMA;
+            bool    fastHDMA;
             bool    fastLineRendering;
         };
 
@@ -69,6 +70,7 @@ namespace gb
                 emu::RegisterRead   BGPD;
                 emu::RegisterRead   OBPI;
                 emu::RegisterRead   OBPD;
+                emu::RegisterRead   HDMA[5];
             }                       read;
 
             struct
@@ -90,6 +92,7 @@ namespace gb
                 emu::RegisterWrite  BGPD;
                 emu::RegisterWrite  OBPI;
                 emu::RegisterWrite  OBPD;
+                emu::RegisterWrite  HDMA[5];
             }                       write;
         };
 
@@ -133,6 +136,8 @@ namespace gb
         void writeOBPI(int32_t tick, uint16_t addr, uint8_t value);
         uint8_t readOBPD(int32_t tick, uint16_t addr);
         void writeOBPD(int32_t tick, uint16_t addr, uint8_t value);
+        uint8_t readHDMA(int32_t tick, uint16_t addr);
+        void writeHDMA(int32_t tick, uint16_t addr, uint8_t value);
         void writeOAM(int32_t tick, uint16_t addr, uint8_t value);
 
         static void onWriteOAM(void* context, int32_t tick, uint32_t addr, uint8_t value)
@@ -209,6 +214,7 @@ namespace gb
         uint8_t                 mRegBGPD[64];
         uint8_t                 mRegOBPI;
         uint8_t                 mRegOBPD[64];
+        uint8_t                 mRegHDMA[5];
         uint8_t                 mActiveSprites;
         uint8_t                 mLineIntLastLY;
         uint8_t                 mLineIntLastLYC;
