@@ -64,6 +64,7 @@ namespace gb
                 emu::RegisterRead   OBP1;
                 emu::RegisterRead   WY;
                 emu::RegisterRead   WX;
+                emu::RegisterRead   VBK;
                 emu::RegisterRead   BGPI;
                 emu::RegisterRead   BGPD;
                 emu::RegisterRead   OBPI;
@@ -84,6 +85,7 @@ namespace gb
                 emu::RegisterWrite  OBP1;
                 emu::RegisterWrite  WY;
                 emu::RegisterWrite  WX;
+                emu::RegisterWrite  VBK;
                 emu::RegisterWrite  BGPI;
                 emu::RegisterWrite  BGPD;
                 emu::RegisterWrite  OBPI;
@@ -96,6 +98,7 @@ namespace gb
         void resetClock();
         void advanceClock(int32_t tick);
         void setDesiredTicks(int32_t tick);
+        bool updateMemoryMap();
 
         uint8_t readLCDC(int32_t tick, uint16_t addr);
         void writeLCDC(int32_t tick, uint16_t addr, uint8_t value);
@@ -120,6 +123,8 @@ namespace gb
         void writeWY(int32_t tick, uint16_t addr, uint8_t value);
         uint8_t readWX(int32_t tick, uint16_t addr);
         void writeWX(int32_t tick, uint16_t addr, uint8_t value);
+        uint8_t readVBK(int32_t tick, uint16_t addr);
+        void writeVBK(int32_t tick, uint16_t addr, uint8_t value);
         uint8_t readBGPI(int32_t tick, uint16_t addr);
         void writeBGPI(int32_t tick, uint16_t addr, uint8_t value);
         uint8_t readBGPD(int32_t tick, uint16_t addr);

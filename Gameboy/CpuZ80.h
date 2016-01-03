@@ -34,9 +34,11 @@ namespace gb
         
         CpuZ80();
         ~CpuZ80();
-        bool create(emu::Clock& clock, MEMORY_BUS& bus, uint32_t master_clock_divider, uint8_t defaultA);
+        bool create(emu::Clock& clock, MEMORY_BUS& bus, uint32_t clockDivider, uint8_t defaultA);
         void destroy();
         void reset();
+        void setClockDivider(uint32_t clockDivider);
+        void resume(int32_t tick);
         void interrupt(int32_t tick, uint16_t addr);
         virtual void resetClock() override;
         virtual void advanceClock(int32_t ticks) override;

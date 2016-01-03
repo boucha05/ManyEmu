@@ -81,6 +81,8 @@ namespace
     static const uint8_t SPRITE_FLAG_COLOR_PALETTE_MASK = 0x03;
     static const uint8_t SPRITE_FLAG_COLOR_PALETTE_SHIFT = 0;
 
+    static const uint8_t VBK_MASK = 0x01;
+
     static const uint8_t BGPI_INDEX_MASK = 0x3f;
     static const uint8_t BGPI_AUTO_INCR = 0x80;
 
@@ -246,7 +248,8 @@ namespace gb
 
         bool isGBC = mConfig.model >= gb::Model::GBC;
         mVRAM.resize(isGBC ? VRAM_SIZE_GBC : VRAM_SIZE_GB, 0);
-        EMU_VERIFY(memory.addMemoryRange(VRAM_BANK_START, VRAM_BANK_END, mMemoryVRAM.setReadWriteMemory(mVRAM.data() + mBankVRAM * VRAM_BANK_SIZE)));
+        EMU_VERIFY(updateMemoryMap());
+        EMU_VERIFY(memory.addMemoryRange(VRAM_BANK_START, VRAM_BANK_END, mMemoryVRAM));
 
         mOAM.resize(OAM_SIZE, 0);
         mOAMOrder.resize(SPRITE_CAPACITY);
@@ -293,11 +296,13 @@ namespace gb
 
         if (mConfig.model >= gb::Model::GBC)
         {
+            EMU_VERIFY(mRegisterAccessors.read.VBK.create(registers, 0x4f, *this, &Display::readVBK));
             EMU_VERIFY(mRegisterAccessors.read.BGPI.create(registers, 0x68, *this, &Display::readBGPI));
             EMU_VERIFY(mRegisterAccessors.read.BGPD.create(registers, 0x69, *this, &Display::readBGPD));
             EMU_VERIFY(mRegisterAccessors.read.OBPI.create(registers, 0x6a, *this, &Display::readOBPI));
             EMU_VERIFY(mRegisterAccessors.read.OBPD.create(registers, 0x6b, *this, &Display::readOBPD));
 
+            EMU_VERIFY(mRegisterAccessors.write.VBK.create(registers, 0x4f, *this, &Display::writeVBK));
             EMU_VERIFY(mRegisterAccessors.write.BGPI.create(registers, 0x68, *this, &Display::writeBGPI));
             EMU_VERIFY(mRegisterAccessors.write.BGPD.create(registers, 0x69, *this, &Display::writeBGPD));
             EMU_VERIFY(mRegisterAccessors.write.OBPI.create(registers, 0x6a, *this, &Display::writeOBPI));
@@ -349,6 +354,12 @@ namespace gb
     void Display::setDesiredTicks(int32_t tick)
     {
         mDesiredTick = tick;
+    }
+
+    bool Display::updateMemoryMap()
+    {
+        mMemoryVRAM.setReadWriteMemory(mVRAM.data() + mBankVRAM * VRAM_BANK_SIZE);
+        return true;
     }
 
     void Display::beginFrame()
@@ -454,7 +465,6 @@ namespace gb
 
     uint8_t Display::readLYC(int32_t tick, uint16_t addr)
     {
-        EMU_NOT_IMPLEMENTED();
         return mRegLYC;
     }
 
@@ -558,6 +568,17 @@ namespace gb
             render(tick);
             mRegWX = value;
         }
+    }
+
+    uint8_t Display::readVBK(int32_t tick, uint16_t addr)
+    {
+        return mBankVRAM;
+    }
+
+    void Display::writeVBK(int32_t tick, uint16_t addr, uint8_t value)
+    {
+        mBankVRAM = value & VBK_MASK;
+        updateMemoryMap();
     }
 
     uint8_t Display::readBGPI(int32_t tick, uint16_t addr)
@@ -678,6 +699,10 @@ namespace gb
         serializer.serialize(mRegOBP1);
         serializer.serialize(mRegWY);
         serializer.serialize(mRegWX);
+        serializer.serialize(mRegBGPI);
+        serializer.serialize(mRegBGPD, EMU_ARRAY_SIZE(mRegBGPD));
+        serializer.serialize(mRegOBPI);
+        serializer.serialize(mRegOBPD, EMU_ARRAY_SIZE(mRegBGPD));
         serializer.serialize(mLineIntTick);
         serializer.serialize(mLineIntLastLY);
         serializer.serialize(mLineIntLastLYC);

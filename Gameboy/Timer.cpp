@@ -99,14 +99,14 @@ namespace gb
         resetTimer();
     }
 
-    bool Timer::create(emu::Clock& clock, uint32_t clockFrequency, Interrupts& interrupts, emu::RegisterBank& registers)
+    bool Timer::create(emu::Clock& clock, uint32_t clockFrequency, uint32_t fixedClockDivider, uint32_t variableClockDivider, Interrupts& interrupts, emu::RegisterBank& registers)
     {
         mClock = &clock;
         mInterrupts = &interrupts;
         mClockFrequency = clockFrequency;
-        mDivSpeed = mClockFrequency / DIV_FREQUENCY_GB;
         mTimerMasterClock = clockFrequency;
         mTimerTicksPerClock = clockFrequency / TAC_CLOCK_BASE;
+        setVariableClockDivider(variableClockDivider);
 
         EMU_VERIFY(mClockListener.create(clock, *this));
 
@@ -137,6 +137,11 @@ namespace gb
         mRegTMA         = 0x00;
         mRegTAC         = 0x00;
         resetTimer();
+    }
+
+    void Timer::setVariableClockDivider(uint32_t variableClockDivider)
+    {
+        mDivSpeed = mClockFrequency / (DIV_FREQUENCY_GB << variableClockDivider);
     }
 
     void Timer::beginFrame()

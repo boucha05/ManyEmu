@@ -14,9 +14,10 @@ namespace gb
     public:
         Timer();
         ~Timer();
-        bool create(emu::Clock& clock, uint32_t clockFrequency, Interrupts& interrupts, emu::RegisterBank& registers);
+        bool create(emu::Clock& clock, uint32_t clockFrequency, uint32_t fixedClockDivider, uint32_t variableClockDivider, Interrupts& interrupts, emu::RegisterBank& registers);
         void destroy();
         void reset();
+        void setVariableClockDivider(uint32_t variableClockDivider);
         void beginFrame();
         void serialize(emu::ISerializer& serializer);
 

@@ -530,20 +530,13 @@ namespace gb
         destroy();
     }
 
-    bool CpuZ80::create(emu::Clock& clock, MEMORY_BUS& bus, uint32_t master_clock_divider, uint8_t defaultA)
+    bool CpuZ80::create(emu::Clock& clock, MEMORY_BUS& bus, uint32_t clockDivider, uint8_t defaultA)
     {
         mClock = &clock;
         mClock->addListener(*this);
         mMemory = &bus;
 
-        for (auto index = 0; index < EMU_ARRAY_SIZE(mTicksMain); ++index)
-            mTicksMain[index] = refTicksMain[index] * master_clock_divider;
-        for (auto index = 0; index < EMU_ARRAY_SIZE(mTicksCB); ++index)
-            mTicksCB[index] = refTicksCB[index] * master_clock_divider;
-        mTicksCond_call = refTicksCond_call * master_clock_divider;
-        mTicksCond_ret = refTicksCond_ret * master_clock_divider;
-        mTicksCond_jp = refTicksCond_jp * master_clock_divider;
-        mTicksCond_jr = refTicksCond_jr * master_clock_divider;
+        setClockDivider(clockDivider);
 
         mDefaultA = defaultA;
         IME = 0;
@@ -580,6 +573,24 @@ namespace gb
         mRegs.r8.stopped = false;
         resetClock();
         mFrame = 0;
+    }
+
+    void CpuZ80::setClockDivider(uint32_t clockDivider)
+    {
+        for (auto index = 0; index < EMU_ARRAY_SIZE(mTicksMain); ++index)
+            mTicksMain[index] = refTicksMain[index] * clockDivider;
+        for (auto index = 0; index < EMU_ARRAY_SIZE(mTicksCB); ++index)
+            mTicksCB[index] = refTicksCB[index] * clockDivider;
+        mTicksCond_call = refTicksCond_call * clockDivider;
+        mTicksCond_ret = refTicksCond_ret * clockDivider;
+        mTicksCond_jp = refTicksCond_jp * clockDivider;
+        mTicksCond_jr = refTicksCond_jr * clockDivider;
+    }
+
+    void CpuZ80::resume(int32_t tick)
+    {
+        mRegs.r8.halted = false;
+        mRegs.r8.stopped = false;
     }
 
     void CpuZ80::interrupt(int32_t tick, uint16_t addr)

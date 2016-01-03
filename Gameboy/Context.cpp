@@ -22,18 +22,18 @@ namespace
     static const uint8_t CPU_DEFAULT_A_GB = 0x01;
     static const uint8_t CPU_DEFAULT_A_CGB = 0x11;
 
-    static const uint32_t DISPLAY_CLOCK_PER_LINE = 456;
+    static const uint32_t DISPLAY_TICKS_PER_LINE = 456;
     static const uint32_t DISPLAY_VISIBLE_LINES = 144;
     static const uint32_t DISPLAY_VBLANK_LINES = 10;
     static const uint32_t DISPLAY_TOTAL_LINES = DISPLAY_VISIBLE_LINES + DISPLAY_VBLANK_LINES;
-    static const uint32_t DISPLAY_CLOCK_PER_FRAME = DISPLAY_CLOCK_PER_LINE * DISPLAY_TOTAL_LINES;
+    static const uint32_t DISPLAY_TICKS_PER_FRAME = DISPLAY_TICKS_PER_LINE * DISPLAY_TOTAL_LINES;
 
     static const uint32_t MASTER_CLOCK_FREQUENCY_GB = 4194304;
     static const uint32_t MASTER_CLOCK_FREQUENCY_CGB = 2 * MASTER_CLOCK_FREQUENCY_GB;
     static const uint32_t MASTER_CLOCK_FREQUENCY_SGB = 4295454;
 
     static const uint32_t MASTER_CLOCK_CPU_DIVIDER = 1;
-    static const uint32_t MASTER_CLOCK_PRE_FRAME = DISPLAY_CLOCK_PER_FRAME;
+    static const uint32_t MASTER_TICKS_PER_FRAME = DISPLAY_TICKS_PER_FRAME;
 
     static const uint32_t WRAM_SIZE_GB = 0x2000;
     static const uint32_t WRAM_SIZE_GBC = 0x8000;
@@ -75,12 +75,20 @@ namespace gb_context
             gb::Display::Config displayConfig;
             displayConfig.model = mModel;
 
-            uint32_t masterClockDivider = MASTER_CLOCK_CPU_DIVIDER;
-            uint32_t masterClockFrequency = MASTER_CLOCK_FREQUENCY_GB * masterClockDivider;
+            uint32_t masterClockFrequency = MASTER_CLOCK_FREQUENCY_GB;
+            uint32_t fixedClockDivider = 1;
+            mVariableClockDivider = 1;
+            if (isGBC)
+            {
+                masterClockFrequency = MASTER_CLOCK_FREQUENCY_CGB;
+                fixedClockDivider = 2;
+                mVariableClockDivider = 2;
+            }
+            mTicksPerFrame = DISPLAY_TICKS_PER_FRAME * fixedClockDivider;
 
             EMU_VERIFY(mClock.create());
             EMU_VERIFY(mMemory.create(MEM_SIZE_LOG2, MEM_PAGE_SIZE_LOG2));
-            EMU_VERIFY(mCpu.create(mClock, mMemory.getState(), masterClockDivider, isGBC ? CPU_DEFAULT_A_CGB : CPU_DEFAULT_A_GB));
+            EMU_VERIFY(mCpu.create(mClock, mMemory.getState(), mVariableClockDivider, isGBC ? CPU_DEFAULT_A_CGB : CPU_DEFAULT_A_GB));
 
             mMapper = gb::createMapper(rom, mMemory);
             EMU_VERIFY(mMapper);
@@ -105,9 +113,9 @@ namespace gb_context
 
             EMU_VERIFY(mInterrupts.create(mCpu, mRegistersIO, mRegistersIE));
             EMU_VERIFY(mGameLink.create(mRegistersIO));
-            EMU_VERIFY(mDisplay.create(displayConfig, mClock, masterClockDivider, mMemory, mInterrupts, mRegistersIO));
+            EMU_VERIFY(mDisplay.create(displayConfig, mClock, fixedClockDivider, mMemory, mInterrupts, mRegistersIO));
             EMU_VERIFY(mJoypad.create(mClock, mInterrupts, mRegistersIO));
-            EMU_VERIFY(mTimer.create(mClock, masterClockFrequency, mInterrupts, mRegistersIO));
+            EMU_VERIFY(mTimer.create(mClock, masterClockFrequency, fixedClockDivider, mVariableClockDivider, mInterrupts, mRegistersIO));
 
             if (mModel >= gb::Model::GBC)
             {
@@ -156,6 +164,11 @@ namespace gb_context
             mRegSVBK = mBankWRAM[1];
             mRegKEY1 = 0x00;
 
+            mVariableClockDivider = 1;
+            if (mModel >= gb::Model::GBC)
+                mVariableClockDivider = 2;
+            setVariableClockDivider(mVariableClockDivider);
+
             mClock.reset();
             mCpu.reset();
             if (mMapper)
@@ -165,6 +178,13 @@ namespace gb_context
             mDisplay.reset();
             mJoypad.reset();
             mTimer.reset();
+        }
+
+        void setVariableClockDivider(uint32_t variableClockDivider)
+        {
+            mVariableClockDivider = variableClockDivider;
+            mCpu.setClockDivider(variableClockDivider);
+            mTimer.setVariableClockDivider(variableClockDivider);
         }
 
         virtual void setController(uint32_t index, uint32_t buttons)
@@ -185,7 +205,7 @@ namespace gb_context
         {
             mDisplay.beginFrame();
             mTimer.beginFrame();
-            mClock.execute(DISPLAY_CLOCK_PER_FRAME);
+            mClock.execute(mTicksPerFrame);
             mClock.advance();
             mClock.clearEvents();
         }
@@ -216,6 +236,7 @@ namespace gb_context
                 mMapper->serializeGameState(serializer);
             serializer.serialize(mWRAM);
             serializer.serialize(mHRAM);
+            serializer.serialize(mVariableClockDivider);
             serializer.serialize(mBankWRAM, EMU_ARRAY_SIZE(mBankWRAM));
             serializer.serialize(mRegSVBK);
             mInterrupts.serialize(serializer);
@@ -223,7 +244,11 @@ namespace gb_context
             mDisplay.serialize(serializer);
             mJoypad.serialize(serializer);
             mTimer.serialize(serializer);
-            updateMemoryMap();
+            if (serializer.isReading())
+            {
+                updateMemoryMap();
+                setVariableClockDivider(mVariableClockDivider);
+            }
         }
 
         emu::RegisterBank& getRegistersIO()
@@ -307,14 +332,12 @@ namespace gb_context
 
         uint8_t readKEY1(int32_t tick, uint16_t addr)
         {
-            EMU_NOT_IMPLEMENTED();
             return mRegKEY1;
         }
 
         void writeKEY1(int32_t tick, uint16_t addr, uint8_t value)
         {
-            EMU_NOT_IMPLEMENTED();
-            mRegKEY1 = value;
+            mRegKEY1 = (mRegKEY1 & ~KEY1_SPEED_SWITCH) | (value & KEY1_SPEED_SWITCH);
         }
 
         uint8_t readSVBK(int32_t tick, uint16_t addr)
@@ -331,7 +354,24 @@ namespace gb_context
 
         void onStop(int32_t tick)
         {
-            EMU_NOT_IMPLEMENTED();
+            if (mModel >= gb::Model::GBC)
+            {
+                if (mRegKEY1 & KEY1_SPEED_SWITCH)
+                {
+                    mRegKEY1 &= ~KEY1_SPEED_SWITCH;
+                    mRegKEY1 ^= KEY1_CURRENT_SPEED;
+                    setVariableClockDivider((mVariableClockDivider == 1) ? 2 : 1);
+                }
+                else
+                {
+                    EMU_NOT_IMPLEMENTED();
+                }
+            }
+            else
+            {
+                EMU_NOT_IMPLEMENTED();
+            }
+            mCpu.resume(tick);
         }
 
         gb::Model               mModel;
@@ -345,6 +385,8 @@ namespace gb_context
         MEM_ACCESS_READ_WRITE   mMemoryHRAM;
         std::vector<uint8_t>    mWRAM;
         std::vector<uint8_t>    mHRAM;
+        uint32_t                mVariableClockDivider;
+        uint32_t                mTicksPerFrame;
         uint8_t                 mBankWRAM[2];
         uint8_t                 mRegKEY1;
         uint8_t                 mRegSVBK;
