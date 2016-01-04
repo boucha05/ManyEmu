@@ -153,14 +153,14 @@ namespace gb
         void updateRasterPos(int32_t tick);
         uint8_t getMode(int32_t tick);
         void updateLineInterrupt(int32_t tick);
-        void updateMonoPalette(uint32_t base, uint8_t value);
-        void updateColorPalette(uint32_t base, uint8_t color_lo, uint8_t color_hi);
-        void sortMonoSprites();
+        void updatePalette();
+        void sortSprites();
         void fetchTileRow(uint8_t* dest, const uint8_t* map, uint32_t tileX, uint32_t tileY, uint8_t tileOffset, uint32_t count);
-        void drawTiles(uint8_t* dest, const uint8_t* tiles, const uint8_t* attributes, const uint8_t* patterns, uint16_t count);
-        void drawSpritesMono(uint8_t* dest, uint8_t line, uint8_t spriteSizeY);
+        void fetchAttrRow(uint8_t* dest, const uint8_t* map, uint32_t tileX, uint32_t tileY, uint8_t tileOffset, uint32_t count);
+        void drawTiles(uint8_t* dest, const uint8_t* tiles, const uint8_t* attributes, const uint8_t* patterns, uint8_t tileOffsetY, uint16_t count);
+        void drawSprites(uint8_t* dest, uint8_t line, uint8_t spriteSizeY, uint8_t paletteShift, uint8_t paletteMask, uint8_t bankMask);
         void blitLine(uint32_t* dest, uint8_t* src, uint32_t count);
-        void renderLinesMono(uint32_t firstLine, uint32_t lastLine);
+        void renderLines(uint32_t firstLine, uint32_t lastLine);
         void render(int32_t tick);
 
         static void onVBlankStart(void* context, int32_t tick)
@@ -219,6 +219,7 @@ namespace gb
         uint8_t                 mLineIntLastLY;
         uint8_t                 mLineIntLastLYC;
         bool                    mSortedSprites;
+        bool                    mCachedPalette;
         bool                    mLineIntLastEnabled;
     };
 }

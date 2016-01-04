@@ -766,7 +766,7 @@ int main()
     config.saveFolder = "C:\\Emu\\Gameboy\\save";
     config.romFolder = "C:\\Emu\\Gameboy\\roms";
     //config.roms.push_back("mario & yoshi (e) [o2].gb");
-    //config.roms.push_back("p-shntae.gbc");
+    //config.roms.push_back("Donkey Kong Country (UE) (M5) [C][t1].gbc");
     config.roms.push_back("Asterix - Search for Dogmatix (E) (M6) [C][!].gbc");
     //config.roms.push_back("Donkey Kong Land 2 (UE) [S][b2].gb");
     //config.roms.push_back("super mario land (v1.1) (jua) [t1].gb");

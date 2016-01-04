@@ -51,19 +51,13 @@ namespace
     static const uint32_t RENDER_TILE_COUNT = DISPLAY_SIZE_X / 8;
     static const uint32_t RENDER_TILE_STORAGE = RENDER_TILE_COUNT + 1;
 
-    static const uint32_t PALETTE_MONO_BASE_BGP = 0;
-    static const uint32_t PALETTE_MONO_BASE_OBP0 = 4;
-    static const uint32_t PALETTE_MONO_BASE_OBP1 = 8;
-    static const uint32_t PALETTE_MONO_BASE_BGP_X4 = 0x00000000;
-    static const uint32_t PALETTE_MONO_BASE_OBP0_X4 = 0x04040404;
-    static const uint32_t PALETTE_MONO_BASE_OBP1_X4 = 0x08080808;
-    static const uint32_t PALETTE_MONO_SIZE = 12;
+    static const uint32_t PALETTE_BASE_BGP = 0;
+    static const uint32_t PALETTE_BASE_OBP = 0x20;
+    static const uint32_t PALETTE_SIZE = 64;
 
-    static const uint32_t PALETTE_COLOR_BASE_BGP = 0;
-    static const uint32_t PALETTE_COLOR_BASE_OBP = 0x20;
-    static const uint32_t PALETTE_COLOR_BASE_BGP_X4 = 0x00000000;
-    static const uint32_t PALETTE_COLOR_BASE_OBP_X4 = 0x20202020;
-    static const uint32_t PALETTE_COLOR_SIZE = 64;
+    static const uint32_t PALETTE_MONO_BASE_BGP = PALETTE_BASE_BGP;
+    static const uint32_t PALETTE_MONO_BASE_OBP0 = PALETTE_BASE_OBP;
+    static const uint32_t PALETTE_MONO_BASE_OBP1 = PALETTE_BASE_OBP + 4;
 
     static const uint32_t SPRITE_LINE_LIMIT = 10;
     static const uint32_t SPRITE_CAPACITY = 40;
@@ -103,7 +97,7 @@ namespace
         { 0x00, 0x00, 0x00, 0x00 },
     };
 
-    static uint8_t patternMask[256][8];
+    static uint8_t patternMask[256][16];
 
     bool initializePatternTable()
     {
@@ -113,6 +107,7 @@ namespace
             {
                 uint8_t mask = ((pattern << bit) & 0x80) ? 0xff : 0x00;
                 patternMask[pattern][bit] = mask;
+                patternMask[pattern][15 - bit] = mask;
             }
         }
         return true;
@@ -235,7 +230,8 @@ namespace gb
         mRegHDMA[3]             = 0x00;
         mRegHDMA[4]             = 0x00;
         mActiveSprites          = 0;
-        mSortedSprites          = false;
+        mSortedSprites = false;
+        mCachedPalette = false;
         resetClock();
         mLineIntTick = 0;
         mLineIntLastLY = 0;
@@ -272,14 +268,7 @@ namespace gb
         mMemoryNotUsable.write.setWriteMethod(&onWriteNotUsable, this, 0);
         EMU_VERIFY(memory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, 0xfea0, 0xfeff, mMemoryNotUsable.write));
 
-        if (mConfig.model >= gb::Model::GBC)
-        {
-            mPalette.resize(PALETTE_COLOR_SIZE, *reinterpret_cast<const uint32_t*>(&kMonoPalette[0]));
-        }
-        else
-        {
-            mPalette.resize(PALETTE_MONO_SIZE, *reinterpret_cast<const uint32_t*>(&kMonoPalette[0]));
-        }
+        mPalette.resize(PALETTE_SIZE, *reinterpret_cast<const uint32_t*>(&kMonoPalette[0]));
         
         EMU_VERIFY(mRegisterAccessors.read.LCDC.create(registers, 0x40, *this, &Display::readLCDC));
         EMU_VERIFY(mRegisterAccessors.read.STAT.create(registers, 0x41, *this, &Display::readSTAT));
@@ -525,7 +514,7 @@ namespace gb
     {
         if (mRegBGP != value)
         {
-            updateMonoPalette(PALETTE_MONO_BASE_BGP, value);
+            mCachedPalette = false;
             render(tick);
             mRegBGP = value;
         }
@@ -540,7 +529,7 @@ namespace gb
     {
         if (mRegOBP0 != value)
         {
-            updateMonoPalette(PALETTE_MONO_BASE_OBP0, value);
+            mCachedPalette = false;
             render(tick);
             mRegOBP0 = value;
         }
@@ -555,7 +544,7 @@ namespace gb
     {
         if (mRegOBP1 != value)
         {
-            updateMonoPalette(PALETTE_MONO_BASE_OBP1, value);
+            mCachedPalette = false;
             render(tick);
             mRegOBP1 = value;
         }
@@ -620,8 +609,7 @@ namespace gb
         render(tick);
         auto index = mRegBGPI & BGPI_INDEX_MASK;
         mRegBGPD[index] = value;
-        auto base = PALETTE_COLOR_BASE_BGP + (index >> 1);
-        updateColorPalette(base, mRegBGPD[index & ~1], mRegBGPD[index | 1]);
+        mCachedPalette = false;
         if (mRegBGPI & BGPI_AUTO_INCR)
         {
             ++index;
@@ -649,8 +637,7 @@ namespace gb
         render(tick);
         auto index = mRegOBPI & OBPI_INDEX_MASK;
         mRegOBPD[index] = value;
-        auto base = PALETTE_COLOR_BASE_OBP + (index >> 1);
-        updateColorPalette(base, mRegOBPD[index & ~1], mRegOBPD[index | 1]);
+        mCachedPalette = false;
         if (mRegOBPI & OBPI_AUTO_INCR)
         {
             ++index;
@@ -727,9 +714,8 @@ namespace gb
         mRegHDMA[2] = 0x00;
         mRegHDMA[3] = 0x00;
         mRegHDMA[4] = 0xff;
-        updateMonoPalette(PALETTE_MONO_BASE_BGP, mRegBGP);
-        updateMonoPalette(PALETTE_MONO_BASE_OBP0, mRegOBP0);
-        updateMonoPalette(PALETTE_MONO_BASE_OBP1, mRegOBP1);
+        mSortedSprites = false;
+        mCachedPalette = false;
         mLineIntTick = 0;
         mLineIntLastLY = 0;
         mLineIntLastLYC = 0;
@@ -854,58 +840,98 @@ namespace gb
         }
     }
 
-    void Display::updateMonoPalette(uint32_t base, uint8_t value)
-    {
-        if (mConfig.model == gb::Model::GB)
-        {
-            for (uint32_t index = 0; index < 4; ++index)
-            {
-                uint8_t shade = value & 0x3;
-                value >>= 2;
-                mPalette[base + index] = *reinterpret_cast<const uint32_t*>(kMonoPalette[shade]);
-            }
-        }
-    }
-
-    void Display::updateColorPalette(uint32_t base, uint8_t color_lo, uint8_t color_hi)
+    void Display::updatePalette()
     {
         if (mConfig.model >= gb::Model::GBC)
         {
-            emu::word16_t color;
-            color.w.l.u = color_lo;
-            color.w.h.u = color_hi;
-            uint32_t r = (color.u >> 0) & 0x1f;
-            uint32_t g = (color.u >> 5) & 0x1f;
-            uint32_t b = (color.u >> 10) & 0x1f;
-            uint8_t rgba[4] = { r << 3, g << 3, b << 3, 0xff };
-            mPalette[base] = reinterpret_cast<const uint32_t&>(rgba);
+            for (uint32_t index = 0; index < PALETTE_SIZE; ++index)
+            {
+                emu::word16_t color;
+                if (index < PALETTE_BASE_OBP)
+                {
+                    uint32_t base = index << 1;
+                    color.w.l.u = mRegBGPD[base + 0];
+                    color.w.h.u = mRegBGPD[base + 1];
+                }
+                else
+                {
+                    uint32_t base = (index - PALETTE_BASE_OBP) << 1;
+                    color.w.l.u = mRegOBPD[base + 0];
+                    color.w.h.u = mRegOBPD[base + 1];
+                }
+                uint32_t r = (color.u >> 0) & 0x1f;
+                uint32_t g = (color.u >> 5) & 0x1f;
+                uint32_t b = (color.u >> 10) & 0x1f;
+                uint8_t rgba[4] = { r << 3, g << 3, b << 3, 0xff };
+                mPalette[index] = reinterpret_cast<const uint32_t&>(rgba);
+            }
         }
+        else
+        {
+            static const uint32_t kIndexTable[] =
+            {
+                PALETTE_MONO_BASE_BGP,
+                PALETTE_MONO_BASE_OBP0,
+                PALETTE_MONO_BASE_OBP1,
+            };
+            uint8_t values[] =
+            {
+                mRegBGP,
+                mRegOBP0,
+                mRegOBP1,
+            };
+            for (uint32_t index = 0; index < EMU_ARRAY_SIZE(values); ++index)
+            {
+                auto value = values[index];
+                auto base = kIndexTable[index];
+                for (uint32_t subIndex = 0; subIndex < 4; ++subIndex)
+                {
+                    auto shade = value & 0x3;
+                    value >>= 2;
+                    mPalette[base + subIndex] = *reinterpret_cast<const uint32_t*>(kMonoPalette[shade]);
+                }
+            }
+        }
+        mCachedPalette = true;
     }
 
-    void Display::sortMonoSprites()
+    void Display::sortSprites()
     {
-        uint16_t keys[SPRITE_CAPACITY];
-
         mActiveSprites = 0;
         uint8_t spriteSizeY = (mRegLCDC & LCDC_SPRITES_SIZE) ? 16 : 8;
-        for (uint32_t index = 0; index < SPRITE_CAPACITY; ++index)
+        if (mConfig.model >= gb::Model::GBC)
         {
-            // Check if sprite is active
-            uint8_t spriteY = mOAM[index * 4 + 0];
-            if ((spriteY >= SPRITE_VISIBLE_Y_END) || (spriteY + spriteSizeY <= SPRITE_VISIBLE_Y_BEGIN))
-                continue;
-            uint8_t spriteX = mOAM[index * 4 + 1];
-            keys[mActiveSprites++] = (spriteX << 8) | (index & 0xff);
-        }
+            for (uint32_t index = 0; index < SPRITE_CAPACITY; ++index)
+            {
+                // Check if sprite is active
+                uint8_t spriteY = mOAM[index * 4 + 0];
+                if ((spriteY >= SPRITE_VISIBLE_Y_END) || (spriteY + spriteSizeY <= SPRITE_VISIBLE_Y_BEGIN))
+                    continue;
 
-        if (mActiveSprites)
+                mOAMOrder[mActiveSprites++] = index;
+            }
+        }
+        else
         {
-            // Sort sprites
-            std::sort(keys, keys + mActiveSprites, [](int a, int b){ return a < b; });
-            for (uint32_t index = 0; index < mActiveSprites; ++index)
-                mOAMOrder[index] = keys[index] & 0xff;
-        }
+            uint16_t keys[SPRITE_CAPACITY];
+            for (uint32_t index = 0; index < SPRITE_CAPACITY; ++index)
+            {
+                // Check if sprite is active
+                uint8_t spriteY = mOAM[index * 4 + 0];
+                if ((spriteY >= SPRITE_VISIBLE_Y_END) || (spriteY + spriteSizeY <= SPRITE_VISIBLE_Y_BEGIN))
+                    continue;
+                uint8_t spriteX = mOAM[index * 4 + 1];
+                keys[mActiveSprites++] = (spriteX << 8) | (index & 0xff);
+            }
 
+            if (mActiveSprites)
+            {
+                // Sort sprites
+                std::sort(keys, keys + mActiveSprites, [](int a, int b){ return a < b; });
+                for (uint32_t index = 0; index < mActiveSprites; ++index)
+                    mOAMOrder[index] = keys[index] & 0xff;
+            }
+        }
         mSortedSprites = true;
     }
 
@@ -920,23 +946,44 @@ namespace gb
         }
     }
 
-    void Display::drawTiles(uint8_t* dest, const uint8_t* tiles, const uint8_t* attributes, const uint8_t* patterns, uint16_t count)
+    void Display::fetchAttrRow(uint8_t* dest, const uint8_t* map, uint32_t tileX, uint32_t tileY, uint8_t tileOffset, uint32_t count)
+    {
+        fetchTileRow(dest, map + VRAM_BANK_SIZE, tileX, tileY, tileOffset, count);
+    }
+
+    void Display::drawTiles(uint8_t* dest, const uint8_t* tiles, const uint8_t* attributes, const uint8_t* patterns, uint8_t tileOffsetY, uint16_t count)
     {
         for (uint32_t index = 0; index < count; ++index)
         {
+            uint8_t attr = attributes[index];
+
+            uint8_t palette8 = ((attr & 0x07) << 2) + PALETTE_BASE_BGP;
+            emu::word32_t palette32;
+            palette32.w8[0].u = palette8;
+            palette32.w8[1].u = palette8;
+            palette32.w8[2].u = palette8;
+            palette32.w8[3].u = palette8;
+            uint32_t palette = palette32.u;
+
             uint32_t tile = tiles[index];
-            uint32_t patternBase = tile << 4;
-            auto pattern0 = reinterpret_cast<const uint32_t*>(&patternMask[patterns[patternBase + 0]][0]);
-            auto pattern1 = reinterpret_cast<const uint32_t*>(&patternMask[patterns[patternBase + 1]][0]);
-            auto value0 = (pattern0[0] & 0x01010101) + (pattern1[0] & 0x02020202) + PALETTE_MONO_BASE_BGP_X4;
-            auto value1 = (pattern0[1] & 0x01010101) + (pattern1[1] & 0x02020202) + PALETTE_MONO_BASE_BGP_X4;
+            uint32_t patternBank = (attr & 0x08) << 10; // Attribute bit is 0x08 and bank size is 0x2000
+            uint8_t flipY = int8_t((attr & 0x40) << 1) >> 7; // Expand flip Y bit in the other 7 bits;
+            uint8_t offsetY = (tileOffsetY ^ (flipY & 7)) << 1; // Flip Y position if the lower 3 bits of flipY are set
+            uint32_t patternBase = (tile << 4) + patternBank + offsetY;
+            uint32_t patternBias = (attr & 0x20) >> 2; // Horizontal flip is bit 5 in attrib and is stored 8 bytes later in pattern table
+
+            auto pattern0 = reinterpret_cast<const uint32_t*>(&patternMask[patterns[patternBase + 0]][patternBias]);
+            auto pattern1 = reinterpret_cast<const uint32_t*>(&patternMask[patterns[patternBase + 1]][patternBias]);
+
+            auto value0 = (pattern0[0] & 0x01010101) + (pattern1[0] & 0x02020202) + palette;
+            auto value1 = (pattern0[1] & 0x01010101) + (pattern1[1] & 0x02020202) + palette;
             reinterpret_cast<uint32_t*>(dest)[0] = value0;
             reinterpret_cast<uint32_t*>(dest)[1] = value1;
             dest += 8;
         }
     }
 
-    void Display::drawSpritesMono(uint8_t* dest, uint8_t line, uint8_t spriteSizeY)
+    void Display::drawSprites(uint8_t* dest, uint8_t line, uint8_t spriteSizeY, uint8_t paletteMask, uint8_t paletteShift, uint8_t bankMask)
     {
         // Find active sprites visible on this line (up to the line limit)
         uint8_t sprites[SPRITE_LINE_LIMIT];
@@ -979,14 +1026,15 @@ namespace gb
 
             // Get the pattern
             uint8_t flipX = (flags & SPRITE_FLAG_FLIP_X) ? 7 : 0;
-            uint32_t tileAddr = (tile << 4) + ((offsetY & 7) << 1);
+            uint32_t tileBank = (flags & SPRITE_FLAG_COLOR_BANK_MASK) << 10;
+            uint32_t tileAddr = (tile << 4) + ((offsetY & 7) << 1) + tileBank;
             uint8_t pattern0 = mVRAM[tileAddr + 0];
             uint8_t pattern1 = mVRAM[tileAddr + 1];
             const uint8_t* patternMask0 = patternMask[pattern0];
             const uint8_t* patternMask1 = patternMask[pattern1];
 
             // Get the palette
-            uint8_t palette = (((flags & SPRITE_FLAG_MONO_PALETTE_MASK) >> SPRITE_FLAG_MONO_PALETTE_SHIFT) << 2) + PALETTE_MONO_BASE_OBP0;
+            uint8_t palette = (((flags & paletteMask) >> paletteShift) << 2) + PALETTE_BASE_OBP;
 
             // Render pixels
             bool backgroundSprite = (flags & SPRITE_FLAG_BACKGROUND) != 0;
@@ -1016,11 +1064,13 @@ namespace gb
         }
     }
 
-    void Display::renderLinesMono(uint32_t firstLine, uint32_t lastLine)
+    void Display::renderLines(uint32_t firstLine, uint32_t lastLine)
     {
         uint8_t rowStorage[RENDER_ROW_STORAGE];
         uint8_t bgTileRowStorage[RENDER_TILE_STORAGE];
+        uint8_t bgAttrRowStorage[RENDER_TILE_STORAGE];
         uint8_t windowTileRowStorage[RENDER_TILE_STORAGE];
+        uint8_t windowAttrRowStorage[RENDER_TILE_STORAGE];
 
         bool lcdEnabled = (mRegLCDC & LCDC_LCD_ENABLE) != 0;
         uint16_t windowTileMapOffset = (mRegLCDC & LCDC_WINDOW_TILE_MAP) ? 0x1c00 : 0x1800;
@@ -1030,13 +1080,25 @@ namespace gb
         bool bgEnabled = (mRegLCDC & LCDC_BG_ENABLE) != 0;
         uint8_t spriteSizeY = (mRegLCDC & LCDC_SPRITES_SIZE) ? 16 : 8;
         bool spritesEnabled = (mRegLCDC & LCDC_SPRITES_ENABLE) != 0;
+        bool isColor = mConfig.model >= gb::Model::GBC;
 
         if (spritesEnabled && !mSortedSprites)
-            sortMonoSprites();
+            sortSprites();
+
+        if (lcdEnabled && !mCachedPalette)
+            updatePalette();
 
         if (!lcdEnabled || !bgEnabled)
             memset(rowStorage, 0, RENDER_ROW_STORAGE);
+        else if (!isColor)
+        {
+            memset(bgAttrRowStorage, 0, RENDER_TILE_STORAGE);
+            memset(windowAttrRowStorage, 0, RENDER_TILE_STORAGE);
+        }
 
+        uint8_t spritePaletteMask = isColor ? SPRITE_FLAG_COLOR_PALETTE_MASK : SPRITE_FLAG_MONO_PALETTE_MASK;
+        uint8_t spritePaletteShift = isColor ? SPRITE_FLAG_COLOR_PALETTE_SHIFT : SPRITE_FLAG_MONO_PALETTE_SHIFT;
+        uint8_t spriteBankMask = isColor ? SPRITE_FLAG_COLOR_BANK_MASK : 0x00;
         uint8_t spritesTileBias = 0x00;
         auto spritesTilePatterns = mVRAM.data() + 0x0000;
 
@@ -1076,8 +1138,10 @@ namespace gb
                     {
                         bgPrevTileY = bgTileY;
                         fetchTileRow(bgTileRowStorage, bgTileMap, bgTileX, bgTileY, bgTileBias, RENDER_TILE_STORAGE);
+                        if (isColor)
+                            fetchAttrRow(bgAttrRowStorage, bgTileMap, bgTileX, bgTileY, bgTileBias, RENDER_TILE_STORAGE);
                     }
-                    drawTiles(bgTileDest, bgTileRowStorage, nullptr, bgTilePatterns + (bgTileOffsetY << 1), RENDER_TILE_STORAGE);
+                    drawTiles(bgTileDest, bgTileRowStorage, bgAttrRowStorage, bgTilePatterns, bgTileOffsetY, RENDER_TILE_STORAGE);
                     ++bgLineY;
                 }
 
@@ -1090,12 +1154,14 @@ namespace gb
                     {
                         windowPrevTileY = windowTileY;
                         fetchTileRow(windowTileRowStorage, windowTileMap, 0, windowTileY, windowTileBias, windowTileCountX);
+                        if (isColor)
+                            fetchAttrRow(windowTileRowStorage, windowTileMap, 0, windowTileY, windowTileBias, windowTileCountX);
                     }
-                    drawTiles(windowTileDest, windowTileRowStorage, nullptr, windowTilePatterns + (windowTileOffsetY << 1), windowTileCountX);
+                    drawTiles(windowTileDest, windowTileRowStorage, windowAttrRowStorage, windowTilePatterns, windowTileOffsetY, windowTileCountX);
                 }
 
                 if (spritesEnabled)
-                    drawSpritesMono(rowStorage, line, spriteSizeY);
+                    drawSprites(rowStorage, line, spriteSizeY, spritePaletteMask, spritePaletteShift, spriteBankMask);
             }
             blitLine(reinterpret_cast<uint32_t*>(dest), rowStorage + 8, DISPLAY_SIZE_X);
             dest += mPitch;
@@ -1126,7 +1192,7 @@ namespace gb
 
                 if (firstLine <= lastLine)
                 {
-                    renderLinesMono(firstLine, lastLine);
+                    renderLines(firstLine, lastLine);
                 }
             }
             mRenderedLine = mRasterLine;
