@@ -145,6 +145,18 @@ namespace gb
     {
     }
 
+    bool MapperROM::create(const Rom& rom, emu::MemoryBus& memory)
+    {
+        EMU_VERIFY(MapperBase::create(rom, memory));
+        EMU_VERIFY(mMemory->addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, 0x0000, 0x7fff, mMemoryControlRegs.setWriteMethod(&write8, this)));
+        return true;
+    }
+
+    void MapperROM::write8(void* context, int32_t tick, uint32_t addr, uint8_t value)
+    {
+        EMU_NOT_IMPLEMENTED();
+    }
+
     ////////////////////////////////////////////////////////////////////////////
 
     MapperMBC1::MapperMBC1()

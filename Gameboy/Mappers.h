@@ -66,6 +66,12 @@ namespace gb
     {
     public:
         MapperROM();
+        virtual bool create(const Rom& rom, emu::MemoryBus& memory) override;
+
+    private:
+        static void write8(void* context, int32_t tick, uint32_t addr, uint8_t value);
+
+        MEM_ACCESS              mMemoryControlRegs;
     };
 
     class MapperMBC1 : public MapperBase
