@@ -2,6 +2,7 @@
 #include <Core/MemoryBus.h>
 #include <Core/RegisterBank.h>
 #include <Core/Serialization.h>
+#include "Audio.h"
 #include "CpuZ80.h"
 #include "Display.h"
 #include "Joypad.h"
@@ -116,6 +117,7 @@ namespace gb_context
             EMU_VERIFY(mDisplay.create(displayConfig, mClock, fixedClockDivider, mMemory, mInterrupts, mRegistersIO));
             EMU_VERIFY(mJoypad.create(mClock, mInterrupts, mRegistersIO));
             EMU_VERIFY(mTimer.create(mClock, masterClockFrequency, fixedClockDivider, mVariableClockDivider, mInterrupts, mRegistersIO));
+            EMU_VERIFY(mAudio.create(mClock, fixedClockDivider, mRegistersIO));
 
             if (mModel >= gb::Model::GBC)
             {
@@ -137,6 +139,7 @@ namespace gb_context
         {
             mStopListener.destroy();
             mRegisterAccessors = RegisterAccessors();
+            mAudio.destroy();
             mTimer.destroy();
             mJoypad.destroy();
             mDisplay.destroy();
@@ -178,6 +181,7 @@ namespace gb_context
             mDisplay.reset();
             mJoypad.reset();
             mTimer.reset();
+            mAudio.reset();
         }
 
         void setVariableClockDivider(uint32_t variableClockDivider)
@@ -244,6 +248,7 @@ namespace gb_context
             mDisplay.serialize(serializer);
             mJoypad.serialize(serializer);
             mTimer.serialize(serializer);
+            mAudio.serialize(serializer);
             if (serializer.isReading())
             {
                 updateMemoryMap();
@@ -397,6 +402,7 @@ namespace gb_context
         gb::Display             mDisplay;
         gb::Joypad              mJoypad;
         gb::Timer               mTimer;
+        gb::Audio               mAudio;
     };
 }
 
