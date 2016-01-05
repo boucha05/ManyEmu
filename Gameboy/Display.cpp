@@ -114,6 +114,80 @@ namespace
     }
 
     bool patternTableInitialized = initializePatternTable();
+
+    float saturate(float value)
+    {
+        if (value < 0.0f)
+            value = 0.0f;
+        if (value > 1.0f)
+            value = 1.0f;
+        return value;
+    }
+
+    float smoothstep(float value)
+    {
+        value = saturate(value);
+        auto value2 = value * value;
+        auto value3 = value2 * value;
+        auto result = 3 * value2 - 2 * value3;
+        return result;
+    }
+
+    void adjust_saturation(float& r, float& g, float& b, float saturation)
+    {
+        float intensity = 0.2126f * r + 0.7152f * g + 0.0722f * b;
+        float w0 = 1.0f - saturation;
+        float w1 = saturation;
+        r = w0 * intensity + w1 * r;
+        g = w0 * intensity + w1 * g;
+        b = w0 * intensity + w1 * b;
+    }
+
+    void adjust_gamma(float& value, float exponent)
+    {
+        value = powf(value, exponent);
+    }
+
+    uint32_t to_rgba(float r, float g, float b, float a)
+    {
+        emu::word32_t result;
+        result.w8[0].u = static_cast<uint8_t>(saturate(r) * 255);
+        result.w8[1].u = static_cast<uint8_t>(saturate(g) * 255);
+        result.w8[2].u = static_cast<uint8_t>(saturate(b) * 255);
+        result.w8[3].u = static_cast<uint8_t>(saturate(a) * 255);
+        return result.u;
+    }
+
+    static uint32_t colorTable[32768];
+
+    bool initializeColorTable()
+    {
+        for (uint32_t index = 0; index < EMU_ARRAY_SIZE(colorTable); ++index)
+        {
+            uint32_t r = (index >> 0) & 0x1f;
+            uint32_t g = (index >> 5) & 0x1f;
+            uint32_t b = (index >> 10) & 0x1f;
+
+            float sr = smoothstep(r / 31.0f);
+            float sg = smoothstep(g / 31.0f);
+            float sb = smoothstep(b / 31.0f);
+            float fr = sr;
+            float fg = 0.05f * sr + 0.65f * sg + 0.30f * sb;
+            float fb = sb;
+
+            static const float saturation = 0.85f;
+            adjust_saturation(fr, fg, fb, saturation);
+
+            static const float gamma = 1.0f / 2.0f;
+            adjust_gamma(fr, gamma);
+            adjust_gamma(fg, gamma);
+            adjust_gamma(fb, gamma);
+            colorTable[index] = to_rgba(fr, fg, fb, 1.0f);
+        }
+        return true;
+    }
+
+    bool colorTableInitialized = initializeColorTable();
 }
 
 namespace gb
@@ -859,11 +933,7 @@ namespace gb
                     color.w.l.u = mRegOBPD[base + 0];
                     color.w.h.u = mRegOBPD[base + 1];
                 }
-                uint32_t r = (color.u >> 0) & 0x1f;
-                uint32_t g = (color.u >> 5) & 0x1f;
-                uint32_t b = (color.u >> 10) & 0x1f;
-                uint8_t rgba[4] = { r << 3, g << 3, b << 3, 0xff };
-                mPalette[index] = reinterpret_cast<const uint32_t&>(rgba);
+                mPalette[index] = colorTable[color.u & 0x7fff];
             }
         }
         else
