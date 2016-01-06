@@ -32,6 +32,16 @@ namespace
     }
 
     static bool sdlInitialized = initSDL();
+
+    bool verifyMemory(const void* src1, const void* src2, size_t size, size_t& pos)
+    {
+        for (pos = 0; pos < size; ++pos)
+        {
+            if (static_cast<const uint8_t*>(src1)[pos] != static_cast<const uint8_t*>(src2)[pos])
+                return false;
+        }
+        return true;
+    }
 }
 
 class Application
@@ -133,6 +143,9 @@ private:
     emu::InputRecorder*         mInputRecorder;
     emu::InputPlayback*         mInputPlayback;
     emu::InputController*       mPlayer1;
+    emu::MemoryStream           mTestStream0;
+    emu::MemoryStream           mTestStream1;
+    emu::MemoryStream           mTestStream2;
 
     GameSessionArray            mGameSessions;
     uint32_t                    mActiveGameSession;
@@ -570,10 +583,50 @@ void Application::update()
         mSoundBuffer.resize(size, 0);
         gameSession.setSoundBuffer(&mSoundBuffer[0], mSoundBuffer.size());
     }
+
+    static bool testGameState = false;
+    if (testGameState)
+    {
+        // Capture state before running the frame
+        mTestStream0.clear();
+        emu::BinaryWriter writer(mTestStream0);
+        gameSession.serializeGameState(writer);
+    }
     
     uint64_t frameStart = SDL_GetPerformanceCounter();
     gameSession.execute();
     uint64_t frameEnd = SDL_GetPerformanceCounter();
+
+    if (testGameState)
+    {
+        // Capture state after running the frame
+        mTestStream1.clear();
+        emu::BinaryWriter writer1(mTestStream1);
+        gameSession.serializeGameState(writer1);
+
+        // Rewind to the beginning of the frame
+        emu::BinaryReader reader1(mTestStream0);
+        gameSession.serializeGameState(reader1);
+
+        // Execute the frame again
+        gameSession.execute();
+
+        // Capture the state after running the frame again
+        mTestStream2.clear();
+        emu::BinaryWriter writer2(mTestStream2);
+        gameSession.serializeGameState(writer2);
+
+        // Compare to make sure the result is the same
+        size_t diffPos = 0;
+        bool same = mTestStream1.getSize() == mTestStream2.getSize();
+        same = same && verifyMemory(mTestStream1.getBuffer(), mTestStream2.getBuffer(), mTestStream1.getSize(), diffPos);
+        if (!same)
+        {
+            printf("Frame %d: serialization failed at offset %d\n!", mFrameIndex, diffPos);
+            EMU_ASSERT(false);
+            terminate();
+        }
+    }
 
     if (pixels)
         SDL_UnlockTexture(mTexture[mBufferIndex]);
