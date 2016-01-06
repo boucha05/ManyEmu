@@ -473,8 +473,8 @@ namespace gb
 
             if (modified & LCDC_LCD_ENABLE)
                 updateLineInterrupt(tick);
+            }
         }
-    }
 
     uint8_t Display::readSTAT(int32_t tick, uint16_t addr)
     {
@@ -503,7 +503,7 @@ namespace gb
         mRegSTAT = value;
         if (modified & STAT_LYC_LY_INT)
             updateLineInterrupt(tick);
-    }
+        }
 
     uint8_t Display::readSCY(int32_t tick, uint16_t addr)
     {
@@ -1247,25 +1247,22 @@ namespace gb
                 EMU_NOT_IMPLEMENTED();
             }
 
+            // Find first line
             updateRasterPos(tick);
-            if (mSurface)
-            {
-                // Find first line
-                uint32_t firstLine = mRenderedLine;
-                if (mRenderedTick > mRenderedLineFirstTick)
-                    ++firstLine;
+            int32_t firstLine = mRenderedLine;
 
-                // Find last line
-                uint32_t lastLine = mRasterLine;
-                if (lastLine >= DISPLAY_SIZE_Y)
-                    lastLine = DISPLAY_SIZE_Y - 1;
+            // Find last line
+            int32_t lastLine = mRasterLine;
+            if (lastLine >= DISPLAY_SIZE_Y)
+                lastLine = DISPLAY_SIZE_Y - 1;
+            if (tick < mLineFirstTick + mMode0StartTick)
+                --lastLine;
 
-                if (firstLine <= lastLine)
-                {
-                    renderLines(firstLine, lastLine);
-                }
-            }
-            mRenderedLine = mRasterLine;
+            // Render new lines
+            if (mSurface && (firstLine <= lastLine))
+                renderLines(firstLine, lastLine);
+
+            mRenderedLine = lastLine + 1;
             mRenderedTick = tick;
             mRenderedLineFirstTick = mLineFirstTick;
         }
