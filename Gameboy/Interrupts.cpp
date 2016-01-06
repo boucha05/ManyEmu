@@ -103,6 +103,11 @@ namespace gb
     {
     }
 
+    void Interrupts::beginFrame(int32_t tick)
+    {
+        checkInterrupts(tick);
+    }
+
     void Interrupts::serialize(emu::ISerializer& serializer)
     {
         serializer.serialize(mMask);

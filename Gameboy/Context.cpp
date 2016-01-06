@@ -209,6 +209,7 @@ namespace gb_context
         {
             mDisplay.beginFrame();
             mTimer.beginFrame();
+            mInterrupts.beginFrame(mClock.getDesiredTicks());
             mClock.execute(mTicksPerFrame);
             mClock.advance();
             mClock.clearEvents();
@@ -242,6 +243,7 @@ namespace gb_context
             serializer.serialize(mHRAM);
             serializer.serialize(mVariableClockDivider);
             serializer.serialize(mBankWRAM, EMU_ARRAY_SIZE(mBankWRAM));
+            serializer.serialize(mRegKEY1);
             serializer.serialize(mRegSVBK);
             mInterrupts.serialize(serializer);
             mGameLink.serialize(serializer);

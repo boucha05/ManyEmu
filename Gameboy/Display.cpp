@@ -800,15 +800,13 @@ namespace gb
     {
         serializer.serialize(mVRAM);
         serializer.serialize(mOAM);
-        serializer.serialize(mPalette);
         serializer.serialize(mSimulatedTick);
         serializer.serialize(mRenderedLine);
-        serializer.serialize(mRenderedLineFirstTick);
         serializer.serialize(mRenderedTick);
         serializer.serialize(mDesiredTick);
-        serializer.serialize(mUpdateRasterPosFast);
         serializer.serialize(mLineFirstTick);
         serializer.serialize(mLineTick);
+        serializer.serialize(mLineIntTick);
         serializer.serialize(mRasterLine);
         serializer.serialize(mBankVRAM);
         serializer.serialize(mRegLCDC);
@@ -826,14 +824,16 @@ namespace gb
         serializer.serialize(mRegBGPI);
         serializer.serialize(mRegBGPD, EMU_ARRAY_SIZE(mRegBGPD));
         serializer.serialize(mRegOBPI);
-        serializer.serialize(mRegOBPD, EMU_ARRAY_SIZE(mRegBGPD));
+        serializer.serialize(mRegOBPD, EMU_ARRAY_SIZE(mRegOBPD));
         serializer.serialize(mRegHDMA, EMU_ARRAY_SIZE(mRegHDMA));
-        serializer.serialize(mLineIntTick);
         serializer.serialize(mLineIntLastLY);
         serializer.serialize(mLineIntLastLYC);
         serializer.serialize(mLineIntLastEnabled);
         if (serializer.isReading())
+        {
             mSortedSprites = false;
+            mCachedPalette = false;
+        }
     }
 
     void Display::setRenderSurface(void* surface, size_t pitch)

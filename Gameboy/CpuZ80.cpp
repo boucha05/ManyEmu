@@ -1930,6 +1930,8 @@ namespace gb
         serializer.serialize(IME);
         serializer.serialize(mRegs.r8.halted);
         serializer.serialize(mRegs.r8.stopped);
+        serializer.serialize(mDesiredTicks);
+        serializer.serialize(mExecutedTicks);
         serializer.serialize(mFrame);
     }
 

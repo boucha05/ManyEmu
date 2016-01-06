@@ -27,9 +27,10 @@ namespace gb
         bool create(CpuZ80& cpu, emu::RegisterBank& registersIO, emu::RegisterBank& registersIE);
         void destroy();
         void reset();
+        void beginFrame(int32_t tick);
         void serialize(emu::ISerializer& serializer);
-        void setInterrupt(int tick, Signal signal);
-        void clearInterrupt(int tick, Signal signal);
+        void setInterrupt(int32_t tick, Signal signal);
+        void clearInterrupt(int32_t tick, Signal signal);
 
     private:
         uint8_t readIF(int32_t tick, uint16_t addr);

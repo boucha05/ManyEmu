@@ -137,6 +137,7 @@ namespace gb
         serializer.serialize(mBankROM, EMU_ARRAY_SIZE(mBankROM));
         serializer.serialize(mBankExternalRAM);
         serializer.serialize(mEnableExternalRAM);
+        updateMemoryMap();
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -178,8 +179,8 @@ namespace gb
 
     void MapperMBC1::serializeGameState(emu::ISerializer& serializer)
     {
-        MapperBase::serializeGameState(serializer);
         serializer.serialize(mRamBankMode);
+        MapperBase::serializeGameState(serializer);
     }
 
     void MapperMBC1::write8(int32_t tick, uint32_t addr, uint8_t value)
@@ -243,8 +244,8 @@ namespace gb
 
     void MapperMBC5::serializeGameState(emu::ISerializer& serializer)
     {
-        MapperBase::serializeGameState(serializer);
         serializer.serialize(mRamBankMode);
+        MapperBase::serializeGameState(serializer);
     }
 
     void MapperMBC5::write8(int32_t tick, uint32_t addr, uint8_t value)
