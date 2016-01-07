@@ -62,9 +62,25 @@ namespace gb
         mMemory = &memory;
 
         const auto& desc = rom.getDescription();
+        uint8_t* pRAM = nullptr;
         if (desc.hasRam)
         {
             mExternalRAM.resize(desc.ramSize, 0);
+            pRAM = mExternalRAM.data();
+        }
+
+        const uint8_t* pROM = mRom->getContent().rom;
+        for (uint32_t bank = 0, offset = 0; bank < EMU_ARRAY_SIZE(mBankMapROM); ++bank, offset += ROM_BANK_SIZE)
+        {
+            if (offset >= desc.romSize)
+                offset = 0;
+            mBankMapROM[bank] = pROM + offset;
+        }
+        for (uint32_t bank = 0, offset = 0; bank < EMU_ARRAY_SIZE(mBankMapRAM); ++bank, offset += BANK_SIZE_EXTERNAL_RAM)
+        {
+            if (offset >= desc.ramSize)
+                offset = 0;
+            mBankMapRAM[bank] = pRAM + offset;
         }
 
         reset();
@@ -108,12 +124,11 @@ namespace gb
 
     bool MapperBase::updateMemoryMap()
     {
-        const auto& romContent = mRom->getContent();
-        mMemoryROM[0].setReadMemory(romContent.rom + mBankROM[0] * ROM_BANK_SIZE);
-        mMemoryROM[1].setReadMemory(romContent.rom + mBankROM[1] * ROM_BANK_SIZE);
+        mMemoryROM[0].setReadMemory(mBankMapROM[mBankROM[0]]);
+        mMemoryROM[1].setReadMemory(mBankMapROM[mBankROM[1]]);
         if (!mExternalRAM.empty() && (mEnableExternalRAM || !mRom->getDescription().hasBattery))
         {
-            mMemoryExternalRAM.setReadWriteMemory(mExternalRAM.data());
+            mMemoryExternalRAM.setReadWriteMemory(mBankMapRAM[mBankExternalRAM]);
         }
         else
         {

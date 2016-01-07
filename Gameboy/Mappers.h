@@ -53,6 +53,8 @@ namespace gb
 
         const Rom*              mRom;
         emu::MemoryBus*         mMemory;
+        const uint8_t*          mBankMapROM[512];
+        uint8_t*                mBankMapRAM[256];
         MEM_ACCESS              mMemoryROM[2];
         MEM_ACCESS_READ_WRITE   mMemoryExternalRAM;
         MEM_ACCESS_READ_WRITE   mMemoryExternalRAMEmpty;
