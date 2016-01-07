@@ -1096,7 +1096,7 @@ namespace gb
 
             // Get the pattern
             uint8_t flipX = (flags & SPRITE_FLAG_FLIP_X) ? 7 : 0;
-            uint32_t tileBank = (flags & SPRITE_FLAG_COLOR_BANK_MASK) << 10;
+            uint32_t tileBank = (flags & bankMask) << 10;
             uint32_t tileAddr = (tile << 4) + ((offsetY & 7) << 1) + tileBank;
             uint8_t pattern0 = mVRAM[tileAddr + 0];
             uint8_t pattern1 = mVRAM[tileAddr + 1];
