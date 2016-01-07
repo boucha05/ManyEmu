@@ -1253,10 +1253,10 @@ namespace gb
 
             // Find last line
             int32_t lastLine = mRasterLine;
-            if (lastLine >= DISPLAY_SIZE_Y)
-                lastLine = DISPLAY_SIZE_Y - 1;
             if (tick < mLineFirstTick + mMode0StartTick)
                 --lastLine;
+            if (lastLine >= DISPLAY_SIZE_Y)
+                lastLine = DISPLAY_SIZE_Y - 1;
 
             // Render new lines
             if (mSurface && (firstLine <= lastLine))
