@@ -740,7 +740,7 @@ namespace nes
         timerCount -= ticks;
 
         // Update level
-        static const uint32_t kLevel[] =
+        static const int32_t kLevel[] =
         {
             -15, -13, -11, -9, -7, -5, -3, -1, +1, +3, +5, +8, +9, +11, +13, +15,
             +15, +13, +11, +9, +7, +5, +3, +1, -1, -3, -5, -8, -9, -11, -13, -15,

@@ -1,58 +1,69 @@
 function adddll(location, dllname, env)
-    local configs = { x32="x86", x64="x64" }
-    for arch,config in pairs(configs) do
-        configuration { arch }
-            local command = 'xcopy /EQY "$(SolutionDir)..\\' .. location:gsub('/', '\\') .. '\\' .. config .. '\\' .. dllname .. '.dll" "$(OutputPath)"'
+    local configs =
+    {
+        {
+            filter="platforms:*32",
+            arch="x86"
+        },
+        {
+            filter="platforms:*64",
+            arch="x64"
+        }
+    }
+    for key,config in pairs(configs) do
+        filter (config.filter)
+            local command = '{COPY} "$(SolutionDir)..\\' .. location:gsub('/', '\\') .. '\\' .. config.arch .. '\\' .. dllname .. '.dll" "$(OutputPath)"'
             postbuildcommands { command }
     end
     
-    configuration {}
+    filter {}
 end
 
 function addlibrary(location, libname)
     includedirs { location .. "/include" }
 
-    configuration "x32"
+    filter "platforms:*32"
         libdirs { location .. "/lib/x86" }
 
-    configuration "x64"
+    filter "platforms:*64"
         libdirs { location .. "/lib/x64" }
 
-    configuration {}
+    filter {}
 
     links { "" .. libname }
 end
 
-solution "ManyEmu"
-    location "build"
+function configure()
     configurations { "Debug", "Release" }
-    platforms { "x32", "x64" }
+    platforms { "Win32", "x64" }
+    
+    filter "platforms:*32"
+        system "Windows"
+        architecture "x86"
+        
+    filter "platforms:*64"
+        system "Windows"
+        architecture "x86_64"
 
-    configuration { "Debug", "x32" }
-        targetdir "build/bin/x86/Debug"
+    filter {}
+end
 
-    configuration { "Debug", "x64" }
-        targetdir "build/bin/x64/Debug"
+workspace "ManyEmu"
+    location "build"
+    startproject "ManyEmu"
 
-    configuration { "Release", "x32" }
-        targetdir "build/bin/x86/Release"
+    configure()
 
-    configuration { "Release", "x64" }
-        targetdir "build/bin/x64/Release"
-
-    configuration "Debug"
+    filter "configurations:Debug"
         defines { "DEBUG" }
         flags { "Symbols" }
 
-    configuration "Release"
+    filter "configurations:Release"
         defines { "NDEBUG" }
         flags { "Symbols", "Optimize" }
 
-    configuration "vs*"
-        defines { "_CRT_SECURE_NO_WARNINGS", "_CRT_NONSTDC_NO_WARNINGS" }
-
-    configuration "vs2013"
-        defines { "_USING_V110_SDK71_" }
+    filter {}
+        defines { "_CRT_SECURE_NO_WARNINGS", "_CRT_NONSTDC_NO_WARNINGS", "_USING_V110_SDK71_" }
 
 
 emulators = {}
@@ -61,6 +72,8 @@ function emulatorProject(libname, file_filter)
     project(libname)
         kind "StaticLib"
         language "C++"
+        
+        configure()
     
         includedirs { "." }
     
@@ -73,6 +86,8 @@ emulatorProject("NES", { "NES/**.h", "NES/**.cpp" } )
 project "ManyEmu"
     kind "ConsoleApp"
     language "C++"
+    
+    configure()
     
     addlibrary("Contrib/SDL2", "SDL2")
     addlibrary("Contrib/glew", "glew32s")

@@ -622,7 +622,7 @@ void Application::update()
         same = same && verifyMemory(mTestStream1.getBuffer(), mTestStream2.getBuffer(), mTestStream1.getSize(), diffPos);
         if (!same)
         {
-            printf("Frame %d: serialization failed at offset %d\n!", mFrameIndex, diffPos);
+            printf("Frame %d: serialization failed at offset %d\n!", mFrameIndex, static_cast<uint32_t>(diffPos));
             EMU_ASSERT(false);
             terminate();
         }

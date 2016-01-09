@@ -1,1 +1,1 @@
-Contrib\premake\windows\premake4 vs2013
+Contrib\premake\windows\premake5 vs2015
