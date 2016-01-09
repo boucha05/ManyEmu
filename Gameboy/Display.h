@@ -152,6 +152,7 @@ namespace gb
         void onVBlankStart(int32_t tick);
         void updateRasterPos(int32_t tick);
         uint8_t getMode(int32_t tick);
+        void updateInterrupts(int32_t tick);
         void updateLineInterrupt(int32_t tick);
         void updatePalette();
         void sortSprites();
@@ -196,6 +197,7 @@ namespace gb
         int32_t                 mLineFirstTick;
         int32_t                 mLineTick;
         int32_t                 mLineIntTick;
+        int32_t                 mRasterTick;
         uint8_t                 mRasterLine;
         uint8_t                 mBankVRAM;
         uint8_t                 mRegLCDC;
@@ -221,5 +223,10 @@ namespace gb
         bool                    mSortedSprites;
         bool                    mCachedPalette;
         bool                    mLineIntLastEnabled;
+
+        uint8_t                 mIntUpdate;
+        uint8_t                 mIntEnabled;
+        uint8_t                 mIntSync;
+        int32_t                 mIntPredictionMode0;
     };
 }

@@ -1810,6 +1810,7 @@ namespace gb
 
         if (traceCount == traceBreak)
         {
+            fflush(log);
             traceBreak = traceBreak;
         }
 #endif

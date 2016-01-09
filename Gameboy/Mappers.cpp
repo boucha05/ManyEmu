@@ -188,8 +188,8 @@ namespace gb
 
     void MapperMBC1::reset()
     {
-        MapperBase::reset();
         mRamBankMode = false;
+        MapperBase::reset();
     }
 
     void MapperMBC1::serializeGameState(emu::ISerializer& serializer)
@@ -253,8 +253,8 @@ namespace gb
 
     void MapperMBC5::reset()
     {
-        MapperBase::reset();
         mRamBankMode = false;
+        MapperBase::reset();
     }
 
     void MapperMBC5::serializeGameState(emu::ISerializer& serializer)
@@ -265,35 +265,37 @@ namespace gb
 
     void MapperMBC5::write8(int32_t tick, uint32_t addr, uint8_t value)
     {
-        switch (addr >> 13)
+        switch (addr >> 12)
         {
         case 0:
+        case 1:
         {
             bool enable = (value & MBC5_RAM_ENABLE_MASK) == MBC5_RAM_ENABLE_VALUE;
             enableRam(enable);
             break;
         }
-        case 1:
+        case 2:
         {
             uint16_t bank = getRomBank();
             bank = (bank & ~MBC5_ROM_BANK_LOW_MASK) | (value & MBC5_ROM_BANK_LOW_MASK);
             setRomBank(bank);
             break;
         }
-        case 2:
+        case 3:
         {
             uint16_t bank = getRomBank();
             bank = (bank & ~MBC5_ROM_BANK_HIGH_MASK) | ((value << MBC5_ROM_BANK_HIGH_SHIFT) & MBC5_ROM_BANK_HIGH_MASK);
             setRomBank(bank);
             break;
         }
-        case 3:
+        case 4:
+        case 5:
         {
             setRamBank(value);
             break;
         }
         default:
-            EMU_ASSERT(false);
+            break;
         }
 
         updateMemoryMap();

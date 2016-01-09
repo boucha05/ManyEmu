@@ -88,6 +88,15 @@ namespace
     static const uint8_t HDMA5_DONE = 0xff;
     static const uint16_t HDMA_DST_BASE = 0x8000;
     static const uint16_t HDMA_DST_MASK = 0x1ff0;
+    static const uint16_t HDMA_DST_FINAL_MASK = 0x1fff;
+
+    static const uint8_t INT_MODE_0 = 0x01;
+    static const uint8_t INT_MODE_1 = 0x02;
+    static const uint8_t INT_MODE_2 = 0x04;
+    static const uint8_t INT_LINE = 0x08;
+    static const uint8_t INT_VBLANK = 0x10;
+    static const uint8_t INT_ALL = INT_MODE_0 | INT_MODE_1 | INT_MODE_2 | INT_LINE | INT_VBLANK;
+    static const uint8_t INT_NONE = 0x00;
 
     static const uint8_t kMonoPalette[4][4] =
     {
@@ -280,6 +289,7 @@ namespace gb
         mMode0StartTick         = 0;
         mMode3StartTick         = 0;
         mUpdateRasterPosFast    = 0;
+        mRasterTick             = 0;
         mRasterLine             = 0;
         mBankVRAM               = 0;
         mRegLCDC                = 0x00;
@@ -311,6 +321,11 @@ namespace gb
         mLineIntLastLY = 0;
         mLineIntLastLYC = 0;
         mLineIntLastEnabled = false;
+
+        mIntUpdate = INT_NONE;
+        mIntEnabled = INT_NONE;
+        mIntSync = INT_NONE;
+        mIntPredictionMode0 = 0;
     }
 
     bool Display::create(Config& config, emu::Clock& clock, uint32_t master_clock_divider, emu::MemoryBus& memory, Interrupts& interrupts, emu::RegisterBank& registers)
@@ -343,7 +358,7 @@ namespace gb
         EMU_VERIFY(memory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, 0xfea0, 0xfeff, mMemoryNotUsable.write));
 
         mPalette.resize(PALETTE_SIZE, *reinterpret_cast<const uint32_t*>(&kMonoPalette[0]));
-        
+
         EMU_VERIFY(mRegisterAccessors.read.LCDC.create(registers, 0x40, *this, &Display::readLCDC));
         EMU_VERIFY(mRegisterAccessors.read.STAT.create(registers, 0x41, *this, &Display::readSTAT));
         EMU_VERIFY(mRegisterAccessors.read.SCY.create(registers, 0x42, *this, &Display::readSCY));
@@ -387,7 +402,6 @@ namespace gb
             {
                 EMU_VERIFY(mRegisterAccessors.read.HDMA[index].create(registers, 0x51 + index, *this, &Display::readHDMA));
                 EMU_VERIFY(mRegisterAccessors.write.HDMA[index].create(registers, 0x51 + index, *this, &Display::writeHDMA));
-
             }
         }
 
@@ -431,6 +445,8 @@ namespace gb
         mDesiredTick -= tick;
         mLineFirstTick -= tick;
         mLineTick -= tick;
+        mRasterTick -= tick;
+        mIntPredictionMode0 -= tick;
     }
 
     void Display::setDesiredTicks(int32_t tick)
@@ -446,6 +462,7 @@ namespace gb
 
     void Display::beginFrame()
     {
+        updateMemoryMap();
         mClock->addEvent(onVBlankStart, this, mVBlankStartTick);
         mRasterLine -= DISPLAY_LINE_COUNT;
         mRenderedLine = 0;
@@ -453,6 +470,9 @@ namespace gb
         mRenderedTick = 0;
         mLineIntLastEnabled = false;
         updateLineInterrupt(mSimulatedTick);
+
+        mIntSync = INT_ALL;
+        updateRasterPos(mSimulatedTick);
     }
 
     uint8_t Display::readLCDC(int32_t tick, uint16_t addr)
@@ -472,9 +492,13 @@ namespace gb
             mRegLCDC = value;
 
             if (modified & LCDC_LCD_ENABLE)
+            {
                 updateLineInterrupt(tick);
+                mIntUpdate = INT_ALL;
+                updateRasterPos(tick);
             }
         }
+    }
 
     uint8_t Display::readSTAT(int32_t tick, uint16_t addr)
     {
@@ -488,22 +512,25 @@ namespace gb
     {
         value &= STAT_WRITE_MASK;
         uint8_t modified = mRegSTAT ^ value;
-        if (modified & STAT_OAM_INT)
+        if (modified)
         {
-            EMU_NOT_IMPLEMENTED();
+            updateRasterPos(tick);
+            mRegSTAT = value;
+            if (modified & STAT_OAM_INT)
+            {
+                EMU_NOT_IMPLEMENTED();
+            }
+            if (modified & STAT_VBLANK_INT)
+            {
+                EMU_NOT_IMPLEMENTED();
+            }
+            if (modified & STAT_HBLANK_INT)
+                mIntUpdate |= INT_MODE_0;
+            if (modified & STAT_LYC_LY_INT)
+                updateLineInterrupt(tick);
+            updateRasterPos(tick);
         }
-        if (modified & STAT_VBLANK_INT)
-        {
-            EMU_NOT_IMPLEMENTED();
-        }
-        if (modified & STAT_HBLANK_INT)
-        {
-            EMU_NOT_IMPLEMENTED();
-        }
-        mRegSTAT = value;
-        if (modified & STAT_LYC_LY_INT)
-            updateLineInterrupt(tick);
-        }
+    }
 
     uint8_t Display::readSCY(int32_t tick, uint16_t addr)
     {
@@ -675,7 +702,8 @@ namespace gb
 
     uint8_t Display::readBGPD(int32_t tick, uint16_t addr)
     {
-        return mRegBGPI;
+        uint8_t index = mRegBGPI & BGPI_INDEX_MASK;
+        return mRegBGPD[index];
     }
 
     void Display::writeBGPD(int32_t tick, uint16_t addr, uint8_t value)
@@ -703,7 +731,8 @@ namespace gb
 
     uint8_t Display::readOBPD(int32_t tick, uint16_t addr)
     {
-        return mRegOBPI;
+        uint8_t index = mRegOBPI & OBPI_INDEX_MASK;
+        return mRegOBPD[index];
     }
 
     void Display::writeOBPD(int32_t tick, uint16_t addr, uint8_t value)
@@ -752,7 +781,8 @@ namespace gb
                 for (uint32_t pos = 0; pos < size; ++pos)
                 {
                     uint8_t value = memory_bus_read8(*mMemory, tick, src + pos);
-                    memory_bus_write8(*mMemory, tick, dst + pos, value);
+                    auto dstFinal = ((dst + pos) & HDMA_DST_FINAL_MASK) + HDMA_DST_BASE;
+                    memory_bus_write8(*mMemory, tick, dstFinal, value);
                 }
                 mRegHDMA[4] = HDMA5_DONE;
             }
@@ -794,6 +824,11 @@ namespace gb
         mLineIntLastLY = 0;
         mLineIntLastLYC = 0;
         mLineIntLastEnabled = false;
+
+        mIntUpdate = INT_NONE;
+        mIntEnabled = INT_NONE;
+        mIntSync = INT_NONE;
+        mIntPredictionMode0 = 0;
     }
 
     void Display::serialize(emu::ISerializer& serializer)
@@ -807,6 +842,7 @@ namespace gb
         serializer.serialize(mLineFirstTick);
         serializer.serialize(mLineTick);
         serializer.serialize(mLineIntTick);
+        serializer.serialize(mRasterTick);
         serializer.serialize(mRasterLine);
         serializer.serialize(mBankVRAM);
         serializer.serialize(mRegLCDC);
@@ -829,10 +865,15 @@ namespace gb
         serializer.serialize(mLineIntLastLY);
         serializer.serialize(mLineIntLastLYC);
         serializer.serialize(mLineIntLastEnabled);
+        serializer.serialize(mIntUpdate);
+        serializer.serialize(mIntEnabled);
+        serializer.serialize(mIntSync);
+        serializer.serialize(mIntPredictionMode0);
         if (serializer.isReading())
         {
             mSortedSprites = false;
             mCachedPalette = false;
+            mIntSync = INT_ALL;
         }
     }
 
@@ -850,28 +891,33 @@ namespace gb
 
     void Display::updateRasterPos(int32_t tick)
     {
-        if (tick - mLineFirstTick <= mUpdateRasterPosFast)
+        if (mRasterTick < tick)
         {
-            while (tick - mLineFirstTick >= mTicksPerLine)
+            mRasterTick = tick;
+            if (tick - mLineFirstTick <= mUpdateRasterPosFast)
             {
-                ++mRasterLine;
-                ++mRegLY;
-                mLineFirstTick += mTicksPerLine;
+                while (tick - mLineFirstTick >= mTicksPerLine)
+                {
+                    ++mRasterLine;
+                    ++mRegLY;
+                    mLineFirstTick += mTicksPerLine;
+                }
+                mLineTick = tick - mLineFirstTick;
             }
-            mLineTick = tick - mLineFirstTick;
+            else
+            {
+                uint8_t rasterLine = tick / mTicksPerLine;
+                uint8_t deltaLine = rasterLine - mRasterLine;
+                mRasterLine = rasterLine;
+                mRegLY = rasterLine;
+                mLineTick = tick % mTicksPerLine;
+                mLineFirstTick = tick - mLineTick;
+            }
+            if (mRegLY >= DISPLAY_LINE_COUNT)
+                mRegLY -= DISPLAY_LINE_COUNT;
         }
-        else
-        {
-            uint8_t rasterLine = tick / mTicksPerLine;
-            uint8_t deltaLine = rasterLine - mRasterLine;
-            mRasterLine = rasterLine;
-            mRegLY = rasterLine;
-            mLineTick = tick % mTicksPerLine;
-            mLineFirstTick = tick - mLineTick;
-        }
-        if (mRegLY >= DISPLAY_LINE_COUNT)
-            mRegLY -= DISPLAY_LINE_COUNT;
-        updateLineInterrupt(tick);
+        updateLineInterrupt(mRasterTick);
+        updateInterrupts(mRasterTick);
     }
 
     uint8_t Display::getMode(int32_t tick)
@@ -884,6 +930,63 @@ namespace gb
         if (mLineTick < mMode0StartTick)
             return 3;
         return 0;
+    }
+
+    void Display::updateInterrupts(int32_t tick)
+    {
+        // Process any signaled interrupt
+        if (mIntEnabled && !mIntUpdate)
+        {
+            if ((mIntEnabled & INT_MODE_0) && (mIntPredictionMode0 <= tick))
+            {
+                mInterrupts->setInterrupt(tick, gb::Interrupts::Signal::LcdStat);
+                mIntUpdate |= INT_MODE_0;
+            }
+        }
+
+        // Update dirty predictions
+        auto intEnabledOld = mIntEnabled;
+        if (mIntUpdate)
+        {
+            if (mIntUpdate & INT_MODE_0)
+            {
+                bool enabled = (mRegLCDC & LCDC_LCD_ENABLE) && (mRegSTAT & STAT_HBLANK_INT);
+                if (enabled)
+                    mIntEnabled |= INT_MODE_0;
+                else
+                    mIntEnabled &= ~INT_MODE_0;
+                if (enabled)
+                {
+                    mIntPredictionMode0 = mLineFirstTick + mMode0StartTick;
+                    uint8_t line = mRasterLine;
+                    while (true)
+                    {
+                        if (line >= DISPLAY_LINE_COUNT)
+                            line -= DISPLAY_LINE_COUNT;
+                        if ((line < DISPLAY_SIZE_Y) && (tick < mIntPredictionMode0))
+                            break;
+                        mIntPredictionMode0 += mTicksPerLine;
+                        ++line;
+                    }
+                    mIntSync |= INT_MODE_0;
+                }
+            }
+            mIntUpdate = 0;
+        }
+
+        if (mIntSync)
+        {
+            // Find next prediction to be true
+            mIntSync &= mIntEnabled;
+            int32_t prediction = INT32_MAX;
+            if (mIntSync & INT_MODE_0)
+                prediction = std::min(prediction, mIntPredictionMode0);
+            mIntSync = 0;
+
+            // Synchronize
+            if (prediction < INT32_MAX)
+                mClock->addSync(prediction);
+        }
     }
 
     void Display::updateLineInterrupt(int32_t tick)
@@ -1193,6 +1296,15 @@ namespace gb
         auto bgTileMap = mVRAM.data() + bgTileMapOffset;
         auto bgTileDest = rowStorage + 8 - bgTileOffsetX;
 
+        static bool dumpVRAM = false;
+        if (dumpVRAM)
+        {
+            dumpVRAM = false;
+            auto file = fopen("..\\vram.bin", "wb");
+            fwrite(mVRAM.data(), 1, mVRAM.size(), file);
+            fclose(file);
+        }
+
         auto dest = mSurface + mPitch * firstLine;
         for (uint32_t line = firstLine; line <= lastLine; ++line)
         {
@@ -1209,7 +1321,7 @@ namespace gb
                         bgPrevTileY = bgTileY;
                         fetchTileRow(bgTileRowStorage, bgTileMap, bgTileX, bgTileY, bgTileBias, RENDER_TILE_STORAGE);
                         if (isColor)
-                            fetchAttrRow(bgAttrRowStorage, bgTileMap, bgTileX, bgTileY, bgTileBias, RENDER_TILE_STORAGE);
+                            fetchAttrRow(bgAttrRowStorage, bgTileMap, bgTileX, bgTileY, 0, RENDER_TILE_STORAGE);
                     }
                     drawTiles(bgTileDest, bgTileRowStorage, bgAttrRowStorage, bgTilePatterns, bgTileOffsetY, RENDER_TILE_STORAGE);
                     ++bgLineY;

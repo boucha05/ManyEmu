@@ -97,8 +97,14 @@ namespace gb_context
             mWRAM.resize(isGBC ? WRAM_SIZE_GBC : WRAM_SIZE_GB, 0);
             mHRAM.resize(HRAM_SIZE, 0);
 
-            mBankWRAM[0] = 0;
-            mBankWRAM[1] = 1;
+            for (uint32_t bank = 0, offset = 0; bank < EMU_ARRAY_SIZE(mBankMapWRAM); ++bank, offset += WRAM_BANK_SIZE)
+            {
+                if (offset >= mWRAM.size())
+                    offset = 0;
+                mBankMapWRAM[bank] = mWRAM.data() + (offset ? offset : WRAM_BANK_SIZE);
+            }
+
+            mBankWRAM = 0;
             mRegKEY1 = 0x00;
             mRegSVBK = 0x01;
 
@@ -162,9 +168,8 @@ namespace gb_context
 
         virtual void reset()
         {
-            mBankWRAM[0] = 0;
-            mBankWRAM[1] = 1;
-            mRegSVBK = mBankWRAM[1];
+            mBankWRAM = 0;
+            mRegSVBK = mBankWRAM;
             mRegKEY1 = 0x00;
 
             mVariableClockDivider = 1;
@@ -242,7 +247,7 @@ namespace gb_context
             serializer.serialize(mWRAM);
             serializer.serialize(mHRAM);
             serializer.serialize(mVariableClockDivider);
-            serializer.serialize(mBankWRAM, EMU_ARRAY_SIZE(mBankWRAM));
+            serializer.serialize(mBankWRAM);
             serializer.serialize(mRegKEY1);
             serializer.serialize(mRegSVBK);
             mInterrupts.serialize(serializer);
@@ -329,10 +334,10 @@ namespace gb_context
 
         bool updateMemoryMap()
         {
-            mMemoryWRAM[0].setReadWriteMemory(mWRAM.data() + mBankWRAM[0] * WRAM_BANK_SIZE);
-            mMemoryWRAM[1].setReadWriteMemory(mWRAM.data() + mBankWRAM[1] * WRAM_BANK_SIZE);
-            mMemoryWRAM[2].setReadWriteMemory(mWRAM.data() + mBankWRAM[0] * WRAM_BANK_SIZE);
-            mMemoryWRAM[3].setReadWriteMemory(mWRAM.data() + mBankWRAM[1] * WRAM_BANK_SIZE);
+            mMemoryWRAM[0].setReadWriteMemory(mWRAM.data());
+            mMemoryWRAM[1].setReadWriteMemory(mBankMapWRAM[mBankWRAM]);
+            mMemoryWRAM[2].setReadWriteMemory(mWRAM.data());
+            mMemoryWRAM[3].setReadWriteMemory(mBankMapWRAM[mBankWRAM]);
             mMemoryHRAM.setReadWriteMemory(mHRAM.data());
             return true;
         }
@@ -355,7 +360,7 @@ namespace gb_context
         void writeSVBK(int32_t tick, uint16_t addr, uint8_t value)
         {
             mRegSVBK = value;
-            mBankWRAM[1] = value & SVBK_BANK_MASK;
+            mBankWRAM = value & SVBK_BANK_MASK;
             updateMemoryMap();
         }
 
@@ -394,7 +399,8 @@ namespace gb_context
         std::vector<uint8_t>    mHRAM;
         uint32_t                mVariableClockDivider;
         uint32_t                mTicksPerFrame;
-        uint8_t                 mBankWRAM[2];
+        uint8_t*                mBankMapWRAM[8];
+        uint8_t                 mBankWRAM;
         uint8_t                 mRegKEY1;
         uint8_t                 mRegSVBK;
         emu::RegisterBank       mRegistersIO;
