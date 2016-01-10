@@ -493,6 +493,12 @@ namespace gb
 
             if (modified & LCDC_LCD_ENABLE)
             {
+                if ((value & LCDC_LCD_ENABLE) == 0)
+                {
+                    if (tick < mVBlankStartTick)
+                        mInterrupts->setInterrupt(tick, gb::Interrupts::Signal::VBlank);
+                }
+
                 updateLineInterrupt(tick);
                 mIntUpdate = INT_ALL;
                 updateRasterPos(tick);
@@ -886,7 +892,8 @@ namespace gb
     void Display::onVBlankStart(int32_t tick)
     {
         render(tick);
-        mInterrupts->setInterrupt(tick, gb::Interrupts::Signal::VBlank);
+        if ((mRegLCDC & LCDC_LCD_ENABLE) != 0)
+            mInterrupts->setInterrupt(tick, gb::Interrupts::Signal::VBlank);
     }
 
     void Display::updateRasterPos(int32_t tick)
@@ -1281,7 +1288,8 @@ namespace gb
         uint8_t bgTileBias = bgFirstTilePattern ? spritesTileBias : windowTileBias;
         auto bgTilePatterns = bgFirstTilePattern ? spritesTilePatterns : windowTilePatterns;
 
-        uint8_t windowTileCountX = (windowEnabled && (mRegWX < DISPLAY_SIZE_X + 7)) ? (DISPLAY_SIZE_X + 7 - mRegWX + 7) >> 3 : 0;
+        windowEnabled = windowEnabled && (mRegWX < DISPLAY_SIZE_X + 7);
+        uint8_t windowTileCountX = windowEnabled ? (DISPLAY_SIZE_X + 7 - mRegWX + 7) >> 3 : 0;
         uint8_t windowPrevTileY = 0xff;
         auto windowTileMap = mVRAM.data() + windowTileMapOffset;
         auto windowTileOffset = 8 - 7 + mRegWX;

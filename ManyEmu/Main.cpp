@@ -818,17 +818,18 @@ int main()
     // Configuration for Gameboy development
     config.saveFolder = "C:\\Emu\\Gameboy\\save";
     config.romFolder = "C:\\Emu\\Gameboy\\roms";
-    config.roms.push_back("mario & yoshi (e) [o2].gb");
+    //config.roms.push_back("mario & yoshi (e) [o2].gb");
     //config.roms.push_back("Donkey Kong Country (UE) (M5) [C][t1].gbc");
     //config.roms.push_back("Legend of Zelda, The - Oracle of Ages (U) [C][h2].gbc");
     //config.roms.push_back("Donkey Kong Land 2 (UE) [S][b2].gb");
     //config.roms.push_back("Mario Tennis (U) [C][!].gbc");
     //config.roms.push_back("p-shntae.gbc");
+    //config.roms.push_back("rayman (u) [c][t1].gbc");
     //config.roms.push_back("Asterix - Search for Dogmatix (E) (M6) [C][!].gbc");
     //config.roms.push_back("3D Pocket Pool (E) (M6) [C][!].gbc");
     //config.roms.push_back("super mario land (v1.1) (jua) [t1].gb");
     //config.roms.push_back("Tetris (V1.1) (JU) [!].gb");
-    //config.roms.push_back("Metroid 2 - Return of Samus (UA) [b1].gb");
+    config.roms.push_back("Metroid 2 - Return of Samus (UA) [b1].gb");
     //config.recorded = "recorded.dat";
     //config.playback = true;
     //config.frameSkip = 600;
@@ -837,7 +838,7 @@ int main()
     //config.autoLoad = true;
     //config.romFolder = "..\\Gameboy\\ROMs\\cpu_instrs\\individual";
     //config.roms.push_back("01-special.gb");             // passed
-    //config.roms.push_back("02-interrupts.gb");          // Failed #4
+    //config.roms.push_back("02-interrupts.gb");          // passed
     //config.roms.push_back("03-op sp,hl.gb");            // passed
     //config.roms.push_back("04-op r,imm.gb");            // passed
     //config.roms.push_back("05-op rp.gb");               // passed

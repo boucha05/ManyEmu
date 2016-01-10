@@ -17,7 +17,7 @@ namespace
 
 namespace gb
 {
-    class Interrupts::CpuInterruptListener : public CpuZ80::IInterruptListener
+    class Interrupts::CpuInterruptListener : public CpuZ80::IInterruptListener, public CpuZ80::IStopListener
     {
     public:
         CpuInterruptListener(CpuZ80& cpu, Interrupts& interrupts)
@@ -35,6 +35,7 @@ namespace gb
         void create()
         {
             mCpu.addInterruptListener(*this);
+            mCpu.addStopListener(*this);
         }
 
         void destroy()
@@ -50,6 +51,16 @@ namespace gb
         virtual void onInterruptDisable(int32_t tick) override
         {
             mInterrupts.onCpuInterruptDisable(tick);
+        }
+
+        virtual void onHalt(int32_t tick) override
+        {
+            mInterrupts.onCpuHaltStop(tick);
+        }
+
+        virtual void onStop(int32_t tick) override
+        {
+            mInterrupts.onCpuHaltStop(tick);
         }
 
     private:
@@ -167,6 +178,11 @@ namespace gb
         mMask = INT_MASK_NONE;
     }
 
+    void Interrupts::onCpuHaltStop(int32_t tick)
+    {
+        checkInterrupts(tick);
+    }
+
     void Interrupts::checkInterrupts(int32_t tick)
     {
         if (mMask & mRegIE & INT_NOT_IMPLEMENTED)
@@ -174,6 +190,8 @@ namespace gb
             EMU_NOT_IMPLEMENTED();
         }
         uint8_t signaled = mMask & mRegIE & mRegIF;
+        if (mRegIF)
+            mCpu->resume(tick);
         if (signaled)
         {
             for (uint8_t bit = 0; bit < INT_BIT_COUNT; ++bit)

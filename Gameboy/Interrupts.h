@@ -40,6 +40,7 @@ namespace gb
 
         void onCpuInterruptEnable(int32_t tick);
         void onCpuInterruptDisable(int32_t tick);
+        void onCpuHaltStop(int32_t tick);
         void checkInterrupts(int32_t tick);
 
         class CpuInterruptListener;

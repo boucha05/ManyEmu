@@ -11,9 +11,10 @@ namespace
     static const uint8_t MBC1_RAM_ENABLE_VALUE = 0x0a;
 
     static const uint8_t MBC1_ROM_BANK_LOW_MASK = 0x1f;
+    static const uint8_t MBC1_ROM_BANK_HIGH_VALID = 0x60;
     static const uint8_t MBC1_ROM_BANK_HIGH_MASK = 0x60;
     static const uint8_t MBC1_ROM_BANK_HIGH_SHIFT = 5;
-    static const uint8_t MBC1_ROM_BANK_INVALID_MASK = 0x60;
+    static const uint8_t MBC1_ROM_BANK_INVALID_MASK = 0x1f;
     static const uint8_t MBC1_ROM_BANK_INVALID_ADJ = 0x01;
 
     static const uint8_t MBC1_RAM_BANK_MODE = 0x01;
@@ -188,14 +189,28 @@ namespace gb
 
     void MapperMBC1::reset()
     {
+        mBankROM = 0;
+        mBankRAM = 0;
         mRamBankMode = false;
         MapperBase::reset();
     }
 
     void MapperMBC1::serializeGameState(emu::ISerializer& serializer)
     {
+        serializer.serialize(mBankROM);
+        serializer.serialize(mBankRAM);
         serializer.serialize(mRamBankMode);
         MapperBase::serializeGameState(serializer);
+    }
+
+    bool MapperMBC1::updateMemoryMap()
+    {
+        uint8_t validBankROM = mBankROM;
+        if ((validBankROM & MBC1_ROM_BANK_INVALID_MASK) == 0)
+            validBankROM |= MBC1_ROM_BANK_INVALID_ADJ;
+        setRomBank(validBankROM);
+        setRamBank(mBankRAM);
+        return MapperBase::updateMemoryMap();
     }
 
     void MapperMBC1::write8(int32_t tick, uint32_t addr, uint8_t value)
@@ -210,20 +225,20 @@ namespace gb
         }
         case 1:
         {
-            uint16_t bank = getRomBank();
-            bank = (bank & ~MBC1_ROM_BANK_LOW_MASK) | (value & MBC1_ROM_BANK_LOW_MASK);
-            if ((bank & MBC1_ROM_BANK_INVALID_MASK) == bank)
-                bank |= MBC1_ROM_BANK_INVALID_ADJ;
-            setRomBank(bank);
+            mBankROM = (mBankROM & ~MBC1_ROM_BANK_LOW_MASK) | (value & MBC1_ROM_BANK_LOW_MASK);
             break;
         }
         case 2:
         {
-            uint16_t bank = getRomBank();
-            bank = (bank & ~MBC1_ROM_BANK_HIGH_MASK) | ((value << MBC1_ROM_BANK_HIGH_SHIFT) & MBC1_ROM_BANK_HIGH_MASK);
-            if ((bank & MBC1_ROM_BANK_INVALID_MASK) == bank)
-                bank |= MBC1_ROM_BANK_INVALID_ADJ;
-            setRomBank(bank);
+            value = value & MBC1_ROM_BANK_HIGH_VALID;
+            if (mRamBankMode)
+            {
+                mBankRAM = value;
+            }
+            else
+            {
+                mBankROM = (mBankROM & ~MBC1_ROM_BANK_HIGH_MASK) | ((value << MBC1_ROM_BANK_HIGH_SHIFT) & MBC1_ROM_BANK_HIGH_MASK);
+            }
             break;
         }
         case 3:
@@ -234,7 +249,6 @@ namespace gb
         default:
             EMU_ASSERT(false);
         }
-
         updateMemoryMap();
     }
 
@@ -261,6 +275,11 @@ namespace gb
     {
         serializer.serialize(mRamBankMode);
         MapperBase::serializeGameState(serializer);
+    }
+
+    bool MapperMBC5::updateMemoryMap()
+    {
+        return MapperBase::updateMemoryMap();
     }
 
     void MapperMBC5::write8(int32_t tick, uint32_t addr, uint8_t value)

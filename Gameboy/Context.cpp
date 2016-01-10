@@ -373,6 +373,7 @@ namespace gb_context
                     mRegKEY1 &= ~KEY1_SPEED_SWITCH;
                     mRegKEY1 ^= KEY1_CURRENT_SPEED;
                     setVariableClockDivider((mVariableClockDivider == 1) ? 2 : 1);
+                    mCpu.resume(tick);
                 }
                 else
                 {

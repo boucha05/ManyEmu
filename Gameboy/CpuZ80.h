@@ -29,6 +29,7 @@ namespace gb
         class IStopListener
         {
         public:
+            virtual void onHalt(int32_t tick) {}
             virtual void onStop(int32_t tick) {}
         };
         

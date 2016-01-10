@@ -589,8 +589,11 @@ namespace gb
 
     void CpuZ80::resume(int32_t tick)
     {
-        mRegs.r8.halted = false;
-        mRegs.r8.stopped = false;
+        if (mRegs.r8.halted || mRegs.r8.stopped)
+        {
+            mRegs.r8.halted = false;
+            mRegs.r8.stopped = false;
+        }
     }
 
     void CpuZ80::interrupt(int32_t tick, uint16_t addr)
@@ -598,8 +601,7 @@ namespace gb
         push16(PC);
         PC = addr;
         setIME(false);
-        mRegs.r8.halted = false;
-        mRegs.r8.stopped = false;
+        resume(tick);
     }
 
     void CpuZ80::resetClock()
@@ -1786,8 +1788,8 @@ namespace gb
     void CpuZ80::trace()
     {
 #if 0
-        //static FILE* log = fopen("..\\gb.log", "w");
-        static FILE* log = nullptr;
+        static FILE* log = fopen("..\\gb.log", "w");
+        //static FILE* log = nullptr;
         static int traceStart = 0x0000;
         static int traceBreak = 0x0000;
         static int traceCount = 0;

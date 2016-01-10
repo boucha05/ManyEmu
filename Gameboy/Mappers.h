@@ -84,6 +84,8 @@ namespace gb
         virtual void reset() override;
         virtual void serializeGameState(emu::ISerializer& serializer) override;
 
+    protected:
+        virtual bool updateMemoryMap() override;
     private:
         void write8(int32_t tick, uint32_t addr, uint8_t value);
 
@@ -93,6 +95,8 @@ namespace gb
         }
 
         MEM_ACCESS              mMemoryControlRegs;
+        uint32_t                mBankROM;
+        uint32_t                mBankRAM;
         bool                    mRamBankMode;
     };
 
@@ -104,6 +108,8 @@ namespace gb
         virtual void reset() override;
         virtual void serializeGameState(emu::ISerializer& serializer) override;
 
+    protected:
+        virtual bool updateMemoryMap() override;
     private:
         void write8(int32_t tick, uint32_t addr, uint8_t value);
 
