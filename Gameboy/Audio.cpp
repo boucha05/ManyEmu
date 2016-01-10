@@ -169,6 +169,7 @@ namespace gb
     void Audio::writeNR10(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR10 = value;
     }
 
     uint8_t Audio::readNR11(int32_t tick, uint16_t addr)
@@ -180,6 +181,7 @@ namespace gb
     void Audio::writeNR11(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR11 = value;
     }
 
     uint8_t Audio::readNR12(int32_t tick, uint16_t addr)
@@ -191,6 +193,7 @@ namespace gb
     void Audio::writeNR12(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR12 = value;
     }
 
     uint8_t Audio::readNR13(int32_t tick, uint16_t addr)
@@ -202,6 +205,7 @@ namespace gb
     void Audio::writeNR13(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR13 = value;
     }
 
     uint8_t Audio::readNR14(int32_t tick, uint16_t addr)
@@ -213,6 +217,7 @@ namespace gb
     void Audio::writeNR14(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR14 = value;
     }
 
     uint8_t Audio::readNR21(int32_t tick, uint16_t addr)
@@ -224,6 +229,7 @@ namespace gb
     void Audio::writeNR21(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR21 = value;
     }
 
     uint8_t Audio::readNR22(int32_t tick, uint16_t addr)
@@ -235,6 +241,7 @@ namespace gb
     void Audio::writeNR22(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR22 = value;
     }
 
     uint8_t Audio::readNR23(int32_t tick, uint16_t addr)
@@ -246,6 +253,7 @@ namespace gb
     void Audio::writeNR23(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR23 = value;
     }
 
     uint8_t Audio::readNR24(int32_t tick, uint16_t addr)
@@ -257,6 +265,7 @@ namespace gb
     void Audio::writeNR24(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR24 = value;
     }
 
     uint8_t Audio::readNR30(int32_t tick, uint16_t addr)
@@ -268,6 +277,7 @@ namespace gb
     void Audio::writeNR30(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR30 = value;
     }
 
     uint8_t Audio::readNR31(int32_t tick, uint16_t addr)
@@ -279,6 +289,7 @@ namespace gb
     void Audio::writeNR31(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR31 = value;
     }
 
     uint8_t Audio::readNR32(int32_t tick, uint16_t addr)
@@ -290,6 +301,7 @@ namespace gb
     void Audio::writeNR32(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR32 = value;
     }
 
     uint8_t Audio::readNR33(int32_t tick, uint16_t addr)
@@ -301,6 +313,7 @@ namespace gb
     void Audio::writeNR33(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR33 = value;
     }
 
     uint8_t Audio::readNR34(int32_t tick, uint16_t addr)
@@ -312,6 +325,7 @@ namespace gb
     void Audio::writeNR34(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR34 = value;
     }
 
     uint8_t Audio::readNR41(int32_t tick, uint16_t addr)
@@ -323,6 +337,7 @@ namespace gb
     void Audio::writeNR41(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR41 = value;
     }
 
     uint8_t Audio::readNR42(int32_t tick, uint16_t addr)
@@ -334,6 +349,7 @@ namespace gb
     void Audio::writeNR42(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR42 = value;
     }
 
     uint8_t Audio::readNR43(int32_t tick, uint16_t addr)
@@ -345,6 +361,7 @@ namespace gb
     void Audio::writeNR43(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR43 = value;
     }
 
     uint8_t Audio::readNR44(int32_t tick, uint16_t addr)
@@ -356,6 +373,7 @@ namespace gb
     void Audio::writeNR44(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR44 = value;
     }
 
     uint8_t Audio::readNR50(int32_t tick, uint16_t addr)
@@ -367,6 +385,7 @@ namespace gb
     void Audio::writeNR50(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR50 = value;
     }
 
     uint8_t Audio::readNR51(int32_t tick, uint16_t addr)
@@ -378,6 +397,7 @@ namespace gb
     void Audio::writeNR51(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR51 = value;
     }
 
     uint8_t Audio::readNR52(int32_t tick, uint16_t addr)
@@ -389,6 +409,7 @@ namespace gb
     void Audio::writeNR52(int32_t tick, uint16_t addr, uint8_t value)
     {
         EMU_NOT_IMPLEMENTED();
+        mRegNR52 = value;
     }
 
     uint8_t Audio::readWAVE(int32_t tick, uint16_t addr)
