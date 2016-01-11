@@ -62,6 +62,42 @@ namespace gb
 
     ////////////////////////////////////////////////////////////////////////////
 
+    void Audio::Sweep::serialize(emu::ISerializer& serializer)
+    {
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    void Audio::Length::serialize(emu::ISerializer& serializer)
+    {
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    void Audio::Volume::serialize(emu::ISerializer& serializer)
+    {
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    void Audio::SquarePattern::serialize(emu::ISerializer& serializer)
+    {
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    void Audio::WavePattern::serialize(emu::ISerializer& serializer)
+    {
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    void Audio::NoisePattern::serialize(emu::ISerializer& serializer)
+    {
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
     Audio::Audio()
     {
         initialize();
@@ -74,7 +110,9 @@ namespace gb
 
     void Audio::initialize()
     {
-        mClock                  = nullptr;
+        mClock = nullptr;
+        mSoundBuffer = nullptr;
+        mSoundBufferSize = 0;
         resetClock();
     }
 
@@ -154,6 +192,13 @@ namespace gb
 
     void Audio::advanceClock(int32_t tick)
     {
+        if (mSoundBuffer)
+        {
+            for (uint32_t pos = 0; pos < mSoundBufferSize; ++pos)
+            {
+                mSoundBuffer[pos] = 0;
+            }
+        }
     }
 
     void Audio::setDesiredTicks(int32_t tick)
@@ -450,6 +495,12 @@ namespace gb
         memset(mRegWAVE, EMU_ARRAY_SIZE(mRegWAVE), 0x00);
     }
 
+    void Audio::setSoundBuffer(int16_t* buffer, size_t size)
+    {
+        mSoundBuffer = buffer;
+        mSoundBufferSize = static_cast<uint32_t>(size);
+    }
+
     void Audio::serialize(emu::ISerializer& serializer)
     {
         serializer.serialize(mRegNR10);
@@ -474,5 +525,17 @@ namespace gb
         serializer.serialize(mRegNR51);
         serializer.serialize(mRegNR52);
         serializer.serialize(mRegWAVE, EMU_ARRAY_SIZE(mRegWAVE));
+        mChannel1Sweep.serialize(serializer);
+        mChannel1Length.serialize(serializer);
+        mChannel1Volume.serialize(serializer);
+        mChannel1Pattern.serialize(serializer);
+        mChannel2Length.serialize(serializer);
+        mChannel2Volume.serialize(serializer);
+        mChannel2Pattern.serialize(serializer);
+        mChannel3Length.serialize(serializer);
+        mChannel3Pattern.serialize(serializer);
+        mChannel4Length.serialize(serializer);
+        mChannel4Volume.serialize(serializer);
+        mChannel4Pattern.serialize(serializer);
     }
 }

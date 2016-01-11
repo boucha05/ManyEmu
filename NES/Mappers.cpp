@@ -30,6 +30,11 @@ namespace
 
         virtual nes::IMapper* create(uint32_t index)
         {
+            static nes::AutoRegisterMapper<nes::Mapper0> mapper0(0, "NROM");
+            static nes::AutoRegisterMapper<nes::Mapper1> mapper1(1, "SxROM");
+            static nes::AutoRegisterMapper<nes::Mapper2> mapper2(2, "UxROM");
+            static nes::AutoRegisterMapper<nes::Mapper4> mapper4(4, "MMC3/MMC6");
+
             auto item = mapperInfoTable.find(index);
             if (item == mapperInfoTable.end())
                 return nullptr;
@@ -48,11 +53,6 @@ namespace nes
     MapperRegistry& MapperRegistry::getInstance()
     {
         static MapperRegistryImpl instance;
-        static nes::AutoRegisterMapper<Mapper0> mapper0(0, "NROM");
-        static nes::AutoRegisterMapper<Mapper1> mapper1(1, "SxROM");
-        static nes::AutoRegisterMapper<Mapper2> mapper2(2, "UxROM");
-        static nes::AutoRegisterMapper<Mapper4> mapper4(4, "MMC3/MMC6");
-
         return instance;
     }
 }

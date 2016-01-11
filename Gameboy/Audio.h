@@ -15,6 +15,7 @@ namespace gb
         bool create(emu::Clock& clock, uint32_t master_clock_divider, emu::RegisterBank& registers);
         void destroy();
         void reset();
+        void setSoundBuffer(int16_t* buffer, size_t size);
         void serialize(emu::ISerializer& serializer);
 
     private:
@@ -142,9 +143,47 @@ namespace gb
         uint8_t readWAVE(int32_t tick, uint16_t addr);
         void writeWAVE(int32_t tick, uint16_t addr, uint8_t value);
 
+        class Sweep
+        {
+        public:
+            void serialize(emu::ISerializer& serializer);
+        };
+
+        class Length
+        {
+        public:
+            void serialize(emu::ISerializer& serializer);
+        };
+
+        class Volume
+        {
+        public:
+            void serialize(emu::ISerializer& serializer);
+        };
+
+        class SquarePattern
+        {
+        public:
+            void serialize(emu::ISerializer& serializer);
+        };
+
+        class WavePattern
+        {
+        public:
+            void serialize(emu::ISerializer& serializer);
+        };
+
+        class NoisePattern
+        {
+        public:
+            void serialize(emu::ISerializer& serializer);
+        };
+
         emu::Clock*             mClock;
         ClockListener           mClockListener;
         RegisterAccessors       mRegisterAccessors;
+        int16_t*                mSoundBuffer;
+        uint32_t                mSoundBufferSize;
         uint8_t                 mRegNR10;
         uint8_t                 mRegNR11;
         uint8_t                 mRegNR12;
@@ -167,5 +206,17 @@ namespace gb
         uint8_t                 mRegNR51;
         uint8_t                 mRegNR52;
         uint8_t                 mRegWAVE[16];
+        Sweep                   mChannel1Sweep;
+        Length                  mChannel1Length;
+        Volume                  mChannel1Volume;
+        SquarePattern           mChannel1Pattern;
+        Length                  mChannel2Length;
+        Volume                  mChannel2Volume;
+        SquarePattern           mChannel2Pattern;
+        Length                  mChannel3Length;
+        WavePattern             mChannel3Pattern;
+        Length                  mChannel4Length;
+        Volume                  mChannel4Volume;
+        NoisePattern            mChannel4Pattern;
     };
 }

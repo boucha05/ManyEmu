@@ -201,8 +201,9 @@ namespace gb_context
             mJoypad.setController(index, buttons);
         }
 
-        virtual void setSoundBuffer(int16_t* /*buffer*/, size_t /*size*/)
+        virtual void setSoundBuffer(int16_t* buffer, size_t size)
         {
+            mAudio.setSoundBuffer(buffer, size);
         }
 
         virtual void setRenderSurface(void* surface, size_t pitch)

@@ -831,6 +831,7 @@ int main()
     //config.roms.push_back("Tetris (V1.1) (JU) [!].gb");
     //config.roms.push_back("Metroid 2 - Return of Samus (UA) [b1].gb");
     config.roms.push_back("Legend of Zelda, The - Link's Awakening (V1.2) (U) [!].gb");
+    //config.saveAudio = true;
     //config.recorded = "recorded.dat";
     //config.playback = true;
     //config.frameSkip = 600;
