@@ -12,7 +12,7 @@ namespace gb
     public:
         Audio();
         ~Audio();
-        bool create(emu::Clock& clock, uint32_t master_clock_divider, emu::RegisterBank& registers);
+        bool create(emu::Clock& clock, uint32_t masterClockFrequency, uint32_t masterClockDivider, emu::RegisterBank& registers);
         void destroy();
         void reset();
         void setSoundBuffer(int16_t* buffer, size_t size);
@@ -97,6 +97,11 @@ namespace gb
         void resetClock();
         void advanceClock(int32_t tick);
         void setDesiredTicks(int32_t tick);
+        void sampleStep();
+        void sequencerStep();
+        void updateSample(int32_t tick);
+        void updateSequencer(int32_t tick);
+        void update(int32_t tick);
 
         uint8_t readNR10(int32_t tick, uint16_t addr);
         void writeNR10(int32_t tick, uint16_t addr, uint8_t value);
@@ -152,7 +157,26 @@ namespace gb
         class Length
         {
         public:
+            Length(const uint8_t& NRx1, const uint8_t& NRx4, bool is8bit);
+            void reset();
+            void onWriteNRx1();
+            void onWriteNRx4();
+            void step();
             void serialize(emu::ISerializer& serializer);
+
+            uint32_t getOutputMask() const
+            {
+                return mOutputMask;
+            }
+
+        private:
+            void reload();
+
+            const uint8_t&  mNRx1;
+            const uint8_t&  mNRx4;
+            uint32_t        mLoadMask;
+            uint32_t        mCounter;
+            uint32_t        mOutputMask;
         };
 
         class Volume
@@ -184,6 +208,15 @@ namespace gb
         RegisterAccessors       mRegisterAccessors;
         int16_t*                mSoundBuffer;
         uint32_t                mSoundBufferSize;
+        uint32_t                mSoundBufferOffset;
+        uint32_t                mMasterClockFrequency;
+        uint32_t                mTicksPerSample;
+        uint32_t                mTicksPerSequencerStep;
+        int32_t                 mDesiredTick;
+        int32_t                 mUpdateTick;
+        int32_t                 mSampleTick;
+        int32_t                 mSequencerTick;
+        uint8_t                 mSequencerStep;
         uint8_t                 mRegNR10;
         uint8_t                 mRegNR11;
         uint8_t                 mRegNR12;

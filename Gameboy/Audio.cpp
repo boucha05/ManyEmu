@@ -5,6 +5,15 @@
 
 namespace
 {
+    static const uint32_t MASTER_CLOCK_FREQUENCY_GB = 4194304;
+    static const uint32_t SEQUENCER_FREQUENCY = 512;
+    static const uint32_t TICKS_PER_SEQUENCER_STEP = MASTER_CLOCK_FREQUENCY_GB / SEQUENCER_FREQUENCY;
+
+    static const uint32_t OUTPUT_MASK_DISABLED = 0x00000000;
+    static const uint32_t OUTPUT_MASK_ENABLED = 0xffffffff;
+
+    static const uint8_t NRx4_RELOAD = 0x80;
+    static const uint8_t NRx4_DECREMENT = 0x40;
 }
 
 namespace gb
@@ -68,8 +77,51 @@ namespace gb
 
     ////////////////////////////////////////////////////////////////////////////
 
+    Audio::Length::Length(const uint8_t& NRx1, const uint8_t& NRx4, bool is8bit)
+        : mNRx1(NRx1)
+        , mNRx4(NRx4)
+        , mLoadMask(is8bit ? 0xff : 0x3f)
+    {
+        reset();
+    }
+
+    void Audio::Length::reset()
+    {
+        mCounter = 0;
+        mOutputMask = OUTPUT_MASK_DISABLED;
+    }
+
+    void Audio::Length::reload()
+    {
+        mCounter = mLoadMask + 1 - (mNRx1 & mLoadMask);
+        mOutputMask = OUTPUT_MASK_ENABLED;
+    }
+
+    void Audio::Length::onWriteNRx1()
+    {
+        reload();
+    }
+
+    void Audio::Length::onWriteNRx4()
+    {
+        if (mNRx4 & NRx4_RELOAD)
+            reload();
+    }
+
+    void Audio::Length::step()
+    {
+        if ((mNRx4 & NRx4_DECREMENT) && mCounter)
+        {
+            --mCounter;
+            if (mCounter == 0)
+                mOutputMask = OUTPUT_MASK_DISABLED;
+        }
+    }
+
     void Audio::Length::serialize(emu::ISerializer& serializer)
     {
+        serializer.serialize(mCounter);
+        serializer.serialize(mOutputMask);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -99,6 +151,10 @@ namespace gb
     ////////////////////////////////////////////////////////////////////////////
 
     Audio::Audio()
+        : mChannel1Length(mRegNR11, mRegNR14, false)
+        , mChannel2Length(mRegNR21, mRegNR24, false)
+        , mChannel3Length(mRegNR31, mRegNR34, true)
+        , mChannel4Length(mRegNR41, mRegNR44, false)
     {
         initialize();
     }
@@ -113,13 +169,19 @@ namespace gb
         mClock = nullptr;
         mSoundBuffer = nullptr;
         mSoundBufferSize = 0;
+        mSoundBufferOffset = 0;
         resetClock();
     }
 
-    bool Audio::create(emu::Clock& clock, uint32_t master_clock_divider, emu::RegisterBank& registers)
+    bool Audio::create(emu::Clock& clock, uint32_t masterClockFrequency, uint32_t masterClockDivider, emu::RegisterBank& registers)
     {
         mClock = &clock;
         EMU_VERIFY(mClockListener.create(clock, *this));
+
+        // The following timings are not exactly true. They are used to match correctly with a frame rate of 60 Hz and to allow SGB to run a bit faster
+        mMasterClockFrequency = MASTER_CLOCK_FREQUENCY_GB * masterClockDivider;
+        mTicksPerSequencerStep = TICKS_PER_SEQUENCER_STEP * masterClockDivider;
+        mTicksPerSample = 0;
 
         EMU_VERIFY(mRegisterAccessors.read.NR10.create(registers, 0x10, *this, &Audio::readNR10));
         EMU_VERIFY(mRegisterAccessors.read.NR11.create(registers, 0x11, *this, &Audio::readNR11));
@@ -169,7 +231,6 @@ namespace gb
         {
             EMU_VERIFY(mRegisterAccessors.read.WAVE[index].create(registers, 0x30 + index, *this, &Audio::readWAVE));
             EMU_VERIFY(mRegisterAccessors.write.WAVE[index].create(registers, 0x30 + index, *this, &Audio::writeWAVE));
-
         }
 
         return true;
@@ -184,25 +245,111 @@ namespace gb
 
     void Audio::execute()
     {
+        update(mDesiredTick);
     }
 
     void Audio::resetClock()
     {
+        mDesiredTick = 0;
+        mUpdateTick = 0;
+        mSampleTick = 0;
+        mSequencerTick = 0;
     }
 
     void Audio::advanceClock(int32_t tick)
     {
         if (mSoundBuffer)
         {
-            for (uint32_t pos = 0; pos < mSoundBufferSize; ++pos)
+            EMU_ASSERT(mSoundBufferOffset <= mSoundBufferSize);
+            while (mSoundBufferOffset < mSoundBufferSize)
             {
-                mSoundBuffer[pos] = 0;
+                mSoundBuffer[mSoundBufferOffset] = mSoundBuffer[mSoundBufferOffset - 1];
+                ++mSoundBufferOffset;
             }
+            mSoundBufferOffset -= mSoundBufferSize;
         }
+
+        mDesiredTick -= tick;
+        mUpdateTick -= tick;
+        mSampleTick = 0;    // TODO: Do a -= tick once we stop producing a fixed number of samples per frame
+        mSequencerTick -= tick;
     }
 
     void Audio::setDesiredTicks(int32_t tick)
     {
+        mDesiredTick = tick;
+    }
+
+    void Audio::sampleStep()
+    {
+        if (mSoundBufferOffset < mSoundBufferSize)
+        {
+            int8_t channel[4];
+            channel[0] = mChannel1Length.getOutputMask() & 15;
+            channel[1] = mChannel2Length.getOutputMask() & 15;
+            channel[2] = mChannel3Length.getOutputMask() & 15;
+            channel[3] = mChannel4Length.getOutputMask() & 15;
+            int8_t value = channel[0] + channel[1] + channel[2] + channel[3];
+            emu::word16_t sample;
+            sample.w8[0].u = value;
+            sample.w8[1].u = 0;
+            mSoundBuffer[mSoundBufferOffset] = sample.u;
+        }
+        ++mSoundBufferOffset;
+    }
+
+    void Audio::sequencerStep()
+    {
+        mSequencerStep = (mSequencerStep + 1) & 7;
+        if ((mSequencerStep & 1) == 0)
+        {
+            mChannel1Length.step();
+            mChannel2Length.step();
+            mChannel3Length.step();
+            mChannel4Length.step();
+        }
+        if ((mSequencerStep & 3) == 2)
+        {
+            //mChannel1Sweep.step();
+        }
+        if ((mSequencerStep & 7) == 7)
+        {
+            //mChannel1Volume.step();
+            //mChannel2Volume.step();
+            //mChannel4Volume.step();
+        }
+    }
+
+    void Audio::updateSample(int32_t tick)
+    {
+        if (mSoundBuffer)
+        {
+            while (tick - mSampleTick >= static_cast<int32_t>(mTicksPerSample))
+            {
+                mSampleTick += mTicksPerSample;
+                sampleStep();
+            }
+        }
+    }
+
+    void Audio::updateSequencer(int32_t tick)
+    {
+        while (tick - mSequencerTick >= static_cast<int32_t>(mTicksPerSequencerStep))
+        {
+            mSequencerTick += mTicksPerSequencerStep;
+            updateSample(mSequencerTick);
+            sequencerStep();
+        }
+        updateSample(tick);
+    }
+
+    void Audio::update(int32_t tick)
+    {
+        if (mUpdateTick >= tick)
+            return;
+
+        updateSequencer(tick);
+        mUpdateTick = tick;
     }
 
     uint8_t Audio::readNR10(int32_t tick, uint16_t addr)
@@ -227,6 +374,7 @@ namespace gb
     {
         EMU_NOT_IMPLEMENTED();
         mRegNR11 = value;
+        mChannel1Length.onWriteNRx1();
     }
 
     uint8_t Audio::readNR12(int32_t tick, uint16_t addr)
@@ -263,6 +411,7 @@ namespace gb
     {
         EMU_NOT_IMPLEMENTED();
         mRegNR14 = value;
+        mChannel1Length.onWriteNRx4();
     }
 
     uint8_t Audio::readNR21(int32_t tick, uint16_t addr)
@@ -275,6 +424,7 @@ namespace gb
     {
         EMU_NOT_IMPLEMENTED();
         mRegNR21 = value;
+        mChannel2Length.onWriteNRx1();
     }
 
     uint8_t Audio::readNR22(int32_t tick, uint16_t addr)
@@ -311,6 +461,7 @@ namespace gb
     {
         EMU_NOT_IMPLEMENTED();
         mRegNR24 = value;
+        mChannel2Length.onWriteNRx4();
     }
 
     uint8_t Audio::readNR30(int32_t tick, uint16_t addr)
@@ -335,6 +486,7 @@ namespace gb
     {
         EMU_NOT_IMPLEMENTED();
         mRegNR31 = value;
+        mChannel3Length.onWriteNRx1();
     }
 
     uint8_t Audio::readNR32(int32_t tick, uint16_t addr)
@@ -371,6 +523,7 @@ namespace gb
     {
         EMU_NOT_IMPLEMENTED();
         mRegNR34 = value;
+        mChannel3Length.onWriteNRx4();
     }
 
     uint8_t Audio::readNR41(int32_t tick, uint16_t addr)
@@ -383,6 +536,7 @@ namespace gb
     {
         EMU_NOT_IMPLEMENTED();
         mRegNR41 = value;
+        mChannel4Length.onWriteNRx1();
     }
 
     uint8_t Audio::readNR42(int32_t tick, uint16_t addr)
@@ -419,6 +573,7 @@ namespace gb
     {
         EMU_NOT_IMPLEMENTED();
         mRegNR44 = value;
+        mChannel4Length.onWriteNRx4();
     }
 
     uint8_t Audio::readNR50(int32_t tick, uint16_t addr)
@@ -471,6 +626,7 @@ namespace gb
 
     void Audio::reset()
     {
+        mSoundBufferOffset = 0;
         mRegNR10 = 0x80;
         mRegNR11 = 0xBF;
         mRegNR12 = 0xF3;
@@ -499,10 +655,16 @@ namespace gb
     {
         mSoundBuffer = buffer;
         mSoundBufferSize = static_cast<uint32_t>(size);
+        mSoundBufferOffset = 0;
+        mTicksPerSample = mMasterClockFrequency / (60 * mSoundBufferSize) + 1;
     }
 
     void Audio::serialize(emu::ISerializer& serializer)
     {
+        serializer.serialize(mDesiredTick);
+        serializer.serialize(mUpdateTick);
+        serializer.serialize(mSequencerTick);
+        serializer.serialize(mSequencerStep);
         serializer.serialize(mRegNR10);
         serializer.serialize(mRegNR11);
         serializer.serialize(mRegNR12);

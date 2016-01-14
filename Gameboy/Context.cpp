@@ -123,7 +123,7 @@ namespace gb_context
             EMU_VERIFY(mDisplay.create(displayConfig, mClock, fixedClockDivider, mMemory, mInterrupts, mRegistersIO));
             EMU_VERIFY(mJoypad.create(mClock, mInterrupts, mRegistersIO));
             EMU_VERIFY(mTimer.create(mClock, masterClockFrequency, fixedClockDivider, mVariableClockDivider, mInterrupts, mRegistersIO));
-            EMU_VERIFY(mAudio.create(mClock, fixedClockDivider, mRegistersIO));
+            EMU_VERIFY(mAudio.create(mClock, masterClockFrequency, fixedClockDivider, mRegistersIO));
 
             if (mModel >= gb::Model::GBC)
             {
