@@ -151,6 +151,7 @@ namespace gb
         class Sweep
         {
         public:
+            void reset();
             void serialize(emu::ISerializer& serializer);
         };
 
@@ -182,24 +183,44 @@ namespace gb
         class Volume
         {
         public:
+            Volume(const uint8_t& NRx2, const uint8_t& NRx4);
+            void reset();
+            void onWriteNRx4();
+            void step();
             void serialize(emu::ISerializer& serializer);
+
+            uint32_t getVolume() const
+            {
+                return mVolume;
+            }
+
+        private:
+            void reload();
+
+            const uint8_t&  mNRx2;
+            const uint8_t&  mNRx4;
+            uint32_t        mCounter;
+            uint32_t        mVolume;
         };
 
         class SquarePattern
         {
         public:
+            void reset();
             void serialize(emu::ISerializer& serializer);
         };
 
         class WavePattern
         {
         public:
+            void reset();
             void serialize(emu::ISerializer& serializer);
         };
 
         class NoisePattern
         {
         public:
+            void reset();
             void serialize(emu::ISerializer& serializer);
         };
 
