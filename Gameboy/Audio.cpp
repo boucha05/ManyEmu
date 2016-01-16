@@ -266,14 +266,14 @@ namespace gb
         {
             int32_t deltaCycles = 0;
             deltaClock -= remainingSteps;
+            ++deltaCycles;
             if (deltaClock >= mClockPeriodFast)
             {
-                deltaCycles = deltaClock / mClockPeriod;
+                deltaCycles += deltaClock / mClockPeriod;
                 mClockStep = deltaClock % mClockPeriod;
             }
             else
             {
-                ++deltaCycles;
                 while (deltaClock >= mClockPeriod)
                 {
                     deltaClock -= mClockPeriod;
@@ -490,8 +490,8 @@ namespace gb
             int8_t channel[4];
             channel[0] = mChannel1Length.getOutputMask() & mChannel1Pattern.getSample(mChannel1Volume.getVolume());
             channel[1] = mChannel2Length.getOutputMask() & mChannel2Pattern.getSample(mChannel2Volume.getVolume());
-            channel[2] = mChannel3Length.getOutputMask() & 0x00;
-            channel[3] = mChannel4Length.getOutputMask() & mChannel4Volume.getVolume();
+            //channel[2] = mChannel3Length.getOutputMask() & 0x00;
+            //channel[3] = mChannel4Length.getOutputMask() & mChannel4Volume.getVolume();
             int8_t value = channel[0] + channel[1]; // + channel[2] + channel[3];
             emu::word16_t sample;
             //sample.w8[0].u = value;
@@ -531,6 +531,10 @@ namespace gb
             while (tick - mSampleTick >= static_cast<int32_t>(mTicksPerSample))
             {
                 mSampleTick += mTicksPerSample;
+                mChannel1Pattern.update(mSampleTick);
+                mChannel2Pattern.update(mSampleTick);
+                //mChannel3Pattern.update(mSampleTick);
+                //mChannel4Pattern.update(mSampleTick);
                 sampleStep();
             }
         }
