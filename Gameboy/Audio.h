@@ -206,8 +206,28 @@ namespace gb
         class SquarePattern
         {
         public:
+            SquarePattern(const uint8_t& NRx1, const uint8_t& NRx3, const uint8_t& NRx4);
+            bool initClock(int32_t clockDivider);
             void reset();
+            void advanceClock(int32_t tick);
+            void onWriteNRx4(int32_t tick);
+            void setPeriod(int32_t period);
+            void update(int32_t tick);
             void serialize(emu::ISerializer& serializer);
+            int32_t getSample(uint32_t volume) const;
+
+        private:
+            void reload();
+
+            const uint8_t&  mNRx1;
+            const uint8_t&  mNRx3;
+            const uint8_t&  mNRx4;
+            int32_t         mClockShift;
+            int32_t         mClockLastTick;
+            int32_t         mClockStep;
+            int32_t         mClockPeriodFast;
+            int32_t         mClockPeriod;
+            int32_t         mCycle;
         };
 
         class WavePattern

@@ -12,8 +12,16 @@ namespace
     static const uint32_t OUTPUT_MASK_DISABLED = 0x00000000;
     static const uint32_t OUTPUT_MASK_ENABLED = 0xffffffff;
 
+    static const int32_t SQUARE_CLOCK_SHIFT = 2;
+    static const int32_t SQUARE_CLOCK_PERIOD_FAST = 4;
+    static const int32_t SQUARE_CLOCK_PERIOD_LIMIT = 0x800;
+    static const int32_t SQUARE_WAVEFORM_CYCLES = 8;
+
     static const uint32_t VOLUME_MIN = 0x00;
     static const uint32_t VOLUME_MAX = 0x0f;
+
+    static const uint8_t NRx1_DUTY_MASK = 0xc0;
+    static const uint8_t NRx1_DUTY_SHIFT = 6;
 
     static const uint8_t NRx2_VOLUME_MASK = 0xf0;
     static const uint8_t NRx2_VOLUME_SHIFT = 4;
@@ -23,6 +31,8 @@ namespace
 
     static const uint8_t NRx4_RELOAD = 0x80;
     static const uint8_t NRx4_DECREMENT = 0x40;
+    static const uint8_t NRx4_PERIOD_HI_MASK = 0x7;
+    static const uint8_t NRx4_PERIOD_HI_SHIFT = 0x0;
 }
 
 namespace gb
@@ -143,6 +153,7 @@ namespace gb
         : mNRx2(NRx2)
         , mNRx4(NRx4)
     {
+        reset();
     }
 
     void Audio::Volume::reset()
@@ -189,12 +200,120 @@ namespace gb
 
     ////////////////////////////////////////////////////////////////////////////
 
+    Audio::SquarePattern::SquarePattern(const uint8_t& NRx1, const uint8_t& NRx3, const uint8_t& NRx4)
+        : mNRx1(NRx1)
+        , mNRx3(NRx3)
+        , mNRx4(NRx4)
+    {
+        initClock(1);
+        reset();
+    }
+
+    bool Audio::SquarePattern::initClock(int32_t clockDivider)
+    {
+        EMU_VERIFY((clockDivider == 2) || (clockDivider == 1));
+        mClockShift = SQUARE_CLOCK_SHIFT + (clockDivider == 2 ? 1 : 0);
+        return true;
+    }
+
     void Audio::SquarePattern::reset()
     {
+        mClockLastTick = 0;
+        mClockStep = 0;
+        mCycle = 0;
+        setPeriod(SQUARE_CLOCK_PERIOD_LIMIT);
+    }
+
+    void Audio::SquarePattern::reload()
+    {
+        mClockStep = 0;
+        mCycle = 0;
+        auto periodValue = mNRx3 | (((mNRx4 & NRx4_PERIOD_HI_MASK) >> NRx4_PERIOD_HI_SHIFT) << 8);
+        setPeriod(SQUARE_CLOCK_PERIOD_LIMIT - periodValue);
+    }
+
+    void Audio::SquarePattern::advanceClock(int32_t tick)
+    {
+        mClockLastTick -= tick;
+    }
+
+    void Audio::SquarePattern::onWriteNRx4(int32_t tick)
+    {
+        if (mNRx4 & NRx4_RELOAD)
+            reload();
+    }
+
+    void Audio::SquarePattern::setPeriod(int32_t period)
+    {
+        mClockPeriod = period;
+        mClockPeriodFast = period * SQUARE_CLOCK_PERIOD_FAST;
+        if (mClockStep >= mClockPeriod)
+            mClockStep = 0;
+    }
+
+    void Audio::SquarePattern::update(int32_t tick)
+    {
+        int32_t clockStart = mClockLastTick >> mClockShift;
+        int32_t clockEnd = tick >> mClockShift;
+        int32_t deltaClock = clockEnd - clockStart;
+        int32_t remainingSteps = mClockPeriod - mClockStep;
+        mClockLastTick = tick;
+        if (deltaClock < remainingSteps)
+        {
+            mClockStep += deltaClock;
+        }
+        else
+        {
+            int32_t deltaCycles = 0;
+            deltaClock -= remainingSteps;
+            if (deltaClock >= mClockPeriodFast)
+            {
+                deltaCycles = deltaClock / mClockPeriod;
+                mClockStep = deltaClock % mClockPeriod;
+            }
+            else
+            {
+                ++deltaCycles;
+                while (deltaClock >= mClockPeriod)
+                {
+                    deltaClock -= mClockPeriod;
+                    ++deltaCycles;
+                }
+                mClockStep = deltaClock;
+            }
+            mCycle = (mCycle + deltaCycles) & (SQUARE_WAVEFORM_CYCLES - 1);
+        }
+    }
+
+    int32_t Audio::SquarePattern::getSample(uint32_t volume) const
+    {
+        static const uint8_t kLevel[4][SQUARE_WAVEFORM_CYCLES] =
+        {
+            { 0, 0, 0, 0, 0, 0, 0, 1 },
+            { 1, 0, 0, 0, 0, 0, 0, 1 },
+            { 1, 0, 0, 0, 0, 1, 1, 1 },
+            { 0, 1, 1, 1, 1, 1, 1, 0 },
+        };
+        static const int8_t kVolume[VOLUME_MAX + 1][2] =
+        {
+            {  -0,  +0 }, {  -1,  +1 }, {  -2,  +2 }, {  -3,  +3 },
+            {  -4,  +4 }, {  -5,  +5 }, {  -6,  +6 }, {  -7,  +7 },
+            {  -8,  +8 }, {  -9,  +9 }, { -10, +10 }, { -11, +11 },
+            { -12, +12 }, { -13, +13 }, { -14, +14 }, { -15, +15 },
+        };
+        auto duty = (mNRx1 & NRx1_DUTY_MASK) >> NRx1_DUTY_SHIFT;
+        auto level = kLevel[duty][mCycle];
+        auto result = kVolume[volume][level];
+        return result;
     }
 
     void Audio::SquarePattern::serialize(emu::ISerializer& serializer)
     {
+        serializer.serialize(mClockLastTick);
+        serializer.serialize(mClockStep);
+        serializer.serialize(mClockPeriodFast);
+        serializer.serialize(mClockPeriod);
+        serializer.serialize(mCycle);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -222,8 +341,10 @@ namespace gb
     Audio::Audio()
         : mChannel1Length(mRegNR11, mRegNR14, false)
         , mChannel1Volume(mRegNR12, mRegNR14)
+        , mChannel1Pattern(mRegNR11, mRegNR13, mRegNR14)
         , mChannel2Length(mRegNR21, mRegNR24, false)
         , mChannel2Volume(mRegNR22, mRegNR24)
+        , mChannel2Pattern(mRegNR21, mRegNR23, mRegNR24)
         , mChannel3Length(mRegNR31, mRegNR34, true)
         , mChannel4Length(mRegNR41, mRegNR44, false)
         , mChannel4Volume(mRegNR42, mRegNR44)
@@ -254,6 +375,11 @@ namespace gb
         mMasterClockFrequency = MASTER_CLOCK_FREQUENCY_GB * masterClockDivider;
         mTicksPerSequencerStep = TICKS_PER_SEQUENCER_STEP * masterClockDivider;
         mTicksPerSample = 0;
+
+        EMU_VERIFY(mChannel1Pattern.initClock(masterClockDivider));
+        EMU_VERIFY(mChannel2Pattern.initClock(masterClockDivider));
+        //EMU_VERIFY(mChannel3Pattern.initClock(masterClockDivider));
+        //EMU_VERIFY(mChannel4Pattern.initClock(masterClockDivider));
 
         EMU_VERIFY(mRegisterAccessors.read.NR10.create(registers, 0x10, *this, &Audio::readNR10));
         EMU_VERIFY(mRegisterAccessors.read.NR11.create(registers, 0x11, *this, &Audio::readNR11));
@@ -345,6 +471,11 @@ namespace gb
         mUpdateTick -= tick;
         mSampleTick = 0;    // TODO: Do a -= tick once we stop producing a fixed number of samples per frame
         mSequencerTick -= tick;
+
+        mChannel1Pattern.advanceClock(tick);
+        mChannel2Pattern.advanceClock(tick);
+        //mChannel3Pattern.advanceClock(tick);
+        //mChannel4Pattern.advanceClock(tick);
     }
 
     void Audio::setDesiredTicks(int32_t tick)
@@ -357,14 +488,15 @@ namespace gb
         if (mSoundBufferOffset < mSoundBufferSize)
         {
             int8_t channel[4];
-            channel[0] = mChannel1Length.getOutputMask() & mChannel1Volume.getVolume();
-            channel[1] = mChannel2Length.getOutputMask() & mChannel2Volume.getVolume();
+            channel[0] = mChannel1Length.getOutputMask() & mChannel1Pattern.getSample(mChannel1Volume.getVolume());
+            channel[1] = mChannel2Length.getOutputMask() & mChannel2Pattern.getSample(mChannel2Volume.getVolume());
             channel[2] = mChannel3Length.getOutputMask() & 0x00;
             channel[3] = mChannel4Length.getOutputMask() & mChannel4Volume.getVolume();
-            int8_t value = channel[0] + channel[1] + channel[2] + channel[3];
+            int8_t value = channel[0] + channel[1]; // + channel[2] + channel[3];
             emu::word16_t sample;
-            sample.w8[0].u = value;
-            sample.w8[1].u = 0;
+            //sample.w8[0].u = value;
+            //sample.w8[1].u = 0;
+            sample.i = value << 8;
             mSoundBuffer[mSoundBufferOffset] = sample.u;
         }
         ++mSoundBufferOffset;
@@ -421,6 +553,10 @@ namespace gb
             return;
 
         updateSequencer(tick);
+        mChannel1Pattern.update(tick);
+        mChannel2Pattern.update(tick);
+        //mChannel3Pattern.update(tick);
+        //mChannel4Pattern.update(tick);
         mUpdateTick = tick;
     }
 
@@ -485,6 +621,7 @@ namespace gb
         mRegNR14 = value;
         mChannel1Length.onWriteNRx4();
         mChannel1Volume.onWriteNRx4();
+        mChannel1Pattern.onWriteNRx4(tick);
     }
 
     uint8_t Audio::readNR21(int32_t tick, uint16_t addr)
@@ -536,6 +673,7 @@ namespace gb
         mRegNR24 = value;
         mChannel2Length.onWriteNRx4();
         mChannel2Volume.onWriteNRx4();
+        mChannel2Pattern.onWriteNRx4(tick);
     }
 
     uint8_t Audio::readNR30(int32_t tick, uint16_t addr)
