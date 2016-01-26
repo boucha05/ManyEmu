@@ -766,35 +766,32 @@ namespace gb
     void Display::writeHDMA(int32_t tick, uint16_t addr, uint8_t value)
     {
         uint32_t index = addr - 0x51;
-        if (value)
+        mRegHDMA[index] = value;
+        if (index == 4)
         {
-            mRegHDMA[index] = value;
-            if (index == 4)
+            if (!mConfig.fastHDMA)
             {
-                if (!mConfig.fastHDMA)
-                {
-                    EMU_NOT_IMPLEMENTED();
-                }
-
-                if (value & HDMA5_HBLANK)
-                {
-                    EMU_NOT_IMPLEMENTED();
-                }
-
-                render(tick);
-
-                uint32_t size = ((value & HDMA5_SIZE_MASK) + 1) << 4;
-                uint16_t src = (mRegHDMA[0] << 8) | mRegHDMA[1];
-                uint16_t dst = (mRegHDMA[2] << 8) | mRegHDMA[3];
-                dst = (dst & HDMA_DST_MASK) + HDMA_DST_BASE;
-                for (uint32_t pos = 0; pos < size; ++pos)
-                {
-                    uint8_t value = memory_bus_read8(*mMemory, tick, src + pos);
-                    auto dstFinal = ((dst + pos) & HDMA_DST_FINAL_MASK) + HDMA_DST_BASE;
-                    memory_bus_write8(*mMemory, tick, dstFinal, value);
-                }
-                mRegHDMA[4] = HDMA5_DONE;
+                EMU_NOT_IMPLEMENTED();
             }
+
+            if (value & HDMA5_HBLANK)
+            {
+                EMU_NOT_IMPLEMENTED();
+            }
+
+            render(tick);
+
+            uint32_t size = ((value & HDMA5_SIZE_MASK) + 1) << 4;
+            uint16_t src = (mRegHDMA[0] << 8) | mRegHDMA[1];
+            uint16_t dst = (mRegHDMA[2] << 8) | mRegHDMA[3];
+            dst = (dst & HDMA_DST_MASK) + HDMA_DST_BASE;
+            for (uint32_t pos = 0; pos < size; ++pos)
+            {
+                uint8_t value = memory_bus_read8(*mMemory, tick, src + pos);
+                auto dstFinal = ((dst + pos) & HDMA_DST_FINAL_MASK) + HDMA_DST_BASE;
+                memory_bus_write8(*mMemory, tick, dstFinal, value);
+            }
+            mRegHDMA[4] = HDMA5_DONE;
         }
     }
 
