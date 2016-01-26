@@ -569,7 +569,10 @@ namespace gb
     uint8_t Display::readLY(int32_t tick, uint16_t addr)
     {
         updateRasterPos(tick);
-        return mRegLY;
+        auto value = mRegLY;
+        if (value >= 153)
+            value = 0;
+        return value;
     }
 
     void Display::writeLY(int32_t tick, uint16_t addr, uint8_t value)
@@ -1373,7 +1376,7 @@ namespace gb
 
             // Find last line
             int32_t lastLine = mRasterLine;
-            if (tick < mLineFirstTick + mMode0StartTick)
+            if (tick < mLineFirstTick + mMode3StartTick)
                 --lastLine;
             if (lastLine >= DISPLAY_SIZE_Y)
                 lastLine = DISPLAY_SIZE_Y - 1;
