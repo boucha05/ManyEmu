@@ -91,7 +91,7 @@ namespace gb
         uint16_t size = 0;
         if (!mExternalRAM.empty())
         {
-            uint16_t size = static_cast<uint16_t>(mExternalRAM.size());
+            size = static_cast<uint16_t>(mExternalRAM.size());
             if (size > BANK_SIZE_EXTERNAL_RAM)
                 size = BANK_SIZE_EXTERNAL_RAM;
             EMU_VERIFY(mMemory->addMemoryRange(0xa000, 0xa000 + size - 1, mMemoryExternalRAM));
@@ -113,7 +113,7 @@ namespace gb
     {
         mBankROM[0] = 0;
         mBankROM[1] = 1;
-        mBankExternalRAM = 0xff;
+        mBankExternalRAM = 0x00;
         mEnableExternalRAM = false;
         updateMemoryMap();
     }
