@@ -72,7 +72,7 @@ namespace
     static const uint8_t SPRITE_FLAG_MONO_PALETTE_SHIFT = 4;
     static const uint8_t SPRITE_FLAG_COLOR_BANK_MASK = 0x08;
     static const uint8_t SPRITE_FLAG_COLOR_BANK_SHIFT = 3;
-    static const uint8_t SPRITE_FLAG_COLOR_PALETTE_MASK = 0x03;
+    static const uint8_t SPRITE_FLAG_COLOR_PALETTE_MASK = 0x07;
     static const uint8_t SPRITE_FLAG_COLOR_PALETTE_SHIFT = 0;
 
     static const uint8_t VBK_MASK = 0x01;
@@ -1225,7 +1225,7 @@ namespace gb
 
                 uint8_t value = (patternMask0[bit] & 0x01) | (patternMask1[bit] & 0x02);
                 bool transparentBackground = !src;
-                bool visible = value && (!backgroundSprite || transparentBackground);
+                bool visible = value && (!backgroundSprite || transparentBackground) && ((src & PALETTE_BASE_OBP) == 0);
                 value |= palette;
                 value = visible ? value : src;
                 dest[offsetX] = value;
@@ -1345,7 +1345,7 @@ namespace gb
                         windowPrevTileY = windowTileY;
                         fetchTileRow(windowTileRowStorage, windowTileMap, 0, windowTileY, windowTileBias, windowTileCountX);
                         if (isColor)
-                            fetchAttrRow(windowTileRowStorage, windowTileMap, 0, windowTileY, windowTileBias, windowTileCountX);
+                            fetchAttrRow(windowAttrRowStorage, windowTileMap, 0, windowTileY, windowTileBias, windowTileCountX);
                     }
                     drawTiles(windowTileDest, windowTileRowStorage, windowAttrRowStorage, windowTilePatterns, windowTileOffsetY, windowTileCountX);
                 }
