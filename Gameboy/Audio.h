@@ -148,12 +148,12 @@ namespace gb
         uint8_t readWAVE(int32_t tick, uint16_t addr);
         void writeWAVE(int32_t tick, uint16_t addr, uint8_t value);
 
-        class SquarePattern;
+        class Frequency;
 
         class Sweep
         {
         public:
-            Sweep(const uint8_t& NRx0, const uint8_t& NRx4, SquarePattern& pattern);
+            Sweep(const uint8_t& NRx0, const uint8_t& NRx4, Frequency& frequency);
             void reset();
             void onWriteNRx4();
             void step();
@@ -165,7 +165,7 @@ namespace gb
 
             const uint8_t&  mNRx0;
             const uint8_t&  mNRx4;
-            SquarePattern&  mPattern;
+            Frequency&      mFrequency;
             bool            mEnabled;
             uint32_t        mPeriod;
             uint32_t        mCounter;
@@ -219,10 +219,10 @@ namespace gb
             uint32_t        mVolume;
         };
 
-        class SquarePattern
+        class Frequency
         {
         public:
-            SquarePattern(const uint8_t& NRx1, const uint8_t& NRx3, const uint8_t& NRx4);
+            Frequency(const uint8_t& NRx3, const uint8_t& NRx4, int32_t clockShift, int32_t cycleSize);
             bool initClock(int32_t clockDivider);
             void reset();
             void advanceClock(int32_t tick);
@@ -231,14 +231,19 @@ namespace gb
             int32_t getPeriod() const;
             void update(int32_t tick);
             void serialize(emu::ISerializer& serializer);
-            int32_t getSample(uint32_t volume) const;
+
+            uint32_t getCycle() const
+            {
+                return mCycle;
+            }
 
         private:
             void reload();
 
-            const uint8_t&  mNRx1;
             const uint8_t&  mNRx3;
             const uint8_t&  mNRx4;
+            int32_t         mClockShiftRef;
+            int32_t         mCycleSizeRef;
             int32_t         mClockShift;
             int32_t         mClockLastTick;
             int32_t         mClockStep;
@@ -247,18 +252,36 @@ namespace gb
             int32_t         mCycle;
         };
 
+        class SquarePattern
+        {
+        public:
+            SquarePattern(const uint8_t& NRx1);
+            int32_t getSample(uint32_t cycle, uint32_t volume) const;
+
+        private:
+            const uint8_t&  mNRx1;
+        };
+
         class WavePattern
         {
         public:
-            void reset();
-            void serialize(emu::ISerializer& serializer);
+            WavePattern(const uint8_t& NRx0, const uint8_t& NRx2);
+            int32_t getSample(uint32_t cycle) const;
+
+        private:
+            const uint8_t&  mNRx0;
+            const uint8_t&  mNRx2;
         };
 
         class NoisePattern
         {
         public:
-            void reset();
-            void serialize(emu::ISerializer& serializer);
+            NoisePattern(const uint8_t& NRx3, const uint8_t& NRx4);
+            int32_t getSample(uint32_t cycle, uint32_t volume) const;
+
+        private:
+            const uint8_t&  mNRx3;
+            const uint8_t&  mNRx4;
         };
 
         emu::Clock*             mClock;
@@ -299,15 +322,19 @@ namespace gb
         uint8_t                 mRegWAVE[16];
         Length                  mChannel1Length;
         Volume                  mChannel1Volume;
-        SquarePattern           mChannel1Pattern;
+        Frequency               mChannel1Frequency;
         Sweep                   mChannel1Sweep;
+        SquarePattern           mChannel1Pattern;
         Length                  mChannel2Length;
         Volume                  mChannel2Volume;
+        Frequency               mChannel2Frequency;
         SquarePattern           mChannel2Pattern;
         Length                  mChannel3Length;
+        Frequency               mChannel3Frequency;
         WavePattern             mChannel3Pattern;
         Length                  mChannel4Length;
         Volume                  mChannel4Volume;
+        Frequency               mChannel4Frequency;
         NoisePattern            mChannel4Pattern;
     };
 }

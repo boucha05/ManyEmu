@@ -12,10 +12,17 @@ namespace
     static const uint32_t OUTPUT_MASK_DISABLED = 0x00000000;
     static const uint32_t OUTPUT_MASK_ENABLED = 0xffffffff;
 
+    static const int32_t FREQUENCY_PERIOD_LIMIT = 0x800;
+    static const int32_t FREQUENCY_PERIOD_FAST = 4;
+
     static const int32_t SQUARE_CLOCK_SHIFT = 2;
-    static const int32_t SQUARE_CLOCK_PERIOD_FAST = 4;
-    static const int32_t SQUARE_CLOCK_PERIOD_LIMIT = 0x800;
-    static const int32_t SQUARE_WAVEFORM_CYCLES = 8;
+    static const int32_t SQUARE_CYCLE_SIZE = 8;
+
+    static const int32_t WAVE_CLOCK_SHIFT = 1;
+    static const int32_t WAVE_CYCLE_SIZE = 32;
+
+    static const int32_t NOISE_CLOCK_SHIFT = 0;
+    static const int32_t NOISE_CYCLE_SIZE = 0x8000;
 
     static const uint32_t VOLUME_MIN = 0x00;
     static const uint32_t VOLUME_MAX = 0x0f;
@@ -96,10 +103,10 @@ namespace gb
 
     ////////////////////////////////////////////////////////////////////////////
 
-    Audio::Sweep::Sweep(const uint8_t& NRx0, const uint8_t& NRx4, SquarePattern& pattern)
+    Audio::Sweep::Sweep(const uint8_t& NRx0, const uint8_t& NRx4, Frequency& frequency)
         : mNRx0(NRx0)
         , mNRx4(NRx4)
-        , mPattern(pattern)
+        , mFrequency(frequency)
     {
         reset();
     }
@@ -115,7 +122,7 @@ namespace gb
     {
         reloadSweep();
         auto shift = (mNRx0 & NRx0_SWEEP_SHIFT_MASK) >> NRx0_SWEEP_SHIFT_SHIFT;
-        mPeriod = mPattern.getPeriod();
+        mPeriod = mFrequency.getPeriod();
         mEnabled = mCounter && shift;
     }
 
@@ -146,10 +153,10 @@ namespace gb
                 if (mNRx0 & NRx0_SWEEP_DECREASE)
                     deltaPeriod = -deltaPeriod;
                 auto nextPeriod = mPeriod + deltaPeriod;
-                if (nextPeriod >= SQUARE_CLOCK_PERIOD_LIMIT)
+                if (nextPeriod >= FREQUENCY_PERIOD_LIMIT)
                     mEnabled = false;
                 mPeriod = nextPeriod;
-                mPattern.setPeriod(nextPeriod);
+                mFrequency.setPeriod(nextPeriod);
             }
         }
     }
@@ -263,23 +270,24 @@ namespace gb
 
     ////////////////////////////////////////////////////////////////////////////
 
-    Audio::SquarePattern::SquarePattern(const uint8_t& NRx1, const uint8_t& NRx3, const uint8_t& NRx4)
-        : mNRx1(NRx1)
-        , mNRx3(NRx3)
+    Audio::Frequency::Frequency(const uint8_t& NRx3, const uint8_t& NRx4, int32_t clockShift, int32_t cycleSize)
+        : mNRx3(NRx3)
         , mNRx4(NRx4)
+        , mClockShiftRef(clockShift)
+        , mCycleSizeRef(cycleSize)
     {
         initClock(1);
         reset();
     }
 
-    bool Audio::SquarePattern::initClock(int32_t clockDivider)
+    bool Audio::Frequency::initClock(int32_t clockDivider)
     {
         EMU_VERIFY((clockDivider == 2) || (clockDivider == 1));
-        mClockShift = SQUARE_CLOCK_SHIFT + (clockDivider == 2 ? 1 : 0);
+        mClockShift = mClockShiftRef + (clockDivider == 2 ? 1 : 0);
         return true;
     }
 
-    void Audio::SquarePattern::reset()
+    void Audio::Frequency::reset()
     {
         mClockLastTick = 0;
         mClockStep = 0;
@@ -287,7 +295,7 @@ namespace gb
         setPeriod(0);
     }
 
-    void Audio::SquarePattern::reload()
+    void Audio::Frequency::reload()
     {
         mClockStep = 0;
         mCycle = 0;
@@ -295,33 +303,33 @@ namespace gb
         setPeriod(period);
     }
 
-    void Audio::SquarePattern::advanceClock(int32_t tick)
+    void Audio::Frequency::advanceClock(int32_t tick)
     {
         mClockLastTick -= tick;
     }
 
-    void Audio::SquarePattern::onWriteNRx4(int32_t tick)
+    void Audio::Frequency::onWriteNRx4(int32_t tick)
     {
         if (mNRx4 & NRx4_RELOAD)
             reload();
     }
 
-    void Audio::SquarePattern::setPeriod(int32_t period)
+    void Audio::Frequency::setPeriod(int32_t period)
     {
-        period = SQUARE_CLOCK_PERIOD_LIMIT - period;
+        period = FREQUENCY_PERIOD_LIMIT - period;
         mClockPeriod = period;
-        mClockPeriodFast = period * SQUARE_CLOCK_PERIOD_FAST;
+        mClockPeriodFast = period * FREQUENCY_PERIOD_FAST;
         if (mClockStep >= mClockPeriod)
             mClockStep = 0;
     }
 
-    int32_t Audio::SquarePattern::getPeriod() const
+    int32_t Audio::Frequency::getPeriod() const
     {
         auto period = mNRx3 | (((mNRx4 & NRx4_PERIOD_HI_MASK) >> NRx4_PERIOD_HI_SHIFT) << 8);
         return period;
     }
 
-    void Audio::SquarePattern::update(int32_t tick)
+    void Audio::Frequency::update(int32_t tick)
     {
         int32_t clockStart = mClockLastTick >> mClockShift;
         int32_t clockEnd = tick >> mClockShift;
@@ -351,13 +359,29 @@ namespace gb
                 }
                 mClockStep = deltaClock;
             }
-            mCycle = (mCycle + deltaCycles) & (SQUARE_WAVEFORM_CYCLES - 1);
+            mCycle = (mCycle + deltaCycles) & (mCycleSizeRef - 1);
         }
     }
 
-    int32_t Audio::SquarePattern::getSample(uint32_t volume) const
+    void Audio::Frequency::serialize(emu::ISerializer& serializer)
     {
-        static const uint8_t kLevel[4][SQUARE_WAVEFORM_CYCLES] =
+        serializer.serialize(mClockLastTick);
+        serializer.serialize(mClockStep);
+        serializer.serialize(mClockPeriodFast);
+        serializer.serialize(mClockPeriod);
+        serializer.serialize(mCycle);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    Audio::SquarePattern::SquarePattern(const uint8_t& NRx1)
+        : mNRx1(NRx1)
+    {
+    }
+
+    int32_t Audio::SquarePattern::getSample(uint32_t cycle, uint32_t volume) const
+    {
+        static const uint8_t kLevel[4][SQUARE_CYCLE_SIZE] =
         {
             { 0, 0, 0, 0, 0, 0, 0, 1 },
             { 1, 0, 0, 0, 0, 0, 0, 1 },
@@ -372,38 +396,35 @@ namespace gb
             { -12, +12 }, { -13, +13 }, { -14, +14 }, { -15, +15 },
         };
         auto duty = (mNRx1 & NRx1_DUTY_MASK) >> NRx1_DUTY_SHIFT;
-        auto level = kLevel[duty][mCycle];
+        auto level = kLevel[duty][cycle];
         auto result = kVolume[volume][level];
         return result;
     }
 
-    void Audio::SquarePattern::serialize(emu::ISerializer& serializer)
-    {
-        serializer.serialize(mClockLastTick);
-        serializer.serialize(mClockStep);
-        serializer.serialize(mClockPeriodFast);
-        serializer.serialize(mClockPeriod);
-        serializer.serialize(mCycle);
-    }
-
     ////////////////////////////////////////////////////////////////////////////
 
-    void Audio::WavePattern::reset()
+    Audio::WavePattern::WavePattern(const uint8_t& NRx0, const uint8_t& NRx2)
+        : mNRx0(NRx0)
+        , mNRx2(NRx2)
     {
     }
     
-    void Audio::WavePattern::serialize(emu::ISerializer& serializer)
+    int32_t Audio::WavePattern::getSample(uint32_t cycle) const
     {
+        return 0;
     }
 
     ////////////////////////////////////////////////////////////////////////////
 
-    void Audio::NoisePattern::reset()
+    Audio::NoisePattern::NoisePattern(const uint8_t& NRx3, const uint8_t& NRx4)
+        : mNRx3(NRx3)
+        , mNRx4(NRx4)
     {
     }
 
-    void Audio::NoisePattern::serialize(emu::ISerializer& serializer)
+    int32_t Audio::NoisePattern::getSample(uint32_t cycle, uint32_t volume) const
     {
+        return 0;
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -411,14 +432,20 @@ namespace gb
     Audio::Audio()
         : mChannel1Length(mRegNR11, mRegNR14, false)
         , mChannel1Volume(mRegNR12, mRegNR14)
-        , mChannel1Pattern(mRegNR11, mRegNR13, mRegNR14)
-        , mChannel1Sweep(mRegNR10, mRegNR14, mChannel1Pattern)
+        , mChannel1Frequency(mRegNR13, mRegNR14, SQUARE_CLOCK_SHIFT, SQUARE_CYCLE_SIZE)
+        , mChannel1Sweep(mRegNR10, mRegNR14, mChannel1Frequency)
+        , mChannel1Pattern(mRegNR11)
         , mChannel2Length(mRegNR21, mRegNR24, false)
         , mChannel2Volume(mRegNR22, mRegNR24)
-        , mChannel2Pattern(mRegNR21, mRegNR23, mRegNR24)
+        , mChannel2Frequency(mRegNR23, mRegNR24, SQUARE_CLOCK_SHIFT, SQUARE_CYCLE_SIZE)
+        , mChannel2Pattern(mRegNR21)
         , mChannel3Length(mRegNR31, mRegNR34, true)
+        , mChannel3Frequency(mRegNR33, mRegNR34, WAVE_CLOCK_SHIFT, WAVE_CYCLE_SIZE)
+        , mChannel3Pattern(mRegNR30, mRegNR32)
         , mChannel4Length(mRegNR41, mRegNR44, false)
         , mChannel4Volume(mRegNR42, mRegNR44)
+        , mChannel4Frequency(mRegNR43, mRegNR44, NOISE_CLOCK_SHIFT, NOISE_CYCLE_SIZE)
+        , mChannel4Pattern(mRegNR43, mRegNR44)
     {
         initialize();
     }
@@ -447,10 +474,10 @@ namespace gb
         mTicksPerSequencerStep = TICKS_PER_SEQUENCER_STEP * masterClockDivider;
         mTicksPerSample = 0;
 
-        EMU_VERIFY(mChannel1Pattern.initClock(masterClockDivider));
-        EMU_VERIFY(mChannel2Pattern.initClock(masterClockDivider));
-        //EMU_VERIFY(mChannel3Pattern.initClock(masterClockDivider));
-        //EMU_VERIFY(mChannel4Pattern.initClock(masterClockDivider));
+        EMU_VERIFY(mChannel1Frequency.initClock(masterClockDivider));
+        EMU_VERIFY(mChannel2Frequency.initClock(masterClockDivider));
+        EMU_VERIFY(mChannel3Frequency.initClock(masterClockDivider));
+        EMU_VERIFY(mChannel4Frequency.initClock(masterClockDivider));
 
         EMU_VERIFY(mRegisterAccessors.read.NR10.create(registers, 0x10, *this, &Audio::readNR10));
         EMU_VERIFY(mRegisterAccessors.read.NR11.create(registers, 0x11, *this, &Audio::readNR11));
@@ -543,10 +570,10 @@ namespace gb
         mSampleTick = 0;    // TODO: Do a -= tick once we stop producing a fixed number of samples per frame
         mSequencerTick -= tick;
 
-        mChannel1Pattern.advanceClock(tick);
-        mChannel2Pattern.advanceClock(tick);
-        //mChannel3Pattern.advanceClock(tick);
-        //mChannel4Pattern.advanceClock(tick);
+        mChannel1Frequency.advanceClock(tick);
+        mChannel2Frequency.advanceClock(tick);
+        mChannel3Frequency.advanceClock(tick);
+        mChannel4Frequency.advanceClock(tick);
     }
 
     void Audio::setDesiredTicks(int32_t tick)
@@ -559,8 +586,8 @@ namespace gb
         if (mSoundBufferOffset < mSoundBufferSize)
         {
             int8_t channel[4];
-            channel[0] = mChannel1Length.getOutputMask() & mChannel1Pattern.getSample(mChannel1Volume.getVolume());
-            channel[1] = mChannel2Length.getOutputMask() & mChannel2Pattern.getSample(mChannel2Volume.getVolume());
+            channel[0] = mChannel1Length.getOutputMask() & mChannel1Pattern.getSample(mChannel1Frequency.getCycle(), mChannel1Volume.getVolume());
+            channel[1] = mChannel2Length.getOutputMask() & mChannel2Pattern.getSample(mChannel2Frequency.getCycle(), mChannel2Volume.getVolume());
             //channel[2] = mChannel3Length.getOutputMask() & 0x00;
             //channel[3] = mChannel4Length.getOutputMask() & mChannel4Volume.getVolume();
             int8_t value = channel[0] + channel[1]; // + channel[2] + channel[3];
@@ -602,10 +629,10 @@ namespace gb
             while (tick - mSampleTick >= static_cast<int32_t>(mTicksPerSample))
             {
                 mSampleTick += mTicksPerSample;
-                mChannel1Pattern.update(mSampleTick);
-                mChannel2Pattern.update(mSampleTick);
-                //mChannel3Pattern.update(mSampleTick);
-                //mChannel4Pattern.update(mSampleTick);
+                mChannel1Frequency.update(mSampleTick);
+                mChannel2Frequency.update(mSampleTick);
+                mChannel3Frequency.update(mSampleTick);
+                mChannel4Frequency.update(mSampleTick);
                 sampleStep();
             }
         }
@@ -628,10 +655,10 @@ namespace gb
             return;
 
         updateSequencer(tick);
-        mChannel1Pattern.update(tick);
-        mChannel2Pattern.update(tick);
-        //mChannel3Pattern.update(tick);
-        //mChannel4Pattern.update(tick);
+        mChannel1Frequency.update(tick);
+        mChannel2Frequency.update(tick);
+        mChannel3Frequency.update(tick);
+        mChannel4Frequency.update(tick);
         mUpdateTick = tick;
     }
 
@@ -696,7 +723,7 @@ namespace gb
         mRegNR14 = value;
         mChannel1Length.onWriteNRx4();
         mChannel1Volume.onWriteNRx4();
-        mChannel1Pattern.onWriteNRx4(tick);
+        mChannel1Frequency.onWriteNRx4(tick);
         mChannel1Sweep.onWriteNRx4();
     }
 
@@ -749,7 +776,7 @@ namespace gb
         mRegNR24 = value;
         mChannel2Length.onWriteNRx4();
         mChannel2Volume.onWriteNRx4();
-        mChannel2Pattern.onWriteNRx4(tick);
+        mChannel2Frequency.onWriteNRx4(tick);
     }
 
     uint8_t Audio::readNR30(int32_t tick, uint16_t addr)
@@ -812,6 +839,7 @@ namespace gb
         update(tick);
         mRegNR34 = value;
         mChannel3Length.onWriteNRx4();
+        mChannel3Frequency.onWriteNRx4(tick);
     }
 
     uint8_t Audio::readNR41(int32_t tick, uint16_t addr)
@@ -863,6 +891,7 @@ namespace gb
         mRegNR44 = value;
         mChannel4Length.onWriteNRx4();
         mChannel4Volume.onWriteNRx4();
+        mChannel4Frequency.onWriteNRx4(tick);
     }
 
     uint8_t Audio::readNR50(int32_t tick, uint16_t addr)
@@ -941,15 +970,15 @@ namespace gb
         mChannel1Sweep.reset();
         mChannel1Length.reset();
         mChannel1Volume.reset();
-        mChannel1Pattern.reset();
+        mChannel1Frequency.reset();
         mChannel2Length.reset();
         mChannel2Volume.reset();
-        mChannel2Pattern.reset();
+        mChannel2Frequency.reset();
         mChannel3Length.reset();
-        mChannel3Pattern.reset();
+        mChannel3Frequency.reset();
         mChannel4Length.reset();
         mChannel4Volume.reset();
-        mChannel4Pattern.reset();
+        mChannel4Frequency.reset();
     }
 
     void Audio::setSoundBuffer(int16_t* buffer, size_t size)
@@ -991,14 +1020,14 @@ namespace gb
         mChannel1Sweep.serialize(serializer);
         mChannel1Length.serialize(serializer);
         mChannel1Volume.serialize(serializer);
-        mChannel1Pattern.serialize(serializer);
+        mChannel1Frequency.serialize(serializer);
         mChannel2Length.serialize(serializer);
         mChannel2Volume.serialize(serializer);
-        mChannel2Pattern.serialize(serializer);
+        mChannel2Frequency.serialize(serializer);
         mChannel3Length.serialize(serializer);
-        mChannel3Pattern.serialize(serializer);
+        mChannel3Frequency.serialize(serializer);
         mChannel4Length.serialize(serializer);
         mChannel4Volume.serialize(serializer);
-        mChannel4Pattern.serialize(serializer);
+        mChannel4Frequency.serialize(serializer);
     }
 }
