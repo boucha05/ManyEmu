@@ -20,6 +20,12 @@ namespace
     static const uint32_t VOLUME_MIN = 0x00;
     static const uint32_t VOLUME_MAX = 0x0f;
 
+    static const uint8_t NRx0_SWEEP_TIME_MASK = 0x70;
+    static const uint8_t NRx0_SWEEP_TIME_SHIFT = 4;
+    static const uint8_t NRx0_SWEEP_DECREASE = 0x08;
+    static const uint8_t NRx0_SWEEP_SHIFT_MASK = 0x07;
+    static const uint8_t NRx0_SWEEP_SHIFT_SHIFT = 0;
+
     static const uint8_t NRx1_DUTY_MASK = 0xc0;
     static const uint8_t NRx1_DUTY_SHIFT = 6;
 
@@ -90,12 +96,69 @@ namespace gb
 
     ////////////////////////////////////////////////////////////////////////////
 
+    Audio::Sweep::Sweep(const uint8_t& NRx0, const uint8_t& NRx4, SquarePattern& pattern)
+        : mNRx0(NRx0)
+        , mNRx4(NRx4)
+        , mPattern(pattern)
+    {
+        reset();
+    }
+
     void Audio::Sweep::reset()
     {
+        mEnabled = false;
+        mPeriod = 0;
+        mCounter = 0;
+    }
+
+    void Audio::Sweep::reload()
+    {
+        reloadSweep();
+        auto shift = (mNRx0 & NRx0_SWEEP_SHIFT_MASK) >> NRx0_SWEEP_SHIFT_SHIFT;
+        mPeriod = mPattern.getPeriod();
+        mEnabled = mCounter && shift;
+    }
+
+    void Audio::Sweep::onWriteNRx4()
+    {
+        if (mNRx4 & NRx4_RELOAD)
+            reload();
+    }
+
+    void Audio::Sweep::reloadSweep()
+    {
+        mCounter = (mNRx0 & NRx0_SWEEP_TIME_MASK) >> NRx0_SWEEP_TIME_SHIFT;
+    }
+
+    void Audio::Sweep::step()
+    {
+        if (mEnabled)
+        {
+            if (--mCounter > 0)
+                return;
+            reloadSweep();
+            auto shift = (mNRx0 & NRx0_SWEEP_SHIFT_MASK) >> NRx0_SWEEP_SHIFT_SHIFT;
+            if (!mCounter || !shift)
+                mEnabled = false;
+            else
+            {
+                int32_t deltaPeriod = mPeriod >> shift;
+                if (mNRx0 & NRx0_SWEEP_DECREASE)
+                    deltaPeriod = -deltaPeriod;
+                auto nextPeriod = mPeriod + deltaPeriod;
+                if (nextPeriod >= SQUARE_CLOCK_PERIOD_LIMIT)
+                    mEnabled = false;
+                mPeriod = nextPeriod;
+                mPattern.setPeriod(nextPeriod);
+            }
+        }
     }
 
     void Audio::Sweep::serialize(emu::ISerializer& serializer)
     {
+        serializer.serialize(mEnabled);
+        serializer.serialize(mPeriod);
+        serializer.serialize(mCounter);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -221,15 +284,15 @@ namespace gb
         mClockLastTick = 0;
         mClockStep = 0;
         mCycle = 0;
-        setPeriod(SQUARE_CLOCK_PERIOD_LIMIT);
+        setPeriod(0);
     }
 
     void Audio::SquarePattern::reload()
     {
         mClockStep = 0;
         mCycle = 0;
-        auto periodValue = mNRx3 | (((mNRx4 & NRx4_PERIOD_HI_MASK) >> NRx4_PERIOD_HI_SHIFT) << 8);
-        setPeriod(SQUARE_CLOCK_PERIOD_LIMIT - periodValue);
+        auto period = getPeriod();
+        setPeriod(period);
     }
 
     void Audio::SquarePattern::advanceClock(int32_t tick)
@@ -245,10 +308,17 @@ namespace gb
 
     void Audio::SquarePattern::setPeriod(int32_t period)
     {
+        period = SQUARE_CLOCK_PERIOD_LIMIT - period;
         mClockPeriod = period;
         mClockPeriodFast = period * SQUARE_CLOCK_PERIOD_FAST;
         if (mClockStep >= mClockPeriod)
             mClockStep = 0;
+    }
+
+    int32_t Audio::SquarePattern::getPeriod() const
+    {
+        auto period = mNRx3 | (((mNRx4 & NRx4_PERIOD_HI_MASK) >> NRx4_PERIOD_HI_SHIFT) << 8);
+        return period;
     }
 
     void Audio::SquarePattern::update(int32_t tick)
@@ -342,6 +412,7 @@ namespace gb
         : mChannel1Length(mRegNR11, mRegNR14, false)
         , mChannel1Volume(mRegNR12, mRegNR14)
         , mChannel1Pattern(mRegNR11, mRegNR13, mRegNR14)
+        , mChannel1Sweep(mRegNR10, mRegNR14, mChannel1Pattern)
         , mChannel2Length(mRegNR21, mRegNR24, false)
         , mChannel2Volume(mRegNR22, mRegNR24)
         , mChannel2Pattern(mRegNR21, mRegNR23, mRegNR24)
@@ -514,7 +585,7 @@ namespace gb
         }
         if ((mSequencerStep & 3) == 2)
         {
-            //mChannel1Sweep.step();
+            mChannel1Sweep.step();
         }
         if ((mSequencerStep & 7) == 7)
         {
@@ -626,6 +697,7 @@ namespace gb
         mChannel1Length.onWriteNRx4();
         mChannel1Volume.onWriteNRx4();
         mChannel1Pattern.onWriteNRx4(tick);
+        mChannel1Sweep.onWriteNRx4();
     }
 
     uint8_t Audio::readNR21(int32_t tick, uint16_t addr)

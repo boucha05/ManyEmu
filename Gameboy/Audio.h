@@ -148,11 +148,27 @@ namespace gb
         uint8_t readWAVE(int32_t tick, uint16_t addr);
         void writeWAVE(int32_t tick, uint16_t addr, uint8_t value);
 
+        class SquarePattern;
+
         class Sweep
         {
         public:
+            Sweep(const uint8_t& NRx0, const uint8_t& NRx4, SquarePattern& pattern);
             void reset();
+            void onWriteNRx4();
+            void step();
             void serialize(emu::ISerializer& serializer);
+
+        private:
+            void reload();
+            void reloadSweep();
+
+            const uint8_t&  mNRx0;
+            const uint8_t&  mNRx4;
+            SquarePattern&  mPattern;
+            bool            mEnabled;
+            uint32_t        mPeriod;
+            uint32_t        mCounter;
         };
 
         class Length
@@ -212,6 +228,7 @@ namespace gb
             void advanceClock(int32_t tick);
             void onWriteNRx4(int32_t tick);
             void setPeriod(int32_t period);
+            int32_t getPeriod() const;
             void update(int32_t tick);
             void serialize(emu::ISerializer& serializer);
             int32_t getSample(uint32_t volume) const;
@@ -280,10 +297,10 @@ namespace gb
         uint8_t                 mRegNR51;
         uint8_t                 mRegNR52;
         uint8_t                 mRegWAVE[16];
-        Sweep                   mChannel1Sweep;
         Length                  mChannel1Length;
         Volume                  mChannel1Volume;
         SquarePattern           mChannel1Pattern;
+        Sweep                   mChannel1Sweep;
         Length                  mChannel2Length;
         Volume                  mChannel2Volume;
         SquarePattern           mChannel2Pattern;
