@@ -42,10 +42,19 @@ namespace
     static const uint8_t NRx2_COUNTER_MASK = 0x07;
     static const uint8_t NRx2_COUNTER_SHIFT = 0;
 
+    static const uint8_t NR32_OUTPUT_LEVEL_MASK = 0x60;
+    static const uint8_t NR32_OUTPUT_LEVEL_SHIFT = 5;
+
     static const uint8_t NRx4_RELOAD = 0x80;
     static const uint8_t NRx4_DECREMENT = 0x40;
     static const uint8_t NRx4_PERIOD_HI_MASK = 0x7;
     static const uint8_t NRx4_PERIOD_HI_SHIFT = 0x0;
+
+    static const int32_t kVolumeDAC[VOLUME_MAX + 1] =
+    {
+        -120, -104, -88, -72, -56, -40, -24, -8,
+        8, 24, 40, 56, 72, 88, 104, 120,
+    };
 }
 
 namespace gb
@@ -383,35 +392,39 @@ namespace gb
     {
         static const uint8_t kLevel[4][SQUARE_CYCLE_SIZE] =
         {
-            { 0, 0, 0, 0, 0, 0, 0, 1 },
-            { 1, 0, 0, 0, 0, 0, 0, 1 },
-            { 1, 0, 0, 0, 0, 1, 1, 1 },
-            { 0, 1, 1, 1, 1, 1, 1, 0 },
-        };
-        static const int8_t kVolume[VOLUME_MAX + 1][2] =
-        {
-            {  -0,  +0 }, {  -1,  +1 }, {  -2,  +2 }, {  -3,  +3 },
-            {  -4,  +4 }, {  -5,  +5 }, {  -6,  +6 }, {  -7,  +7 },
-            {  -8,  +8 }, {  -9,  +9 }, { -10, +10 }, { -11, +11 },
-            { -12, +12 }, { -13, +13 }, { -14, +14 }, { -15, +15 },
+            { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff },
+            { 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff },
+            { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff },
+            { 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00 },
         };
         auto duty = (mNRx1 & NRx1_DUTY_MASK) >> NRx1_DUTY_SHIFT;
         auto level = kLevel[duty][cycle];
-        auto result = kVolume[volume][level];
+        auto result = kVolumeDAC[volume & level];
         return result;
     }
 
     ////////////////////////////////////////////////////////////////////////////
 
-    Audio::WavePattern::WavePattern(const uint8_t& NRx0, const uint8_t& NRx2)
+    Audio::WavePattern::WavePattern(const uint8_t& NRx0, const uint8_t& NRx2, const uint8_t* wave)
         : mNRx0(NRx0)
         , mNRx2(NRx2)
+        , mWave(wave)
     {
     }
     
     int32_t Audio::WavePattern::getSample(uint32_t cycle) const
     {
-        return 0;
+        static const int8_t kLevelShift[4] =
+        {
+            4, 0, 1, 2
+        };
+        auto index = cycle >> 1;
+        auto nibbleShift = ((cycle ^ 1) & 1) << 2;
+        auto nibble = (mWave[index] >> nibbleShift) & 0x0f;
+        auto levelShift = kLevelShift[(mNRx2 & NR32_OUTPUT_LEVEL_MASK) >> NR32_OUTPUT_LEVEL_SHIFT];
+        auto level = nibble >> levelShift;
+        auto result = kVolumeDAC[level];
+        return result;
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -441,7 +454,7 @@ namespace gb
         , mChannel2Pattern(mRegNR21)
         , mChannel3Length(mRegNR31, mRegNR34, true)
         , mChannel3Frequency(mRegNR33, mRegNR34, WAVE_CLOCK_SHIFT, WAVE_CYCLE_SIZE)
-        , mChannel3Pattern(mRegNR30, mRegNR32)
+        , mChannel3Pattern(mRegNR30, mRegNR32, mRegWAVE)
         , mChannel4Length(mRegNR41, mRegNR44, false)
         , mChannel4Volume(mRegNR42, mRegNR44)
         , mChannel4Frequency(mRegNR43, mRegNR44, NOISE_CLOCK_SHIFT, NOISE_CYCLE_SIZE)
@@ -588,13 +601,13 @@ namespace gb
             int8_t channel[4];
             channel[0] = mChannel1Length.getOutputMask() & mChannel1Pattern.getSample(mChannel1Frequency.getCycle(), mChannel1Volume.getVolume());
             channel[1] = mChannel2Length.getOutputMask() & mChannel2Pattern.getSample(mChannel2Frequency.getCycle(), mChannel2Volume.getVolume());
-            //channel[2] = mChannel3Length.getOutputMask() & 0x00;
-            //channel[3] = mChannel4Length.getOutputMask() & mChannel4Volume.getVolume();
-            int8_t value = channel[0] + channel[1]; // + channel[2] + channel[3];
+            channel[2] = mChannel3Length.getOutputMask() & mChannel3Pattern.getSample(mChannel3Frequency.getCycle());
+            channel[3] = 0;// mChannel4Length.getOutputMask() & mChannel4Volume.getVolume();
+            int8_t value = channel[0] + channel[1] + channel[2] + channel[3];
             emu::word16_t sample;
             //sample.w8[0].u = value;
             //sample.w8[1].u = 0;
-            sample.i = value << 8;
+            sample.i = value << 6;
             mSoundBuffer[mSoundBufferOffset] = sample.u;
         }
         ++mSoundBufferOffset;

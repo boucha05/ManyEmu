@@ -265,12 +265,13 @@ namespace gb
         class WavePattern
         {
         public:
-            WavePattern(const uint8_t& NRx0, const uint8_t& NRx2);
+            WavePattern(const uint8_t& NRx0, const uint8_t& NRx2, const uint8_t* wave);
             int32_t getSample(uint32_t cycle) const;
 
         private:
             const uint8_t&  mNRx0;
             const uint8_t&  mNRx2;
+            const uint8_t*  mWave;
         };
 
         class NoisePattern
