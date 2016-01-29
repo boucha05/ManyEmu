@@ -52,8 +52,8 @@ namespace
 
     static const int32_t kVolumeDAC[VOLUME_MAX + 1] =
     {
-        -120, -104, -88, -72, -56, -40, -24, -8,
-        8, 24, 40, 56, 72, 88, 104, 120,
+        -15, -13, -11, -9, -7, -5, -3, -1,
+        1, 3, 5, 7, 9, 11, 13, 15,
     };
 }
 
@@ -255,18 +255,22 @@ namespace gb
 
     void Audio::Volume::step()
     {
-        if (mCounter)
+        auto counterStart = (mNRx2 & NRx2_COUNTER_MASK) >> NRx2_COUNTER_SHIFT;
+        if (mVolume && counterStart)
         {
-            --mCounter;
-            if (mNRx2 & NRx2_INCREASE)
+            if (--mCounter == 0)
             {
-                if (mVolume < VOLUME_MAX)
-                    ++mVolume;
-            }
-            else
-            {
-                if (mVolume > VOLUME_MIN)
-                    --mVolume;
+                mCounter = counterStart;
+                if (mNRx2 & NRx2_INCREASE)
+                {
+                    if (mVolume < VOLUME_MAX)
+                        ++mVolume;
+                }
+                else
+                {
+                    if (mVolume > VOLUME_MIN)
+                        --mVolume;
+                }
             }
         }
     }
@@ -392,14 +396,21 @@ namespace gb
     {
         static const uint8_t kLevel[4][SQUARE_CYCLE_SIZE] =
         {
-            { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff },
-            { 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff },
-            { 0xff, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff },
-            { 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00 },
+            { 0, 0, 0, 0, 0, 0, 0, 1 },
+            { 1, 0, 0, 0, 0, 0, 0, 1 },
+            { 1, 0, 0, 0, 0, 1, 1, 1 },
+            { 0, 1, 1, 1, 1, 1, 1, 0 },
+        };
+        static const int8_t kVolume[VOLUME_MAX + 1][2] =
+        {
+            {  -0,  +0 }, {  -1,  +1 }, {  -2,  +2 }, {  -3,  +3 },
+            {  -4,  +4 }, {  -5,  +5 }, {  -6,  +6 }, {  -7,  +7 },
+            {  -8,  +8 }, {  -9,  +9 }, { -10, +10 }, { -11, +11 },
+            { -12, +12 }, { -13, +13 }, { -14, +14 }, { -15, +15 },
         };
         auto duty = (mNRx1 & NRx1_DUTY_MASK) >> NRx1_DUTY_SHIFT;
         auto level = kLevel[duty][cycle];
-        auto result = kVolumeDAC[volume & level];
+        auto result = kVolume[volume][level];
         return result;
     }
 
@@ -607,7 +618,7 @@ namespace gb
             emu::word16_t sample;
             //sample.w8[0].u = value;
             //sample.w8[1].u = 0;
-            sample.i = value << 6;
+            sample.i = value << 8;
             mSoundBuffer[mSoundBufferOffset] = sample.u;
         }
         ++mSoundBufferOffset;
