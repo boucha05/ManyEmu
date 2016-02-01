@@ -45,6 +45,12 @@ namespace
     static const uint8_t NR32_OUTPUT_LEVEL_MASK = 0x60;
     static const uint8_t NR32_OUTPUT_LEVEL_SHIFT = 5;
 
+    static const uint8_t NR43_CLOCK_SHIFT_MASK = 0xf0;
+    static const uint8_t NR43_CLOCK_SHIFT_SHIFT = 4;
+    static const uint8_t NR43_COUNTER_SIZE_LOW = 0x08;
+    static const uint8_t NR43_DIVISOR_MASK = 0x07;
+    static const uint8_t NR43_DIVISOR_SHIFT = 0;
+
     static const uint8_t NRx4_RELOAD = 0x80;
     static const uint8_t NRx4_DECREMENT = 0x40;
     static const uint8_t NRx4_PERIOD_HI_MASK = 0x7;
@@ -55,6 +61,23 @@ namespace
         -15, -13, -11, -9, -7, -5, -3, -1,
         1, 3, 5, 7, 9, 11, 13, 15,
     };
+
+    static uint8_t noisePattern[32768];
+
+    bool initializeNoisePatterns()
+    {
+        uint16_t lfsr = 0x7fff;
+        for (uint32_t index = 0; index < 32768; ++index)
+        {
+            uint16_t input = ((lfsr >> 1) ^ lfsr) & 1;
+            lfsr = (lfsr >> 1) | (input << 14);
+            uint8_t output = ~lfsr & 1;
+            noisePattern[index] = output;
+        }
+        return true;
+    }
+
+    bool noisePatternsInitialized = initializeNoisePatterns();
 }
 
 namespace gb
@@ -283,66 +306,47 @@ namespace gb
 
     ////////////////////////////////////////////////////////////////////////////
 
-    Audio::Frequency::Frequency(const uint8_t& NRx3, const uint8_t& NRx4, int32_t clockShift, int32_t cycleSize)
-        : mNRx3(NRx3)
-        , mNRx4(NRx4)
-        , mClockShiftRef(clockShift)
+    Audio::BaseFrequency::BaseFrequency(int32_t clockShift, int32_t cycleSize)
+        : mClockShiftRef(clockShift)
         , mCycleSizeRef(cycleSize)
     {
         initClock(1);
-        reset();
     }
 
-    bool Audio::Frequency::initClock(int32_t clockDivider)
+    bool Audio::BaseFrequency::initClock(int32_t clockDivider)
     {
         EMU_VERIFY((clockDivider == 2) || (clockDivider == 1));
         mClockShift = mClockShiftRef + (clockDivider == 2 ? 1 : 0);
         return true;
     }
 
-    void Audio::Frequency::reset()
+    void Audio::BaseFrequency::reset()
     {
         mClockLastTick = 0;
         mClockStep = 0;
         mCycle = 0;
-        setPeriod(0);
     }
 
-    void Audio::Frequency::reload()
+    void Audio::BaseFrequency::reload()
     {
         mClockStep = 0;
         mCycle = 0;
-        auto period = getPeriod();
-        setPeriod(period);
     }
 
-    void Audio::Frequency::advanceClock(int32_t tick)
+    void Audio::BaseFrequency::advanceClock(int32_t tick)
     {
         mClockLastTick -= tick;
     }
 
-    void Audio::Frequency::onWriteNRx4(int32_t tick)
+    void Audio::BaseFrequency::setPeriod(int32_t period)
     {
-        if (mNRx4 & NRx4_RELOAD)
-            reload();
-    }
-
-    void Audio::Frequency::setPeriod(int32_t period)
-    {
-        period = FREQUENCY_PERIOD_LIMIT - period;
         mClockPeriod = period;
         mClockPeriodFast = period * FREQUENCY_PERIOD_FAST;
         if (mClockStep >= mClockPeriod)
             mClockStep = 0;
     }
 
-    int32_t Audio::Frequency::getPeriod() const
-    {
-        auto period = mNRx3 | (((mNRx4 & NRx4_PERIOD_HI_MASK) >> NRx4_PERIOD_HI_SHIFT) << 8);
-        return period;
-    }
-
-    void Audio::Frequency::update(int32_t tick)
+    void Audio::BaseFrequency::update(int32_t tick)
     {
         int32_t clockStart = mClockLastTick >> mClockShift;
         int32_t clockEnd = tick >> mClockShift;
@@ -376,13 +380,98 @@ namespace gb
         }
     }
 
-    void Audio::Frequency::serialize(emu::ISerializer& serializer)
+    void Audio::BaseFrequency::serialize(emu::ISerializer& serializer)
     {
         serializer.serialize(mClockLastTick);
         serializer.serialize(mClockStep);
         serializer.serialize(mClockPeriodFast);
         serializer.serialize(mClockPeriod);
         serializer.serialize(mCycle);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    Audio::Frequency::Frequency(const uint8_t& NRx3, const uint8_t& NRx4, int32_t clockShift, int32_t cycleSize)
+        : BaseFrequency(clockShift, cycleSize)
+        , mNRx3(NRx3)
+        , mNRx4(NRx4)
+    {
+        reset();
+    }
+
+    void Audio::Frequency::reset()
+    {
+        BaseFrequency::reset();
+        setPeriod(0);
+    }
+
+    void Audio::Frequency::reload()
+    {
+        BaseFrequency::reload();
+        auto period = getPeriod();
+        setPeriod(period);
+    }
+
+    void Audio::Frequency::onWriteNRx4(int32_t tick)
+    {
+        if (mNRx4 & NRx4_RELOAD)
+            reload();
+    }
+
+    void Audio::Frequency::setPeriod(int32_t period)
+    {
+        period = FREQUENCY_PERIOD_LIMIT - period;
+        BaseFrequency::setPeriod(period);
+    }
+
+    int32_t Audio::Frequency::getPeriod() const
+    {
+        auto period = mNRx3 | (((mNRx4 & NRx4_PERIOD_HI_MASK) >> NRx4_PERIOD_HI_SHIFT) << 8);
+        return period;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    Audio::NoiseFrequency::NoiseFrequency(const uint8_t& NRx3, const uint8_t& NRx4, int32_t clockShift, int32_t cycleSize)
+        : BaseFrequency(clockShift, cycleSize)
+        , mNRx3(NRx3)
+        , mNRx4(NRx4)
+    {
+        reset();
+    }
+
+    void Audio::NoiseFrequency::reset()
+    {
+        BaseFrequency::reset();
+        auto period = getPeriod();
+        setPeriod(period);
+    }
+
+    void Audio::NoiseFrequency::reload()
+    {
+        BaseFrequency::reload();
+        auto period = getPeriod();
+        setPeriod(period);
+    }
+
+    void Audio::NoiseFrequency::onWriteNRx4(int32_t tick)
+    {
+        if (mNRx4 & NRx4_RELOAD)
+            reload();
+    }
+
+    void Audio::NoiseFrequency::setPeriod(int32_t period)
+    {
+        BaseFrequency::setPeriod(period);
+    }
+
+    int32_t Audio::NoiseFrequency::getPeriod() const
+    {
+        static const int32_t cDivisor[] =  { 8, 16, 32, 48, 64, 80, 96, 112 };
+        auto divisor = cDivisor[(mNRx3 & NR43_DIVISOR_MASK) >> NR43_DIVISOR_SHIFT];
+        auto shift = ((mNRx3 & NR43_CLOCK_SHIFT_MASK) >> NR43_CLOCK_SHIFT_SHIFT) + 1;
+        auto period = divisor << shift;
+        return period;
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -448,7 +537,17 @@ namespace gb
 
     int32_t Audio::NoisePattern::getSample(uint32_t cycle, uint32_t volume) const
     {
-        return 0;
+        static const int8_t kVolume[VOLUME_MAX + 1][2] =
+        {
+            {  -0,  +0 }, {  -1,  +1 }, {  -2,  +2 }, {  -3,  +3 },
+            {  -4,  +4 }, {  -5,  +5 }, {  -6,  +6 }, {  -7,  +7 },
+            {  -8,  +8 }, {  -9,  +9 }, { -10, +10 }, { -11, +11 },
+            { -12, +12 }, { -13, +13 }, { -14, +14 }, { -15, +15 },
+        };
+        uint32_t mask = (mNRx3 & NR43_COUNTER_SIZE_LOW) ? 0x7f : 0x7fff;
+        auto level = noisePattern[cycle & mask];
+        auto result = kVolume[volume][level];
+        return result;
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -613,7 +712,7 @@ namespace gb
             channel[0] = mChannel1Length.getOutputMask() & mChannel1Pattern.getSample(mChannel1Frequency.getCycle(), mChannel1Volume.getVolume());
             channel[1] = mChannel2Length.getOutputMask() & mChannel2Pattern.getSample(mChannel2Frequency.getCycle(), mChannel2Volume.getVolume());
             channel[2] = mChannel3Length.getOutputMask() & mChannel3Pattern.getSample(mChannel3Frequency.getCycle());
-            channel[3] = 0;// mChannel4Length.getOutputMask() & mChannel4Volume.getVolume();
+            channel[3] = mChannel4Length.getOutputMask() & mChannel4Pattern.getSample(mChannel4Frequency.getCycle(), mChannel4Volume.getVolume());
             int8_t value = channel[0] + channel[1] + channel[2] + channel[3];
             emu::word16_t sample;
             //sample.w8[0].u = value;

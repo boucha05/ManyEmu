@@ -219,16 +219,12 @@ namespace gb
             uint32_t        mVolume;
         };
 
-        class Frequency
+        class BaseFrequency
         {
         public:
-            Frequency(const uint8_t& NRx3, const uint8_t& NRx4, int32_t clockShift, int32_t cycleSize);
+            BaseFrequency(int32_t clockShift, int32_t cycleSize);
             bool initClock(int32_t clockDivider);
-            void reset();
             void advanceClock(int32_t tick);
-            void onWriteNRx4(int32_t tick);
-            void setPeriod(int32_t period);
-            int32_t getPeriod() const;
             void update(int32_t tick);
             void serialize(emu::ISerializer& serializer);
 
@@ -237,11 +233,12 @@ namespace gb
                 return mCycle;
             }
 
-        private:
+        protected:
+            void reset();
             void reload();
+            void setPeriod(int32_t period);
 
-            const uint8_t&  mNRx3;
-            const uint8_t&  mNRx4;
+        private:
             int32_t         mClockShiftRef;
             int32_t         mCycleSizeRef;
             int32_t         mClockShift;
@@ -250,6 +247,38 @@ namespace gb
             int32_t         mClockPeriodFast;
             int32_t         mClockPeriod;
             int32_t         mCycle;
+        };
+
+        class Frequency : public BaseFrequency
+        {
+        public:
+            Frequency(const uint8_t& NRx3, const uint8_t& NRx4, int32_t clockShift, int32_t cycleSize);
+            void reset();
+            void onWriteNRx4(int32_t tick);
+            void setPeriod(int32_t period);
+            int32_t getPeriod() const;
+
+        private:
+            void reload();
+
+            const uint8_t&  mNRx3;
+            const uint8_t&  mNRx4;
+        };
+
+        class NoiseFrequency : public BaseFrequency
+        {
+        public:
+            NoiseFrequency(const uint8_t& NRx3, const uint8_t& NRx4, int32_t clockShift, int32_t cycleSize);
+            void reset();
+            void onWriteNRx4(int32_t tick);
+            void setPeriod(int32_t period);
+            int32_t getPeriod() const;
+
+        private:
+            void reload();
+
+            const uint8_t&  mNRx3;
+            const uint8_t&  mNRx4;
         };
 
         class SquarePattern
@@ -335,7 +364,7 @@ namespace gb
         WavePattern             mChannel3Pattern;
         Length                  mChannel4Length;
         Volume                  mChannel4Volume;
-        Frequency               mChannel4Frequency;
+        NoiseFrequency          mChannel4Frequency;
         NoisePattern            mChannel4Pattern;
     };
 }
