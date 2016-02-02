@@ -56,6 +56,20 @@ namespace
     static const uint8_t NRx4_PERIOD_HI_MASK = 0x7;
     static const uint8_t NRx4_PERIOD_HI_SHIFT = 0x0;
 
+    static const uint8_t NR50_SO2_VOLUME_MASK = 0x70;
+    static const uint8_t NR50_SO2_VOLUME_SHIFT = 4;
+    static const uint8_t NR50_SO1_VOLUME_MASK = 0x07;
+    static const uint8_t NR50_SO1_VOLUME_SHIFT = 0;
+
+    static const uint8_t NR51_SO2_OUTPUT_MASK = 0xf0;
+    static const uint8_t NR51_SO2_OUTPUT_SHIFT = 4;
+    static const uint8_t NR51_SO1_OUTPUT_MASK = 0x0f;
+    static const uint8_t NR51_SO1_OUTPUT_SHIFT = 0;
+
+    static const uint8_t NR52_ALL_ON = 0x80;
+    static const uint8_t NR52_SOUND_MASK = 0x0f;
+    static const uint8_t NR52_SOUND_SHIFT = 0;
+
     static const int32_t kVolumeDAC[VOLUME_MAX + 1] =
     {
         -15, -13, -11, -9, -7, -5, -3, -1,
@@ -708,17 +722,45 @@ namespace gb
     {
         if (mSoundBufferOffset < mSoundBufferSize)
         {
-            int8_t channel[4];
-            channel[0] = mChannel1Length.getOutputMask() & mChannel1Pattern.getSample(mChannel1Frequency.getCycle(), mChannel1Volume.getVolume());
-            channel[1] = mChannel2Length.getOutputMask() & mChannel2Pattern.getSample(mChannel2Frequency.getCycle(), mChannel2Volume.getVolume());
-            channel[2] = mChannel3Length.getOutputMask() & mChannel3Pattern.getSample(mChannel3Frequency.getCycle());
-            channel[3] = mChannel4Length.getOutputMask() & mChannel4Pattern.getSample(mChannel4Frequency.getCycle(), mChannel4Volume.getVolume());
-            int8_t value = channel[0] + channel[1] + channel[2] + channel[3];
-            emu::word16_t sample;
-            //sample.w8[0].u = value;
-            //sample.w8[1].u = 0;
-            sample.i = value << 8;
-            mSoundBuffer[mSoundBufferOffset] = sample.u;
+            int16_t sample[2] = { 0, 0 };
+            if (mRegNR52 & NR52_ALL_ON)
+            {
+                uint8_t output[2];
+                output[0] = (mRegNR51 & NR51_SO1_OUTPUT_MASK) >> NR51_SO1_OUTPUT_SHIFT;
+                output[1] = (mRegNR51 & NR51_SO2_OUTPUT_MASK) >> NR51_SO2_OUTPUT_SHIFT;
+
+                int8_t volume[2];
+                volume[0] = ((mRegNR50 & NR50_SO1_VOLUME_MASK) >> NR50_SO1_VOLUME_SHIFT) + 1;
+                volume[1] = ((mRegNR50 & NR50_SO2_VOLUME_MASK) >> NR50_SO2_VOLUME_SHIFT) + 1;
+
+                int8_t level[4];
+                level[0] = mChannel1Length.getOutputMask() & mChannel1Pattern.getSample(mChannel1Frequency.getCycle(), mChannel1Volume.getVolume());
+                level[1] = mChannel2Length.getOutputMask() & mChannel2Pattern.getSample(mChannel2Frequency.getCycle(), mChannel2Volume.getVolume());
+                level[2] = mChannel3Length.getOutputMask() & mChannel3Pattern.getSample(mChannel3Frequency.getCycle());
+                level[3] = mChannel4Length.getOutputMask() & mChannel4Pattern.getSample(mChannel4Frequency.getCycle(), mChannel4Volume.getVolume());
+
+                for (uint32_t track = 0; track < 2; ++track)
+                {
+                    for (uint32_t channel = 0; channel < 4; ++channel)
+                    {
+                        if (output[track] & (1 << channel))
+                            sample[track] += level[channel];
+                    }
+                    sample[track] *= volume[track] << 5;
+                }
+            }
+
+            // TODO: Support for stereo tracks
+            // Note: with Audacity, tracks are in growing order starting at the bottom
+            // Note: with Audacity, tracks are listed in the same order than BGB if SO2 comes first
+            emu::word16_t final;
+#if 0
+            final.w8[0].i = sample[1] >> 8;
+            final.w8[1].i = sample[0] >> 8;
+#else
+            final.i = sample[0];
+#endif
+            mSoundBuffer[mSoundBufferOffset] = final.i;
         }
         ++mSoundBufferOffset;
     }
