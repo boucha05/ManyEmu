@@ -1151,7 +1151,10 @@ namespace gb
         mSoundBuffer = buffer;
         mSoundBufferSize = static_cast<uint32_t>(size);
         mSoundBufferOffset = 0;
-        mTicksPerSample = mMasterClockFrequency / (60 * mSoundBufferSize) + 1;
+        if (buffer && size)
+            mTicksPerSample = mMasterClockFrequency / (60 * mSoundBufferSize) + 1;
+        else
+            mTicksPerSample = 1000000;
     }
 
     void Audio::serialize(emu::ISerializer& serializer)

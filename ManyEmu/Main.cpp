@@ -60,12 +60,17 @@ public:
         uint32_t        replayFrameSeek;    // Number of frames between two rewind snapshots
         uint32_t        samplingRate;       // Sound buffer sampling rate
         float           soundDelay;         // Sound delay in seconds
+        bool            rewindEnabled;      // Enable rewind feature
         bool            playback;           // Replay recorded controller input
+        bool            enableAudio;        // Enable audio
+        bool            stubAudio;          // Redirect audio to a fake output
         bool            saveAudio;          // Save audio to file (not very efficient, for debugging only)
         bool            autoSave;           // Automatically save game state before exiting game
         bool            autoLoad;           // Automatically load savegame at startup
         bool            profile;            // Saves some timings in a file called profiling.prof (for debugging only)
         bool            display;            // Display video output (enabled by default, for debugging only)
+        bool            stubDisplay;        // Use fake display
+        bool            vsync;              // Wait vsync
 
         Config()
             : frameSkip(0)
@@ -73,12 +78,17 @@ public:
             , replayFrameSeek(5)
             , samplingRate(44100)
             , soundDelay(0.0500f)
+            , rewindEnabled(true)
             , playback(false)
+            , enableAudio(true)
+            , stubAudio(false)
             , saveAudio(false)
             , autoSave(false)
             , autoLoad(false)
             , profile(false)
             , display(true)
+            , stubDisplay(false)
+            , vsync(true)
         {
         }
     };
@@ -116,7 +126,10 @@ private:
     SDL_Window*                 mWindow;
     SDL_Renderer*               mRenderer;
     SDL_Surface*                mScreen;
+    uint32_t                    mTexSizeX;
+    uint32_t                    mTexSizeY;
     SDL_Texture*                mTexture[BUFFERING];
+    std::vector<uint8_t>        mFakeTexture;
     bool                        mValid;
     bool                        mFirst;
     uint32_t                    mBufferIndex;
@@ -236,7 +249,10 @@ bool Application::create()
     if (!mWindow)
         return false;
 
-    mRenderer = SDL_CreateRenderer(mWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    uint32_t renderFlags = SDL_RENDERER_ACCELERATED;
+    if (mConfig.vsync)
+        renderFlags |= SDL_RENDERER_PRESENTVSYNC;
+    mRenderer = SDL_CreateRenderer(mWindow, -1, renderFlags);
     if (!mRenderer)
         return false;
 
@@ -246,12 +262,15 @@ bool Application::create()
     if (!mScreen)
         return false;
 
+    mTexSizeX = 256;
+    mTexSizeY = 240;
     for (uint32_t n = 0; n < BUFFERING; ++n)
     {
-        mTexture[n] = SDL_CreateTexture(mRenderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
+        mTexture[n] = SDL_CreateTexture(mRenderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING, mTexSizeX, mTexSizeY);
         if (!mTexture[n])
             return false;
     }
+    mFakeTexture.resize(mTexSizeX * mTexSizeY * 4);
 
 #if 0
     if (!runTestRoms())
@@ -561,14 +580,13 @@ void Application::update()
 
     void* pixels = nullptr;
     int pitch = 0;
-    if (!mConfig.frameSkip)
+    gameSession.setRenderBuffer(nullptr, 0);
+    if (mConfig.display && !mConfig.frameSkip)
     {
-        if (!SDL_LockTexture(mTexture[mBufferIndex], nullptr, &pixels, &pitch))
+        if (mConfig.stubDisplay)
+            gameSession.setRenderBuffer(mFakeTexture.data(), mTexSizeX * 4);
+        else if (!SDL_LockTexture(mTexture[mBufferIndex], nullptr, &pixels, &pitch))
             gameSession.setRenderBuffer(pixels, pitch);
-    }
-    else
-    {
-        gameSession.setRenderBuffer(nullptr, 0);
     }
 
     if (mFrameIndex == frameTrigger)
@@ -576,12 +594,16 @@ void Application::update()
 
     if (mPlayer1)
         gameSession.setController(0, mPlayer1->readInput());
-    if (mSoundBuffer.size())
+    if (mSoundBuffer.size() && mConfig.enableAudio)
     {
         size_t size = mSoundBuffer.size();
         mSoundBuffer.clear();
         mSoundBuffer.resize(size, 0);
         gameSession.setSoundBuffer(&mSoundBuffer[0], mSoundBuffer.size());
+    }
+    else
+    {
+        gameSession.setSoundBuffer(nullptr, 0);
     }
 
     static bool testGameState = false;
@@ -641,28 +663,31 @@ void Application::update()
         mSoundWriter->serialize(&mSoundBuffer[0], mSoundBuffer.size() * 2);
     }
     
-    SDL_LockAudioDevice(mSoundDevice);
-    if (mSoundBufferedSize < mSoundMaxSize)
+    if (mConfig.enableAudio && !mConfig.stubAudio)
     {
-        auto soundQueueSize = mSoundQueue.size();
-        auto size = mSoundBuffer.size();
-        const int16_t* data = &mSoundBuffer[0];
-        while (size)
+        SDL_LockAudioDevice(mSoundDevice);
+        if (mSoundBufferedSize < mSoundMaxSize)
         {
-            auto currentSize = size;
-            auto maxSize = soundQueueSize - mSoundWritePos;
-            if (currentSize > maxSize)
-                currentSize = maxSize;
-            memcpy(&mSoundQueue[mSoundWritePos], data, currentSize * sizeof(int16_t));
-            mSoundBufferedSize += currentSize;
-            mSoundWritePos += currentSize;
-            data += currentSize;
-            size -= currentSize;
-            if (mSoundWritePos >= soundQueueSize)
-                mSoundWritePos -= soundQueueSize;
+            auto soundQueueSize = mSoundQueue.size();
+            auto size = mSoundBuffer.size();
+            const int16_t* data = &mSoundBuffer[0];
+            while (size)
+            {
+                auto currentSize = size;
+                auto maxSize = soundQueueSize - mSoundWritePos;
+                if (currentSize > maxSize)
+                    currentSize = maxSize;
+                memcpy(&mSoundQueue[mSoundWritePos], data, currentSize * sizeof(int16_t));
+                mSoundBufferedSize += currentSize;
+                mSoundWritePos += currentSize;
+                data += currentSize;
+                size -= currentSize;
+                if (mSoundWritePos >= soundQueueSize)
+                    mSoundWritePos -= soundQueueSize;
+            }
         }
+        SDL_UnlockAudioDevice(mSoundDevice);
     }
-    SDL_UnlockAudioDevice(mSoundDevice);
 
     float frameTime = static_cast<float>(frameEnd - frameStart) / SDL_GetPerformanceFrequency();
     if (mTimingWriter)
@@ -689,7 +714,7 @@ void Application::update()
         }
     }
 
-    if (++mPlayback->elapsedFrames >= mConfig.replayFrameSeek)
+    if (mConfig.rewindEnabled && (++mPlayback->elapsedFrames >= mConfig.replayFrameSeek))
     {
         emu::BinaryWriter writer(mPlayback->stream);
         mPlayback->stream.setReadOffset(0);
@@ -722,6 +747,10 @@ void Application::render()
     {
         --mConfig.frameSkip;
         visible = false;
+    }
+    else
+    {
+        //exit(1);
     }
 
     if (visible)
@@ -827,14 +856,21 @@ int main()
     //config.roms.push_back("rayman (u) [c][t1].gbc");
     //config.roms.push_back("Asterix - Search for Dogmatix (E) (M6) [C][!].gbc");
     //config.roms.push_back("3D Pocket Pool (E) (M6) [C][!].gbc");
-    //config.roms.push_back("super mario land (v1.1) (jua) [t1].gb");
+    config.roms.push_back("super mario land (v1.1) (jua) [t1].gb");
     //config.roms.push_back("Tetris (V1.1) (JU) [!].gb");
     //config.roms.push_back("Metroid 2 - Return of Samus (UA) [b1].gb");
-    config.roms.push_back("Legend of Zelda, The - Link's Awakening (V1.2) (U) [!].gb");
-    config.saveAudio = true;
-    //config.recorded = "recorded.dat";
-    //config.playback = true;
-    //config.frameSkip = 600;
+    //config.roms.push_back("Legend of Zelda, The - Link's Awakening (V1.2) (U) [!].gb");
+    //config.saveAudio = true;
+#if 0
+    config.recorded = "recorded.dat";
+    config.playback = true;
+    config.vsync = false;
+    config.frameSkip = 100000;
+    config.rewindEnabled = false;
+    config.enableAudio = true;
+    config.stubAudio = true;
+    config.stubDisplay = true;
+#endif
     //config.display = false;
     //config.autoSave = true;
     //config.autoLoad = true;
