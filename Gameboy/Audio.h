@@ -97,7 +97,7 @@ namespace gb
         void resetClock();
         void advanceClock(int32_t tick);
         void setDesiredTicks(int32_t tick);
-        void sampleStep();
+        void sampleStep(int32_t tick);
         void sequencerStep();
         void updateSample(int32_t tick);
         void updateSequencer(int32_t tick);

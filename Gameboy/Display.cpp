@@ -337,7 +337,7 @@ namespace gb
         mUpdateRasterPosFast = UPDATE_RASTER_POS_FAST * master_clock_divider;
 
         mClock = &clock;
-        mMemory = &memory.getState();
+        mMemory = &memory;
         mInterrupts = &interrupts;
         mConfig = config;
 
@@ -608,7 +608,7 @@ namespace gb
 
         for (uint8_t index = 0; index < DMA_SIZE; ++index)
         {
-            uint8_t dma_value = memory_bus_read8(*mMemory, tick, read_addr + index);
+            uint8_t dma_value = mMemory->read8(mMemoryDMAReadAccessor, tick, read_addr + index);
             mOAM[index] = dma_value;
         }
         mSortedSprites = false;
@@ -787,9 +787,9 @@ namespace gb
             dst = (dst & HDMA_DST_MASK) + HDMA_DST_BASE;
             for (uint32_t pos = 0; pos < size; ++pos)
             {
-                uint8_t value = memory_bus_read8(*mMemory, tick, src + pos);
+                uint8_t value = mMemory->read8(mMemoryHDMAReadAccessor, tick, src + pos);
                 auto dstFinal = ((dst + pos) & HDMA_DST_FINAL_MASK) + HDMA_DST_BASE;
-                memory_bus_write8(*mMemory, tick, dstFinal, value);
+                mMemory->write8(mMemoryHDMAWriteAccessor, tick, dstFinal, value);
             }
             mRegHDMA[4] = HDMA5_DONE;
         }
@@ -807,6 +807,9 @@ namespace gb
 
     void Display::reset()
     {
+        mMemoryDMAReadAccessor.reset();
+        mMemoryHDMAReadAccessor.reset();
+        mMemoryHDMAWriteAccessor.reset();
         mRegLCDC = 0x91;
         mRegSTAT = 0x00;
         mRegSCY  = 0x00;

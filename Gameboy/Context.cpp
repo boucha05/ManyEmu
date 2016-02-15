@@ -89,7 +89,7 @@ namespace gb_context
 
             EMU_VERIFY(mClock.create());
             EMU_VERIFY(mMemory.create(MEM_SIZE_LOG2, MEM_PAGE_SIZE_LOG2));
-            EMU_VERIFY(mCpu.create(mClock, mMemory.getState(), mVariableClockDivider, isGBC ? CPU_DEFAULT_A_CGB : CPU_DEFAULT_A_GB));
+            EMU_VERIFY(mCpu.create(mClock, mMemory, mVariableClockDivider, isGBC ? CPU_DEFAULT_A_CGB : CPU_DEFAULT_A_GB));
 
             mMapper = gb::createMapper(rom, mMemory);
             EMU_VERIFY(mMapper);
@@ -177,6 +177,8 @@ namespace gb_context
                 mVariableClockDivider = 2;
             setVariableClockDivider(mVariableClockDivider);
 
+            mMemoryReadAccessor.reset();
+            mMemoryWriteAccessor.reset();
             mClock.reset();
             mCpu.reset();
             if (mMapper)
@@ -223,13 +225,13 @@ namespace gb_context
 
         virtual uint8_t read8(uint16_t addr)
         {
-            uint8_t value = memory_bus_read8(mMemory.getState(), mClock.getDesiredTicks(), addr);
+            uint8_t value = mMemory.read8(mMemoryReadAccessor, mClock.getDesiredTicks(), addr);
             return value;
         }
 
         virtual void write8(uint16_t addr, uint8_t value)
         {
-            memory_bus_write8(mMemory.getState(), mClock.getDesiredTicks(), addr, value);
+            mMemory.write8(mMemoryWriteAccessor, mClock.getDesiredTicks(), addr, value);
         }
 
         virtual void serializeGameData(emu::ISerializer& serializer)
@@ -388,31 +390,33 @@ namespace gb_context
             mCpu.resume(tick);
         }
 
-        gb::Model               mModel;
-        emu::Clock              mClock;
-        emu::MemoryBus          mMemory;
-        gb::CpuZ80              mCpu;
-        gb::IMapper*            mMapper;
-        RegisterAccessors       mRegisterAccessors;
-        StopListener            mStopListener;
-        MEM_ACCESS_READ_WRITE   mMemoryWRAM[4];
-        MEM_ACCESS_READ_WRITE   mMemoryHRAM;
-        std::vector<uint8_t>    mWRAM;
-        std::vector<uint8_t>    mHRAM;
-        uint32_t                mVariableClockDivider;
-        uint32_t                mTicksPerFrame;
-        uint8_t*                mBankMapWRAM[8];
-        uint8_t                 mBankWRAM;
-        uint8_t                 mRegKEY1;
-        uint8_t                 mRegSVBK;
-        emu::RegisterBank       mRegistersIO;
-        emu::RegisterBank       mRegistersIE;
-        gb::Interrupts          mInterrupts;
-        gb::GameLink            mGameLink;
-        gb::Display             mDisplay;
-        gb::Joypad              mJoypad;
-        gb::Timer               mTimer;
-        gb::Audio               mAudio;
+        gb::Model                   mModel;
+        emu::Clock                  mClock;
+        emu::MemoryBus              mMemory;
+        emu::MemoryBus::Accessor    mMemoryReadAccessor;
+        emu::MemoryBus::Accessor    mMemoryWriteAccessor;
+        gb::CpuZ80                  mCpu;
+        gb::IMapper*                mMapper;
+        RegisterAccessors           mRegisterAccessors;
+        StopListener                mStopListener;
+        MEM_ACCESS_READ_WRITE       mMemoryWRAM[4];
+        MEM_ACCESS_READ_WRITE       mMemoryHRAM;
+        std::vector<uint8_t>        mWRAM;
+        std::vector<uint8_t>        mHRAM;
+        uint32_t                    mVariableClockDivider;
+        uint32_t                    mTicksPerFrame;
+        uint8_t*                    mBankMapWRAM[8];
+        uint8_t                     mBankWRAM;
+        uint8_t                     mRegKEY1;
+        uint8_t                     mRegSVBK;
+        emu::RegisterBank           mRegistersIO;
+        emu::RegisterBank           mRegistersIE;
+        gb::Interrupts              mInterrupts;
+        gb::GameLink                mGameLink;
+        gb::Display                 mDisplay;
+        gb::Joypad                  mJoypad;
+        gb::Timer                   mTimer;
+        gb::Audio                   mAudio;
     };
 }
 

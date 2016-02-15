@@ -718,12 +718,12 @@ namespace gb
         mDesiredTick = tick;
     }
 
-    void Audio::sampleStep()
+    void Audio::sampleStep(int32_t tick)
     {
-        if (mSoundBufferOffset < mSoundBufferSize)
+        if (mRegNR52 & NR52_ALL_ON)
         {
             int16_t sample[2] = { 0, 0 };
-            if (mRegNR52 & NR52_ALL_ON)
+            if (mSoundBufferOffset < mSoundBufferSize)
             {
                 uint8_t output[2];
                 output[0] = (mRegNR51 & NR51_SO1_OUTPUT_MASK) >> NR51_SO1_OUTPUT_SHIFT;
@@ -733,11 +733,27 @@ namespace gb
                 volume[0] = ((mRegNR50 & NR50_SO1_VOLUME_MASK) >> NR50_SO1_VOLUME_SHIFT) + 1;
                 volume[1] = ((mRegNR50 & NR50_SO2_VOLUME_MASK) >> NR50_SO2_VOLUME_SHIFT) + 1;
 
-                int8_t level[4];
-                level[0] = mChannel1Length.getOutputMask() & mChannel1Pattern.getSample(mChannel1Frequency.getCycle(), mChannel1Volume.getVolume());
-                level[1] = mChannel2Length.getOutputMask() & mChannel2Pattern.getSample(mChannel2Frequency.getCycle(), mChannel2Volume.getVolume());
-                level[2] = mChannel3Length.getOutputMask() & mChannel3Pattern.getSample(mChannel3Frequency.getCycle());
-                level[3] = mChannel4Length.getOutputMask() & mChannel4Pattern.getSample(mChannel4Frequency.getCycle(), mChannel4Volume.getVolume());
+                int8_t level[4] = { 0, 0, 0, 0 };
+                if (mChannel1Length.getOutputMask())
+                {
+                    mChannel1Frequency.update(tick);
+                    level[0] = mChannel1Length.getOutputMask() & mChannel1Pattern.getSample(mChannel1Frequency.getCycle(), mChannel1Volume.getVolume());
+                }
+                if (mChannel2Length.getOutputMask())
+                {
+                    mChannel2Frequency.update(tick);
+                    level[1] = mChannel2Length.getOutputMask() & mChannel2Pattern.getSample(mChannel2Frequency.getCycle(), mChannel2Volume.getVolume());
+                }
+                if (mChannel3Length.getOutputMask())
+                {
+                    mChannel3Frequency.update(tick);
+                    level[2] = mChannel3Length.getOutputMask() & mChannel3Pattern.getSample(mChannel3Frequency.getCycle());
+                }
+                if (mChannel4Length.getOutputMask())
+                {
+                    mChannel4Frequency.update(tick);
+                    level[3] = mChannel4Length.getOutputMask() & mChannel4Pattern.getSample(mChannel4Frequency.getCycle(), mChannel4Volume.getVolume());
+                }
 
                 for (uint32_t track = 0; track < 2; ++track)
                 {
@@ -794,11 +810,7 @@ namespace gb
             while (tick - mSampleTick >= static_cast<int32_t>(mTicksPerSample))
             {
                 mSampleTick += mTicksPerSample;
-                mChannel1Frequency.update(mSampleTick);
-                mChannel2Frequency.update(mSampleTick);
-                mChannel3Frequency.update(mSampleTick);
-                mChannel4Frequency.update(mSampleTick);
-                sampleStep();
+                sampleStep(mSampleTick);
             }
         }
     }
@@ -820,10 +832,6 @@ namespace gb
             return;
 
         updateSequencer(tick);
-        mChannel1Frequency.update(tick);
-        mChannel2Frequency.update(tick);
-        mChannel3Frequency.update(tick);
-        mChannel4Frequency.update(tick);
         mUpdateTick = tick;
     }
 

@@ -414,12 +414,12 @@ namespace gb
 {
     uint8_t CpuZ80::read8(uint16_t addr)
     {
-        return memory_bus_read8(*mMemory, mExecutedTicks, addr);
+        return mMemory->read8(mMemoryReadAccessor, mExecutedTicks, addr);
     }
 
     void CpuZ80::write8(uint16_t addr, uint8_t value)
     {
-        memory_bus_write8(*mMemory, mExecutedTicks, addr, value);
+        mMemory->write8(mMemoryWriteAccessor, mExecutedTicks, addr, value);
     }
 
     void CpuZ80::write16(uint16_t addr, uint16_t value)
@@ -440,7 +440,7 @@ namespace gb
 
     uint8_t CpuZ80::fetch8()
     {
-        return read8(PC++);
+        return mMemory->read8(mMemoryFetchAccessor, mExecutedTicks, PC++);
     }
 
     uint16_t CpuZ80::fetch16()
@@ -530,7 +530,7 @@ namespace gb
         destroy();
     }
 
-    bool CpuZ80::create(emu::Clock& clock, MEMORY_BUS& bus, uint32_t clockDivider, uint8_t defaultA)
+    bool CpuZ80::create(emu::Clock& clock, emu::MemoryBus& bus, uint32_t clockDivider, uint8_t defaultA)
     {
         mClock = &clock;
         mClock->addListener(*this);
@@ -561,6 +561,9 @@ namespace gb
 
     void CpuZ80::reset()
     {
+        mMemoryFetchAccessor.reset();
+        mMemoryReadAccessor.reset();
+        mMemoryWriteAccessor.reset();
         A = mDefaultA;
         FLAGS = 0xb0;
         BC = 0x0013;

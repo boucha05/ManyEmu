@@ -2,12 +2,11 @@
 
 #include <Core/Clock.h>
 #include <Core/Core.h>
+#include <Core/MemoryBus.h>
 #include <stdint.h>
 #include <map>
 #include <vector>
 #include "GB.h"
-
-struct MEMORY_BUS;
 
 namespace emu
 {
@@ -35,7 +34,7 @@ namespace gb
         
         CpuZ80();
         ~CpuZ80();
-        bool create(emu::Clock& clock, MEMORY_BUS& bus, uint32_t clockDivider, uint8_t defaultA);
+        bool create(emu::Clock& clock, emu::MemoryBus& bus, uint32_t clockDivider, uint8_t defaultA);
         void destroy();
         void reset();
         void setClockDivider(uint32_t clockDivider);
@@ -228,20 +227,23 @@ namespace gb
         typedef std::vector<IInterruptListener*> InterruptListeners;
         typedef std::vector<IStopListener*> StopListeners;
 
-        Registers               mRegs;
-        uint8_t                 mDefaultA;
-        int32_t                 mDesiredTicks;
-        int32_t                 mExecutedTicks;
-        MEMORY_BUS*             mMemory;
-        emu::Clock*             mClock;
-        uint8_t                 mTicksMain[256];
-        uint8_t                 mTicksCB[8];
-        uint8_t                 mTicksCond_call;
-        uint8_t                 mTicksCond_ret;
-        uint8_t                 mTicksCond_jp;
-        uint8_t                 mTicksCond_jr;
-        int32_t                 mFrame;
-        InterruptListeners      mInterruptListeners;
-        StopListeners           mStopListeners;
+        Registers                   mRegs;
+        uint8_t                     mDefaultA;
+        int32_t                     mDesiredTicks;
+        int32_t                     mExecutedTicks;
+        emu::MemoryBus*             mMemory;
+        emu::MemoryBus::Accessor    mMemoryFetchAccessor;
+        emu::MemoryBus::Accessor    mMemoryReadAccessor;
+        emu::MemoryBus::Accessor    mMemoryWriteAccessor;
+        emu::Clock*                 mClock;
+        uint8_t                     mTicksMain[256];
+        uint8_t                     mTicksCB[8];
+        uint8_t                     mTicksCond_call;
+        uint8_t                     mTicksCond_ret;
+        uint8_t                     mTicksCond_jp;
+        uint8_t                     mTicksCond_jr;
+        int32_t                     mFrame;
+        InterruptListeners          mInterruptListeners;
+        StopListeners               mStopListeners;
     };
 }

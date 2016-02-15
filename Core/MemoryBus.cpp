@@ -19,61 +19,71 @@ namespace
     }
 }
 
-uint8_t memory_bus_read8(const MEMORY_BUS& bus, int32_t ticks, uint16_t addr)
+bool is_valid_page(const MEM_PAGE& page, uint16_t addr)
+{
+    return (page.start <= addr) && (page.end >= addr);
+}
+
+MEM_PAGE* find_page(const MEMORY_BUS& bus, uint16_t addr, uint32_t pageTable)
 {
     ASSERT(addr <= bus.mem_limit);
     uint32_t pageIndex = addr >> bus.page_size_log2;
-    MEM_PAGE* page = bus.page_table[MEMORY_BUS::PAGE_TABLE_READ][pageIndex];
+    MEM_PAGE* page = bus.page_table[pageTable][pageIndex];
     while (page)
     {
-        if ((page->start <= addr) && (page->end >= addr))
-        {
-            MEM_ACCESS* access = page->access;
-            uint16_t addrFixed = addr - page->offset;
-            const uint8_t* buffer = access->io.read.mem;
-            if (buffer)
-            {
-                return buffer[addrFixed];
-            }
-            else
-            {
-                ASSERT(access->io.read.func);
-                return access->io.read.func(access->context, ticks, addrFixed);
-            }
-        }
+        if (is_valid_page(*page, addr))
+            return page;
         page = page->next;
     }
-    ASSERT(false);
-    return 0;
+    EMU_ASSERT(page);
+    return page;
+}
+
+uint8_t memory_read8(const MEM_PAGE& page, int32_t ticks, uint16_t addr)
+{
+    MEM_ACCESS* access = page.access;
+    uint16_t addrFixed = addr - page.offset;
+    const uint8_t* buffer = access->io.read.mem;
+    if (buffer)
+    {
+        return buffer[addrFixed];
+    }
+    else
+    {
+        EMU_ASSERT(access->io.read.func);
+        return access->io.read.func(access->context, ticks, addrFixed);
+    }
+}
+
+void memory_write8(const MEM_PAGE& page, int32_t ticks, uint16_t addr, uint8_t value)
+{
+    MEM_ACCESS* access = page.access;
+    uint16_t addrFixed = addr - page.offset;
+    uint8_t* buffer = access->io.write.mem;
+    if (buffer)
+    {
+        buffer[addrFixed] = value;
+        return;
+    }
+    else
+    {
+        ASSERT(access->io.write.func);
+        access->io.write.func(access->context, ticks, addrFixed, value);
+        return;
+    }
+
+}
+
+uint8_t memory_bus_read8(const MEMORY_BUS& bus, int32_t ticks, uint16_t addr)
+{
+    MEM_PAGE* page = find_page(bus, addr, MEMORY_BUS::PAGE_TABLE_READ);
+    return memory_read8(*page, ticks, addr);
 }
 
 void memory_bus_write8(const MEMORY_BUS& bus, int32_t ticks, uint16_t addr, uint8_t value)
 {
-    ASSERT(addr <= bus.mem_limit);
-    uint32_t pageIndex = addr >> bus.page_size_log2;
-    MEM_PAGE* page = bus.page_table[MEMORY_BUS::PAGE_TABLE_WRITE][pageIndex];
-    while (page)
-    {
-        if ((page->start <= addr) && (page->end >= addr))
-        {
-            MEM_ACCESS* access = page->access;
-            uint16_t addrFixed = addr - page->offset;
-            uint8_t* buffer = access->io.write.mem;
-            if (buffer)
-            {
-                buffer[addrFixed] = value;
-                return;
-            }
-            else
-            {
-                ASSERT(access->io.write.func);
-                access->io.write.func(access->context, ticks, addrFixed, value);
-                return;
-            }
-        }
-        page = page->next;
-    }
-    ASSERT(false);
+    MEM_PAGE* page = find_page(bus, addr, MEMORY_BUS::PAGE_TABLE_WRITE);
+    memory_write8(*page, ticks, addr, value);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -127,6 +137,19 @@ MEM_ACCESS_READ_WRITE& MEM_ACCESS_READ_WRITE::setReadWriteMemory(uint8_t* _mem, 
 
 namespace emu
 {
+    void MemoryBus::Accessor::reset()
+    {
+        static MEM_PAGE badPage =
+        {
+            nullptr,
+            nullptr,
+            1,
+            0,
+            0,
+        };
+        page = &badPage;
+    }
+
     MemoryBus::MemoryBus()
     {
         initialize();
@@ -193,15 +216,61 @@ namespace emu
         uint32_t pageIndexEnd = end >> mState.page_size_log2;
         for (uint32_t pageIndex = pageIndexStart; pageIndex <= pageIndexEnd; ++pageIndex)
         {
+            // Create a new page entry
             uint32_t pageStart = pageIndex << mState.page_size_log2;
             uint32_t pageEnd = ((pageIndex + 1) << mState.page_size_log2) - 1;
             MEM_PAGE* memPage = allocatePage();
-            memPage->next = page_table[pageIndex];
+            memPage->next = nullptr;
             memPage->access = &access;
             memPage->start = std::max(pageStart, static_cast<uint32_t>(start));
             memPage->end = std::min(pageEnd, static_cast<uint32_t>(end));
             memPage->offset = offset;
-            page_table[pageIndex] = memPage;
+
+            // Find where this new entry should start in the table
+            // for this page (sorted by increasing start address)
+            MEM_PAGE* prev = nullptr;
+            MEM_PAGE* next = page_table[pageIndex];
+            while (next && next->start < memPage->start)
+            {
+                prev = next;
+                next = next->next;
+            }
+
+            // Adjust the end of the previous entry
+            if (prev)
+            {
+                if (prev->end > memPage->end)
+                {
+                    // Previous entry also ends up passed the new one, create a new
+                    // entry passed our entry to finish the range of the previous one
+                    next = allocatePage();
+                    *next = *prev;
+                    next->start = memPage->end + 1;
+                }
+                if (prev->end >= memPage->start)
+                    prev->end = memPage->start - 1;
+                prev->next = memPage;
+            }
+            else
+            {
+                // Our entry is the first entry, update the start entry
+                page_table[pageIndex] = memPage;
+            }
+
+            // Now find the next entry
+            while (next && (next->end <= memPage->end))
+            {
+                // Here we could try to recycle the page that is
+                // not used anymore before switching to the next one
+                next = next->next;
+            }
+            if (next && next->start <= memPage->end)
+            {
+                // The new entry overlaps partially on the next one,
+                // update the starting address of the next one
+                next->start = memPage->end + 1;
+            }
+            memPage->next = next;
         }
         return true;
     }
@@ -211,5 +280,19 @@ namespace emu
         EMU_VERIFY(addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, start, end, access.read));
         EMU_VERIFY(addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, start, end, access.write));
         return true;
+    }
+
+    uint8_t MemoryBus::read8(Accessor& accessor, int32_t ticks, uint16_t addr)
+    {
+        if (!is_valid_page(*accessor.page, addr))
+            accessor.page = find_page(mState, addr, MEMORY_BUS::PAGE_TABLE_READ);
+        return memory_read8(*accessor.page, ticks, addr);
+    }
+
+    void MemoryBus::write8(Accessor& accessor, int32_t ticks, uint16_t addr, uint8_t value)
+    {
+        if (!is_valid_page(*accessor.page, addr))
+            accessor.page = find_page(mState, addr, MEMORY_BUS::PAGE_TABLE_WRITE);
+        memory_write8(*accessor.page, ticks, addr, value);
     }
 }

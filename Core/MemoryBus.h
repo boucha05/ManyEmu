@@ -70,6 +70,18 @@ namespace emu
     class MemoryBus
     {
     public:
+        struct Accessor
+        {
+            Accessor()
+            {
+                reset();
+            }
+
+            void reset();
+
+            MEM_PAGE*   page;
+        };
+
         MemoryBus();
         ~MemoryBus();
         bool create(uint32_t memSizeLog2, uint32_t pageSizeLog2);
@@ -82,6 +94,8 @@ namespace emu
 
         bool addMemoryRange(uint32_t pageTableId, uint16_t start, uint16_t end, MEM_ACCESS& access);
         bool addMemoryRange(uint16_t start, uint16_t end, MEM_ACCESS_READ_WRITE& access);
+        uint8_t read8(Accessor& accessor, int32_t ticks, uint16_t addr);
+        void write8(Accessor& accessor, int32_t ticks, uint16_t addr, uint8_t value);
 
     private:
         MEMORY_BUS                  mState;
