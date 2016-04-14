@@ -1,4 +1,4 @@
-#include <Core/Serialization.h>
+#include <Core/Core.h>
 #include "nes.h"
 #include "PPU.h"
 #include <vector>

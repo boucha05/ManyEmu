@@ -1,6 +1,5 @@
 #include <Core/Clock.h>
 #include <Core/MemoryBus.h>
-#include <Core/Serialization.h>
 #include "nes.h"
 #include "APU.h"
 #include "Cpu6502.h"

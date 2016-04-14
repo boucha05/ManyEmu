@@ -4,6 +4,7 @@
 #define EMU_CONFIG_LITTLE_ENDIAN    1
 
 #include <stdint.h>
+#include <vector>
 #if defined(DEBUG) || defined(_DEBUG)
 #include <assert.h>
 #define EMU_ASSERT(e)   emu::Assert(!!(e), #e)
@@ -139,7 +140,49 @@ namespace emu
 
 #define EMU_NOT_IMPLEMENTED()   EMU_INVOKE_ONCE(emu::notImplemented(__FUNCTION__))
 
-    class ISerializer;
+    class IStream
+    {
+    public:
+        virtual bool read(void* data, size_t size) = 0;
+        virtual bool write(const void* data, size_t size) = 0;
+    };
+
+    class ISerializer
+    {
+    public:
+        virtual bool isReading() const = 0;
+        virtual void serialize(uint32_t& value) = 0;
+        virtual void serialize(int32_t& value) = 0;
+        virtual void serialize(uint16_t& data) = 0;
+        virtual void serialize(uint8_t& value) = 0;
+        virtual void serialize(int8_t& value) = 0;
+        virtual void serialize(bool& value) = 0;
+        virtual void serialize(void* value, size_t size) = 0;
+        void serialize(uint32_t* values, size_t size);
+        void serialize(uint8_t* values, size_t size);
+
+        template <typename T>
+        void serialize(std::vector<T>& value)
+        {
+            uint32_t size = static_cast<uint32_t>(value.size());
+            serialize(size);
+            value.resize(size, static_cast<T>(0));
+
+            if (size)
+                serialize(&value[0], size);
+        }
+
+        bool isWriting() const
+        {
+            return !isReading();
+        }
+    };
+
+    class IArchive : public ISerializer
+    {
+    public:
+        virtual IStream& getStream() = 0;
+    };
 
     class IDisposable
     {

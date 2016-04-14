@@ -1,5 +1,4 @@
 #include <Core/RegisterBank.h>
-#include <Core/Serialization.h>
 #include "Timer.h"
 #include "Interrupts.h"
 

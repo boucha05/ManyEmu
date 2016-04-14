@@ -46,6 +46,29 @@ function configure()
         architecture "x86_64"
 
     filter {}
+    includedirs { "." }
+end
+
+function StaticLib(name)
+    project(name)
+        kind "StaticLib"
+        language "C++"
+        configure()
+end
+
+function SharedLib(name)
+    project(name)
+        kind "SharedLib"
+        language "C++"
+        configure()
+        defines { "EXPORT_" .. name:upper(), "EMU_MODULE" }
+end
+
+function Application(name)
+    project "ManyEmu"
+        kind "ConsoleApp"
+        language "C++"
+        configure()
 end
 
 workspace "ManyEmu"
@@ -65,40 +88,21 @@ workspace "ManyEmu"
     filter {}
         defines { "_CRT_SECURE_NO_WARNINGS", "_CRT_NONSTDC_NO_WARNINGS", "_USING_V110_SDK71_" }
 
+StaticLib "Core"
+    files { "Core/**.h", "Core/**.cpp" }
 
-emulators = {}
-function emulatorProject(libname, file_filter)
-    table.insert(emulators, libname);
-    project(libname)
-        kind "StaticLib"
-        language "C++"
-        
-        configure()
-    
-        includedirs { "." }
-    
-        files(file_filter)
-end
+StaticLib "Gameboy"
+    files { "Gameboy/**.h", "Gameboy/**.cpp" }
 
-emulatorProject("Gameboy", { "Gameboy/**.h", "Gameboy/**.cpp" } )
-emulatorProject("NES", { "NES/**.h", "NES/**.cpp" } )
+StaticLib "NES"
+    files { "NES/**.h", "NES/**.cpp" }
 
-project "ManyEmu"
-    kind "ConsoleApp"
-    language "C++"
-    
-    configure()
-    
+SharedLib "Emulator"
+    files { "Emulator/**.h", "Emulator/**.cpp" }
+
+Application "ManyEmu"    
+    files { "ManyEmu/**.h", "ManyEmu/**.cpp" }
     addlibrary("Contrib/SDL2", "SDL2")
     addlibrary("Contrib/glew", "glew32s")
     adddll("Contrib/SDL2/lib", "SDL2")
-    
-    links(emulators)
-    
-    includedirs { "." }
-
-    files
-    {
-        "Core/**.h", "Core/**.cpp",
-        "ManyEmu/**.h", "ManyEmu/**.cpp"
-    }
+    links { "Core", "Gameboy", "NES", "Emulator" }

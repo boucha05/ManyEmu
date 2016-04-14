@@ -1,7 +1,6 @@
 #include <Core/Clock.h>
 #include <Core/MemoryBus.h>
 #include <Core/RegisterBank.h>
-#include <Core/Serialization.h>
 #include "Audio.h"
 #include "CpuZ80.h"
 #include "Display.h"

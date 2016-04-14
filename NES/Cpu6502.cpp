@@ -1,5 +1,4 @@
 #include <Core/MemoryBus.h>
-#include <Core/Serialization.h>
 #include "Cpu6502.h"
 #include "nes.h"
 #include <memory.h>

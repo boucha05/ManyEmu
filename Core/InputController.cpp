@@ -1,6 +1,4 @@
 #include "InputController.h"
-#include "Serialization.h"
-#include "Stream.h"
 #include <vector>
 
 namespace
@@ -127,14 +125,15 @@ namespace
             return *mSource;
         }
 
-        virtual bool save(const char* path)
+        virtual bool serialize(emu::ISerializer& serializer)
         {
-            emu::FileStream stream(path, "wb");
+            /*emu::FileStream stream(path, "wb");
             if (!stream.valid())
                 return false;
 
             emu::BinaryWriter writer(stream);
-            mData.serialize(writer);
+            mData.serialize(writer);*/
+            mData.serialize(serializer);
             return true;
         }
 
@@ -196,8 +195,9 @@ namespace
             return *mSource;
         }
 
-        virtual bool load(const char* path)
+        virtual bool serialize(emu::ISerializer& serializer)
         {
+            /*
             emu::FileStream stream(path, "rb");
             if (!stream.valid())
                 return false;
@@ -205,7 +205,13 @@ namespace
             emu::BinaryReader reader(stream);
             mData.serialize(reader);
             mPos = 0;
-            mCount = 0;
+            mCount = 0;*/
+            mData.serialize(serializer);
+            if (serializer.isReading())
+            {
+                mPos = 0;
+                mCount = 0;
+            }
             return true;
         }
 

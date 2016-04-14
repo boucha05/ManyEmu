@@ -3,18 +3,11 @@
 
 #include <stdint.h>
 #include <stdio.h>
-#include "Core.h"
+#include <Core/Core.h>
 #include <vector>
 
 namespace emu
 {
-    class IStream
-    {
-    public:
-        virtual bool read(void* data, size_t size) = 0;
-        virtual bool write(const void* data, size_t size) = 0;
-    };
-
     class MemoryStream : public IStream
     {
     public:

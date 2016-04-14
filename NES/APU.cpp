@@ -1,5 +1,4 @@
 #include <Core/MemoryBus.h>
-#include <Core/Serialization.h>
 #include "APU.h"
 #include "nes.h"
 #include <vector>

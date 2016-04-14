@@ -1,5 +1,4 @@
 #include <Core/RegisterBank.h>
-#include <Core/Serialization.h>
 #include "Joypad.h"
 #include "Interrupts.h"
 

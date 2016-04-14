@@ -7,13 +7,13 @@
 #include <vector>
 #include <deque>
 #include <Core/InputController.h>
-#include <Core/InputManager.h>
-#include <Core/Job.h>
 #include <Core/Path.h>
-#include <Core/Serialization.h>
-#include <Core/Stream.h>
 #include "Backend.h"
 #include "GameSession.h"
+#include "InputManager.h"
+#include "Job.h"
+#include "Serialization.h"
+#include "Stream.h"
 #include <Windows.h>
 
 #define DUMP_ROM_LIST 0
@@ -326,7 +326,12 @@ bool Application::create()
             mInputPlayback = emu::InputPlayback::create(*mPlayer1);
             if (!mInputPlayback)
                 return false;
-            if (!mInputPlayback->load(mConfig.recorded.c_str()))
+
+            emu::FileStream stream(mConfig.recorded.c_str(), "rb");
+            if (!stream.valid())
+                return false;
+            emu::BinaryReader reader(stream);
+            if (!mInputPlayback->serialize(reader))
                 return false;
             mPlayer1 = mInputPlayback;
         }
@@ -402,7 +407,14 @@ void Application::destroy()
     if (mInputRecorder)
     {
         if (!mConfig.recorded.empty())
-            mInputRecorder->save(mConfig.recorded.c_str());
+        {
+            emu::FileStream stream(mConfig.recorded.c_str(), "wb");
+            if (stream.valid())
+            {
+                emu::BinaryWriter writer(stream);
+                mInputRecorder->serialize(writer);
+            }
+        }
         mInputRecorder->dispose();
         mInputRecorder = nullptr;
     }

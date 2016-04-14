@@ -1,6 +1,4 @@
 #include <Core/Path.h>
-#include <Core/Serialization.h>
-#include <Core/Stream.h>
 #include "nes.h"
 #include "NESEmulator.h"
 

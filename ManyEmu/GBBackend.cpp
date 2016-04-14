@@ -1,14 +1,14 @@
 #include "Backend.h"
+#include "InputManager.h"
+#include "Serialization.h"
+#include "Stream.h"
+#include "Job.h"
 #include <SDL.h>
 #include <string>
 #include <vector>
 #include <deque>
 #include <Core/InputController.h>
-#include <Core/InputManager.h>
-#include <Core/Job.h>
 #include <Core/Path.h>
-#include <Core/Serialization.h>
-#include <Core/Stream.h>
 #include <Gameboy/GB.h>
 
 namespace

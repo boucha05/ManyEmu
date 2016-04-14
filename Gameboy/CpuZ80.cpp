@@ -1,5 +1,4 @@
 #include <Core/MemoryBus.h>
-#include <Core/Serialization.h>
 #include "CpuZ80.h"
 #include "GB.h"
 #include <memory.h>

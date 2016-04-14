@@ -1,5 +1,4 @@
 #include <Core/RegisterBank.h>
-#include <Core/Serialization.h>
 #include "Display.h"
 #include "Interrupts.h"
 #include <algorithm>

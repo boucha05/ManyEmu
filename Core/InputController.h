@@ -25,7 +25,7 @@ namespace emu
     {
     public:
         virtual InputController& getSource() = 0;
-        virtual bool save(const char* path) = 0;
+        virtual bool serialize(ISerializer& serializer) = 0;
 
         static InputRecorder* create(InputController& source);
     };
@@ -34,7 +34,7 @@ namespace emu
     {
     public:
         virtual InputController& getSource() = 0;
-        virtual bool load(const char* path) = 0;
+        virtual bool serialize(ISerializer& serializer) = 0;
 
         static InputPlayback* create(InputController& source);
     };
