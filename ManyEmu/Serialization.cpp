@@ -5,18 +5,6 @@
 
 namespace emu
 {
-    void ISerializer::serialize(uint32_t* values, size_t size)
-    {
-        for (size_t index = 0; index < size; ++index)
-            serialize(*values++);
-    }
-
-    void ISerializer::serialize(uint8_t* values, size_t size)
-    {
-        for (size_t index = 0; index < size; ++index)
-            serialize(*values++);
-    }
-
     ///////////////////////////////////////////////////////////////////////////
 
     BinaryReader::BinaryReader(IStream& stream)

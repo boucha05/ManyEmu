@@ -21,11 +21,6 @@ namespace
             return "nes";
         }
 
-        virtual emu::IEmulator& getEmulator() override
-        {
-            return nes::Emulator::getInstance();
-        }
-
         virtual void configureController(StandardController& controller, uint32_t player)
         {
             controller.addInput(Input_Player1 + Input_HorizontalAxis, nes::Context::ButtonRight, nes::Context::ButtonLeft);

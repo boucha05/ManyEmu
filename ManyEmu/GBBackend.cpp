@@ -21,11 +21,6 @@ namespace
             return "gb";
         }
 
-        virtual emu::IEmulator& getEmulator() override
-        {
-            return gb::getEmulatorGB();
-        }
-
         virtual void configureController(StandardController& controller, uint32_t player)
         {
             controller.addInput(Input_Player1 + Input_HorizontalAxis, gb::Context::ButtonRight, gb::Context::ButtonLeft);
@@ -43,11 +38,6 @@ namespace
         virtual const char* getExtension() override
         {
             return "gbc";
-        }
-
-        virtual emu::IEmulator& getEmulator() override
-        {
-            return gb::getEmulatorGBC();
         }
     };
 

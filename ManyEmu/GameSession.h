@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string>
 #include <Core/Core.h>
+#include <Emulator/Emulator.h>
 #include "Backend.h"
 
 class GameSession
@@ -12,7 +13,7 @@ public:
     GameSession();
     ~GameSession();
     IBackend* getBackend() { return mBackend; }
-    bool loadRom(IBackend& backend, const std::string& path, const std::string& saveDirectory);
+    bool loadRom(emu::IEmulatorAPI& api, IBackend& backend, const std::string& path, const std::string& saveDirectory);
     void unloadRom();
     bool getDisplaySize(uint32_t& sizeX, uint32_t& sizeY);
     bool loadGameData();
@@ -32,6 +33,7 @@ public:
     }
 
 private:
+    emu::IEmulatorAPI*  mApi;
     IBackend*           mBackend;
     emu::IEmulator*     mEmulator;
     std::string         mRomPath;

@@ -158,8 +158,18 @@ namespace emu
         virtual void serialize(int8_t& value) = 0;
         virtual void serialize(bool& value) = 0;
         virtual void serialize(void* value, size_t size) = 0;
-        void serialize(uint32_t* values, size_t size);
-        void serialize(uint8_t* values, size_t size);
+        
+        void serialize(uint32_t* values, size_t size)
+        {
+            for (size_t index = 0; index < size; ++index)
+                serialize(*values++);
+        }
+
+        void serialize(uint8_t* values, size_t size)
+        {
+            for (size_t index = 0; index < size; ++index)
+                serialize(*values++);
+        }
 
         template <typename T>
         void serialize(std::vector<T>& value)

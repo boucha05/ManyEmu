@@ -81,7 +81,6 @@ class IBackend
 {
 public:
     virtual const char* getExtension() = 0;
-    virtual emu::IEmulator& getEmulator() = 0;
     virtual void configureController(StandardController& controller, uint32_t player) = 0;
 };
 

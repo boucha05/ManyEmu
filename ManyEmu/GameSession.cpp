@@ -29,10 +29,11 @@ GameSession::~GameSession()
     unloadRom();
 }
 
-bool GameSession::loadRom(IBackend& backend, const std::string& path, const std::string& saveDirectory)
+bool GameSession::loadRom(emu::IEmulatorAPI& api, IBackend& backend, const std::string& path, const std::string& saveDirectory)
 {
+    mApi = &api;
     mBackend = &backend;
-    mEmulator = &mBackend->getEmulator();
+    mEmulator = mApi->getEmulator(mBackend->getExtension());
 
     std::string romName;
     std::string romExtension;
@@ -78,6 +79,7 @@ void GameSession::unloadRom()
 
     mBackend = nullptr;
     mEmulator = nullptr;
+    mApi = nullptr;
 }
 
 bool GameSession::getDisplaySize(uint32_t& sizeX, uint32_t& sizeY)

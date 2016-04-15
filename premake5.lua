@@ -99,10 +99,12 @@ StaticLib "NES"
 
 SharedLib "Emulator"
     files { "Emulator/**.h", "Emulator/**.cpp" }
+    links { "Core", "Gameboy", "NES" }
 
 Application "ManyEmu"    
     files { "ManyEmu/**.h", "ManyEmu/**.cpp" }
     addlibrary("Contrib/SDL2", "SDL2")
     addlibrary("Contrib/glew", "glew32s")
     adddll("Contrib/SDL2/lib", "SDL2")
-    links { "Core", "Gameboy", "NES", "Emulator" }
+    links { "Core", "Emulator" }
+    dependson { "Gameboy", "NES" }

@@ -8,6 +8,7 @@
 #include <deque>
 #include <Core/InputController.h>
 #include <Core/Path.h>
+#include <Emulator/Emulator.h>
 #include "Backend.h"
 #include "GameSession.h"
 #include "InputManager.h"
@@ -122,6 +123,7 @@ private:
     typedef std::vector<GameSession*> GameSessionArray;
 
     Config                      mConfig;
+    emu::IEmulatorAPI*          mEmulator;
     JobScheduler                mJobScheduler;
     SDL_Window*                 mWindow;
     SDL_Renderer*               mRenderer;
@@ -183,7 +185,8 @@ private:
 };
 
 Application::Application()
-    : mWindow(nullptr)
+    : mEmulator(nullptr)
+    , mWindow(nullptr)
     , mRenderer(nullptr)
     , mScreen(nullptr)
     , mValid(false)
@@ -241,6 +244,7 @@ void Application::terminate()
 
 bool Application::create()
 {
+    mEmulator = emuCreateAPI();
     Path::makeDirs(mConfig.saveFolder);
 
     mJobScheduler.create(SDL_GetCPUCount());
@@ -461,6 +465,12 @@ void Application::destroy()
     }
 
     mJobScheduler.destroy();
+
+    if (mEmulator)
+    {
+        emuDestroyAPI(*mEmulator);
+        mEmulator = nullptr;
+    }
 }
 
 bool Application::createSound()
@@ -541,7 +551,7 @@ GameSession* Application::createGameSession(const std::string& path, const std::
         return nullptr;
 
     auto& gameSession = *new GameSession();
-    if (!gameSession.loadRom(*backend, path, saveDirectory))
+    if (!gameSession.loadRom(*mEmulator, *backend, path, saveDirectory))
     {
         delete &gameSession;
         return nullptr;
