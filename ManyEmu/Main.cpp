@@ -9,6 +9,7 @@
 #include <Core/InputController.h>
 #include <Core/Path.h>
 #include <Emulator/Emulator.h>
+#include <Emulator/InputDevice.h>
 #include "Backend.h"
 #include "GameSession.h"
 #include "InputManager.h"
@@ -16,13 +17,6 @@
 #include "Serialization.h"
 #include "Stream.h"
 #include <Windows.h>
-
-#define DUMP_ROM_LIST 0
-
-#if DUMP_ROM_LIST
-#include <io.h>
-#include "Gameboy/GB.h"
-#endif
 
 namespace
 {
@@ -113,6 +107,7 @@ private:
     GameSession* createGameSession(const std::string& path, const std::string& saveDirectory);
     void destroyGameSession(GameSession& gameSession);
     void handleEvents();
+    bool setController(uint32_t index, uint32_t value);
     void update();
     void render();
     void audioCallback(int16_t* data, uint32_t size);
@@ -316,11 +311,11 @@ bool Application::create()
         mGamepad->addButton(SDL_CONTROLLER_BUTTON_START, Input_Player1 + Input_Start);
         mGamepad->addButton(SDL_CONTROLLER_BUTTON_A, Input_Player1 + Input_A);
         mGamepad->addButton(SDL_CONTROLLER_BUTTON_B, Input_Player1 + Input_B);
-        mGamepad->addButton(SDL_CONTROLLER_BUTTON_X, Input_Player1 + Input_B);
-        mGamepad->addButton(SDL_CONTROLLER_BUTTON_Y, Input_Player1 + Input_A);
+        mGamepad->addButton(SDL_CONTROLLER_BUTTON_X, Input_Player1 + Input_X);
+        mGamepad->addButton(SDL_CONTROLLER_BUTTON_Y, Input_Player1 + Input_Y);
     }
 
-    mPlayer1Controller = new StandardController(mInputManager);
+    mPlayer1Controller = new StandardController(*mEmulator, mInputManager);
     mPlayer1 = mPlayer1Controller;
 
     if (!mConfig.recorded.empty())
@@ -374,7 +369,9 @@ bool Application::create()
 
     if (mGameSessions.size() > 0)
     {
-        mGameSessions[mActiveGameSession]->getBackend()->configureController(*mPlayer1Controller, 0);
+        auto inputDevice = mGameSessions[mActiveGameSession]->getInputDevice(0);
+        if (inputDevice)
+            mGameSessions[mActiveGameSession]->getBackend()->configureController(*mPlayer1Controller, 0, *inputDevice);
     }
 
     return true;
@@ -581,6 +578,22 @@ void Application::handleEvents()
     }
 }
 
+bool Application::setController(uint32_t index, uint32_t value)
+{
+    if (!mValid)
+        return false;
+
+    auto inputDevice = mGameSessions[mActiveGameSession]->getInputDevice(index);
+    EMU_VERIFY(inputDevice);
+    uint32_t numButtons = inputDevice->getButtonCount();
+    for (uint32_t button = 0; button < numButtons; ++button)
+    {
+        bool state = (value & (1 << button)) != 0;
+        inputDevice->setButton(button, state);
+    }
+    return true;
+}
+
 void Application::update()
 {
     static uint32_t frameTrigger = 640;
@@ -615,7 +628,7 @@ void Application::update()
         frameTrigger = frameTrigger;
 
     if (mPlayer1)
-        gameSession.setController(0, mPlayer1->readInput());
+        setController(0, mPlayer1->readInput());
     if (mSoundBuffer.size() && mConfig.enableAudio)
     {
         size_t size = mSoundBuffer.size();
@@ -865,7 +878,7 @@ int main()
     // Sorry, the UI is not implemented yet. For now, you will need to manually
     // configure the emulation right here
     
-#if 1
+#if 0
     // Configuration for Gameboy development
     config.saveFolder = "C:\\Emu\\Gameboy\\save";
     config.romFolder = "C:\\Emu\\Gameboy\\roms";
@@ -915,51 +928,15 @@ int main()
     config.romFolder = "C:\\Emu\\NES\\roms";
     //config.roms.push_back("smb3.nes");
     //config.roms.push_back("exitbike.nes");
-    config.roms.push_back("megaman2.nes");
-    config.roms.push_back("mario.nes");
+    //config.roms.push_back("megaman2.nes");
+    //config.roms.push_back("mario.nes");
     config.roms.push_back("zelda2.nes");
     //config.recorded = "ROMs\\recorded.dat";
     //config.playback = true;
     //config.frameSkip = 512;
     //config.autoSave = true;
-    config.autoLoad = true;
+    //config.autoLoad = true;
     //config.profile = true;
-#endif
-
-#if DUMP_ROM_LIST
-    std::string filter = Path::join(config.romFolder, "*.gb*");
-    _finddata_t data;
-    auto handle = _findfirst(filter.c_str(), &data);
-    int valid = 1;
-    printf("File;ROM size;RAM size;Title;UseCGB;OnlyCGB;UseSGB;RAM;Battery;Timer;Rumble;Mapper;Destination;Cartridge type;Version;Licensee old;Licensee new;Manufacturer;Header checksum;Global checksum\n");
-    while (handle && valid)
-    {
-        std::string path = Path::join(config.romFolder, data.name);
-        gb::Rom::Description desc;
-        gb::Rom::readDescription(desc, path.c_str());
-        printf("%s;%d;%d;%s;%d;%d;%d;%d;%d;%d;%d;%s;%s;0x%02x;%d;0x%02x;0x%04x;0x%08x;0x%02x;0x%04x\n",
-            data.name,
-            desc.romSize,
-            desc.ramSize,
-            desc.title,
-            desc.useCGB,
-            desc.onlyCGB,
-            desc.useSGB,
-            desc.hasRam,
-            desc.hasBattery,
-            desc.hasTimer,
-            desc.hasRumble,
-            gb::Rom::getMapperName(desc.mapper),
-            gb::Rom::getDestinationName(desc.destination),
-            desc.cartridgeType,
-            desc.version,
-            desc.licenseeOld,
-            desc.licenseeNew,
-            desc.manufacturer,
-            desc.headerChecksum,
-            desc.globalChecksum);
-        valid = !_findnext(handle, &data);
-    }
 #endif
 
     Application application;

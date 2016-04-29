@@ -7,9 +7,6 @@
 #include <deque>
 #include <Core/InputController.h>
 #include <Core/Path.h>
-#include <NES/NESEmulator.h>
-#include <NES/Tests.h>
-#include <NES/nes.h>
 
 namespace
 {
@@ -21,14 +18,16 @@ namespace
             return "nes";
         }
 
-        virtual void configureController(StandardController& controller, uint32_t player)
+        virtual void configureController(StandardController& controller, uint32_t player, emu::IInputDevice& inputDevice) override
         {
-            controller.addInput(Input_Player1 + Input_HorizontalAxis, nes::Context::ButtonRight, nes::Context::ButtonLeft);
-            controller.addInput(Input_Player1 + Input_VerticalAxis, nes::Context::ButtonDown, nes::Context::ButtonUp);
-            controller.addInput(Input_Player1 + Input_B, nes::Context::ButtonB);
-            controller.addInput(Input_Player1 + Input_A, nes::Context::ButtonA);
-            controller.addInput(Input_Player1 + Input_Select, nes::Context::ButtonSelect);
-            controller.addInput(Input_Player1 + Input_Start, nes::Context::ButtonStart);
+            controller.addInput(inputDevice, Input_Player1 + Input_HorizontalAxis, "Right", "Left");
+            controller.addInput(inputDevice, Input_Player1 + Input_VerticalAxis, "Down", "Up");
+            controller.addInput(inputDevice, Input_Player1 + Input_B, "B");
+            controller.addInput(inputDevice, Input_Player1 + Input_A, "A");
+            controller.addInput(inputDevice, Input_Player1 + Input_X, "B");
+            controller.addInput(inputDevice, Input_Player1 + Input_Y, "A");
+            controller.addInput(inputDevice, Input_Player1 + Input_Select, "Select");
+            controller.addInput(inputDevice, Input_Player1 + Input_Start, "Start");
         }
     };
 

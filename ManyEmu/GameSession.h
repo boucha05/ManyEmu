@@ -23,7 +23,7 @@ public:
     bool serializeGameState(emu::ISerializer& serializer);
     bool setRenderBuffer(void* buffer, size_t pitch);
     bool setSoundBuffer(void* buffer, size_t size);
-    bool setController(uint32_t index, uint32_t value);
+    emu::IInputDevice* getInputDevice(uint32_t index);
     bool reset();
     bool execute();
 

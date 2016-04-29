@@ -2,6 +2,9 @@
 #define __APU_H__
 
 #include <Core/Clock.h>
+#include <Emulator/Component.h>
+#include <Emulator/Emulator.h>
+#include <Emulator/InputDevice.h>
 #include <stdint.h>
 
 namespace emu
@@ -18,7 +21,7 @@ namespace nes
     public:
         APU();
         ~APU();
-        bool create(emu::Clock& clock, emu::MemoryBus& memoryBus, uint32_t masterClockDivider, uint32_t masterClockFrequency);
+        bool create(emu::IEmulatorAPI& api, emu::Clock& clock, emu::MemoryBus& memoryBus, uint32_t masterClockDivider, uint32_t masterClockFrequency);
         void destroy();
         void reset();
         void beginFrame();
@@ -28,11 +31,13 @@ namespace nes
         virtual void setDesiredTicks(int32_t ticks) override;
         uint8_t regRead(int32_t ticks, uint32_t addr);
         void regWrite(int32_t ticks, uint32_t addr, uint8_t value);
-        void setController(uint32_t index, uint8_t buttons);
+        emu::IInputDevice* getInputDevice(uint32_t index);
         void setSoundBuffer(int16_t* buffer, size_t size);
         void serialize(emu::ISerializer& serializer);
 
         static const uint32_t APU_REGISTER_COUNT = 0x20;
+
+        static const uint32_t APU_CONTROLLER_COUNT = 4;
 
         static const uint32_t APU_REG_SQ1_VOL = 0x00;
         static const uint32_t APU_REG_SQ1_SWEEP = 0x01;
@@ -214,14 +219,30 @@ namespace nes
         void onSequenceEvent(int32_t tick);
         static void onSequenceEvent(void* context, int32_t tick);
 
+        struct Controller : public emu::IInputDevice::IListener
+        {
+            emu::IComponentType*    mComponentType;
+            emu::IComponent*        mComponent;
+            emu::IInputDevice*      mInputDevice;
+            uint8_t                 mButtonsRaw;
+            uint8_t                 mButtonsMasked;
+            uint8_t                 mShifter;
+
+            void initialize();
+            bool create(emu::IEmulatorAPI& api);
+            void destroy();
+            void filterButtons();
+            virtual void onButtonSet(uint32_t index, bool value) override;
+        };
+
+        emu::IEmulatorAPI*      mApi;
         emu::Clock*             mClock;
         emu::MemoryBus*         mMemory;
         uint32_t                mMasterClockDivider;
         uint32_t                mMasterClockFrequency;
         uint32_t                mFrameCountTicks;
         uint8_t                 mRegister[APU_REGISTER_COUNT];
-        uint8_t                 mController[4];
-        uint8_t                 mShifter[4];
+        Controller              mController[APU_CONTROLLER_COUNT];
         int16_t*                mSoundBuffer;
         uint32_t                mSoundBufferSize;
         uint32_t                mSoundBufferOffset;

@@ -53,7 +53,8 @@ namespace
     {
     public:
         ContextImpl()
-            : rom(nullptr)
+            : api(nullptr)
+            , rom(nullptr)
             , mapper(nullptr)
         {
         }
@@ -63,8 +64,9 @@ namespace
             destroy();
         }
 
-        bool create(const nes::Rom& _rom)
+        bool create(emu::IEmulatorAPI& _api, const nes::Rom& _rom)
         {
+            api = &_api;
             rom = &_rom;
 
             // Clock
@@ -98,7 +100,7 @@ namespace
             irqMapper = false;
 
             // APU
-            if (!apu.create(clock, cpuMemory, MASTER_CLOCK_APU_DIVIDER_NTSC, MASTER_CLOCK_FREQUENCY_NTSC))
+            if (!apu.create(*api, clock, cpuMemory, MASTER_CLOCK_APU_DIVIDER_NTSC, MASTER_CLOCK_FREQUENCY_NTSC))
                 return false;
 
             // ROM
@@ -212,9 +214,14 @@ namespace
             updateIrqStatus();
         }
 
-        virtual void setController(uint32_t index, uint32_t buttons)
+        virtual uint32_t getInputDeviceCount() override
         {
-            apu.setController(index, buttons);
+            return 1;
+        }
+
+        virtual emu::IInputDevice* getInputDevice(uint32_t index) override
+        {
+            return apu.getInputDevice(index);
         }
 
         virtual void setSoundBuffer(int16_t* buffer, size_t size)
@@ -378,6 +385,7 @@ namespace
             ContextImpl*    mContext;
         };
 
+        emu::IEmulatorAPI*      api;
         const nes::Rom*         rom;
         emu::Clock              clock;
         emu::MemoryBus          cpuMemory;
@@ -406,10 +414,10 @@ namespace
 
 namespace nes
 {
-    Context* Context::create(const Rom& rom)
+    Context* Context::create(emu::IEmulatorAPI& api, const Rom& rom)
     {
         ContextImpl* context = new ContextImpl;
-        if (!context->create(rom))
+        if (!context->create(api, rom))
         {
             context->dispose();
             context = nullptr;

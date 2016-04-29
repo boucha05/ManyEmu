@@ -4,6 +4,11 @@
 
 namespace nes
 {
+    Emulator::Emulator(emu::IEmulatorAPI& api)
+        : mApi(api)
+    {
+    }
+
     emu::Rom* Emulator::loadRom(const char* path)
     {
         return Rom::load(path);
@@ -16,7 +21,7 @@ namespace nes
 
     emu::Context* Emulator::createContext(const emu::Rom& rom)
     {
-        return Context::create(static_cast<const Rom&>(rom));
+        return Context::create(getApi(), static_cast<const Rom&>(rom));
     }
 
     void Emulator::destroyContext(emu::Context& context)
@@ -55,10 +60,14 @@ namespace nes
         return true;
     }
 
-    bool Emulator::setController(emu::Context& context, uint32_t index, uint32_t value)
+    uint32_t Emulator::getInputDeviceCount(emu::Context& context)
     {
-        static_cast<Context&>(context).setController(index, value);
-        return true;
+        return static_cast<Context&>(context).getInputDeviceCount();
+    }
+
+    emu::IInputDevice* Emulator::getInputDevice(emu::Context& context, uint32_t index)
+    {
+        return static_cast<Context&>(context).getInputDevice(index);
     }
 
     bool Emulator::reset(emu::Context& context)
@@ -73,9 +82,13 @@ namespace nes
         return true;
     }
 
-    Emulator& Emulator::getInstance()
+    emu::IEmulator* Emulator::createInstance(emu::IEmulatorAPI& api)
     {
-        static Emulator instance;
-        return instance;
+        return new Emulator(api);
+    }
+
+    void Emulator::destroyInstance(emu::IEmulator& instance)
+    {
+        delete static_cast<Emulator*>(&instance);
     }
 }

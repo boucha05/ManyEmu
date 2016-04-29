@@ -2,6 +2,7 @@
 #define __GB_H__
 
 #include <Core/Core.h>
+#include <Emulator/Emulator.h>
 
 namespace gb
 {
@@ -79,21 +80,26 @@ namespace gb
     class Context : public emu::Context, public emu::IDisposable
     {
     public:
-        static const uint32_t ButtonA = 0x01;
-        static const uint32_t ButtonB = 0x02;
-        static const uint32_t ButtonSelect = 0x04;
-        static const uint32_t ButtonStart = 0x08;
-        static const uint32_t ButtonUp = 0x10;
-        static const uint32_t ButtonDown = 0x20;
-        static const uint32_t ButtonLeft = 0x40;
-        static const uint32_t ButtonRight = 0x80;
-        static const uint32_t ButtonAll = 0xff;
+        enum class Button : uint32_t
+        {
+            A, B, Select, Start, Up, Down, Left, Right, COUNT
+        };
+        static const uint32_t ButtonA = 1 << static_cast<uint32_t>(Button::A);
+        static const uint32_t ButtonB = 1 << static_cast<uint32_t>(Button::B);
+        static const uint32_t ButtonSelect = 1 << static_cast<uint32_t>(Button::Select);
+        static const uint32_t ButtonStart = 1 << static_cast<uint32_t>(Button::Start);
+        static const uint32_t ButtonUp = 1 << static_cast<uint32_t>(Button::Up);
+        static const uint32_t ButtonDown = 1 << static_cast<uint32_t>(Button::Down);
+        static const uint32_t ButtonLeft = 1 << static_cast<uint32_t>(Button::Left);
+        static const uint32_t ButtonRight = 1 << static_cast<uint32_t>(Button::Right);
+        static const uint32_t ButtonAll = (1 << static_cast<uint32_t>(Button::COUNT)) - 1;
 
         static const uint32_t DisplaySizeX = 160;
         static const uint32_t DisplaySizeY = 144;
 
         virtual void reset() = 0;
-        virtual void setController(uint32_t index, uint32_t buttons) = 0;
+        virtual uint32_t getInputDeviceCount() = 0;
+        virtual emu::IInputDevice* getInputDevice(uint32_t index) = 0;
         virtual void setSoundBuffer(int16_t* buffer, size_t size) = 0;
         virtual void setRenderSurface(void* surface, size_t pitch) = 0;
         virtual void update() = 0;
@@ -102,11 +108,13 @@ namespace gb
         virtual void serializeGameData(emu::ISerializer& serializer) = 0;
         virtual void serializeGameState(emu::ISerializer& serializer) = 0;
 
-        static Context* create(const Rom& rom, Model model);
+        static Context* create(emu::IEmulatorAPI& api, const Rom& rom, Model model);
     };
 
-    emu::IEmulator& getEmulatorGB();
-    emu::IEmulator& getEmulatorGBC();
+    emu::IEmulator* createEmulatorGB(emu::IEmulatorAPI& api);
+    void destroyEmulatorGB(emu::IEmulator& emulator);
+    emu::IEmulator* createEmulatorGBC(emu::IEmulatorAPI& api);
+    void destroyEmulatorGBC(emu::IEmulator& emulator);
 }
 
 #endif

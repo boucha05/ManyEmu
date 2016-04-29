@@ -3,22 +3,25 @@
 #include <Core/Clock.h>
 #include <Core/Core.h>
 #include <Core/RegisterBank.h>
+#include <Emulator/Component.h>
+#include <Emulator/InputDevice.h>
 #include "GB.h"
 
 namespace gb
 {
     class Interrupts;
 
-    class Joypad
+    class Joypad : public emu::IInputDevice::IListener
     {
     public:
         Joypad();
         ~Joypad();
-        bool create(emu::Clock& clock, Interrupts& interrupts, emu::RegisterBank& registers);
+        bool create(emu::IEmulatorAPI& api, emu::Clock& clock, Interrupts& interrupts, emu::RegisterBank& registers);
         void destroy();
         void reset();
         void serialize(emu::ISerializer& serializer);
-        void setController(uint32_t index, uint32_t buttons);
+        emu::IInputDevice& getInputDevice();
+        virtual void onButtonSet(uint32_t index, bool value) override;
 
     private:
         class ClockListener : public emu::Clock::IListener
@@ -55,6 +58,9 @@ namespace gb
         uint8_t readJOYP(int32_t tick, uint16_t addr);
         void writeJOYP(int32_t tick, uint16_t addr, uint8_t value);
 
+        emu::IEmulatorAPI*      mApi;
+        emu::IComponent*        mComponent;
+        emu::IInputDevice*      mInputDevice;
         emu::Clock*             mClock;
         Interrupts*             mInterrupts;
         ClockListener           mClockListener;

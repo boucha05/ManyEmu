@@ -6,6 +6,11 @@ namespace
     class EmulatorGB : public emu::IEmulator
     {
     public:
+        EmulatorGB(emu::IEmulatorAPI& api)
+            : mApi(api)
+        {
+        }
+
         virtual emu::Rom* loadRom(const char* path) override
         {
             return gb::Rom::load(path);
@@ -18,7 +23,7 @@ namespace
 
         virtual emu::Context* createContext(const emu::Rom& rom) override
         {
-            return gb::Context::create(static_cast<const gb::Rom&>(rom), gb::Model::GB);
+            return gb::Context::create(getApi(), static_cast<const gb::Rom&>(rom), gb::Model::GB);
         }
 
         virtual void destroyContext(emu::Context& context) override
@@ -57,10 +62,14 @@ namespace
             return true;
         }
 
-        virtual bool setController(emu::Context& context, uint32_t index, uint32_t value) override
+        virtual uint32_t getInputDeviceCount(emu::Context& context) override
         {
-            static_cast<gb::Context&>(context).setController(index, value);
-            return true;
+            return static_cast<gb::Context&>(context).getInputDeviceCount();
+        }
+
+        virtual emu::IInputDevice* getInputDevice(emu::Context& context, uint32_t index) override
+        {
+            return static_cast<gb::Context&>(context).getInputDevice(index);
         }
 
         virtual bool reset(emu::Context& context) override
@@ -74,29 +83,50 @@ namespace
             static_cast<gb::Context&>(context).update();
             return true;
         }
+
+        emu::IEmulatorAPI& getApi()
+        {
+            return mApi;
+        }
+
+    private:
+        emu::IEmulatorAPI&  mApi;
     };
 
     class EmulatorGBC : public EmulatorGB
     {
     public:
+        EmulatorGBC(emu::IEmulatorAPI& api)
+            : EmulatorGB(api)
+        {
+        }
+
         virtual emu::Context* createContext(const emu::Rom& rom) override
         {
-            return gb::Context::create(static_cast<const gb::Rom&>(rom), gb::Model::GBC);
+            return gb::Context::create(getApi(), static_cast<const gb::Rom&>(rom), gb::Model::GBC);
         }
     };
 }
 
 namespace gb
 {
-    emu::IEmulator& getEmulatorGB()
+    emu::IEmulator* createEmulatorGB(emu::IEmulatorAPI& api)
     {
-        static EmulatorGB instance;
-        return instance;
+        return new EmulatorGB(api);
     }
 
-    emu::IEmulator& getEmulatorGBC()
+    void destroyEmulatorGB(emu::IEmulator& emulator)
     {
-        static EmulatorGBC instance;
-        return instance;
+        delete static_cast<EmulatorGB*>(&emulator);
+    }
+
+    emu::IEmulator* createEmulatorGBC(emu::IEmulatorAPI& api)
+    {
+        return new EmulatorGBC(api);
+    }
+
+    void destroyEmulatorGBC(emu::IEmulator& emulator)
+    {
+        delete static_cast<EmulatorGBC*>(&emulator);
     }
 }

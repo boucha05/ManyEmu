@@ -1,4 +1,5 @@
 #include <Core/Path.h>
+#include <Emulator/InputDevice.h>
 #include "GameSession.h"
 #include "Serialization.h"
 #include "Stream.h"
@@ -180,12 +181,11 @@ bool GameSession::setSoundBuffer(void* buffer, size_t size)
     return mEmulator->setSoundBuffer(*mContext, static_cast<int16_t*>(buffer), size);
 }
 
-bool GameSession::setController(uint32_t index, uint32_t value)
+emu::IInputDevice* GameSession::getInputDevice(uint32_t index)
 {
     if (!mValid)
         return false;
-
-    return mEmulator->setController(*mContext, index, value);
+    return mEmulator->getInputDevice(*mContext, index);
 }
 
 bool GameSession::reset()

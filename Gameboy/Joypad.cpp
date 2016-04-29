@@ -69,14 +69,26 @@ namespace gb
 
     void Joypad::initialize()
     {
-        mClock                  = nullptr;
-        mInterrupts             = nullptr;
-        mButtons                = 0;
-        mRegJOYP                = JOYP_ALL_RELEASED;
+        mApi            = nullptr;
+        mComponent      = nullptr;
+        mInputDevice    = nullptr;
+        mClock          = nullptr;
+        mInterrupts     = nullptr;
+        mButtons        = 0;
+        mRegJOYP        = JOYP_ALL_RELEASED;
     }
 
-    bool Joypad::create(emu::Clock& clock, Interrupts& interrupts, emu::RegisterBank& registers)
+    bool Joypad::create(emu::IEmulatorAPI& api, emu::Clock& clock, Interrupts& interrupts, emu::RegisterBank& registers)
     {
+        mApi = &api;
+
+        auto componentType = mApi->getComponentManager().getComponentType(emu::InputDevice::ComponentID);
+        EMU_VERIFY(componentType);
+        mComponent = componentType->createComponent();
+        EMU_VERIFY(mComponent);
+        mInputDevice = static_cast<emu::IInputDevice*>(componentType->getInterface(*mComponent, emu::IInputDevice::getID()));
+        EMU_VERIFY(mInputDevice);
+
         mClock = &clock;
         mInterrupts = &interrupts;
 
@@ -85,13 +97,38 @@ namespace gb
         EMU_VERIFY(mRegisterAccessors.read.JOYP.create(registers, 0x00, *this, &Joypad::readJOYP));
         EMU_VERIFY(mRegisterAccessors.write.JOYP.create(registers, 0x00, *this, &Joypad::writeJOYP));
 
+        auto mapping = static_cast<emu::IInputDeviceMapping*>(componentType->getInterface(*mComponent, emu::IInputDeviceMapping::getID()));
+        EMU_VERIFY(mapping);
+
+        EMU_VERIFY(mapping->addButton("A") == static_cast<uint32_t>(gb::Context::Button::A));
+        EMU_VERIFY(mapping->addButton("B") == static_cast<uint32_t>(gb::Context::Button::B));
+        EMU_VERIFY(mapping->addButton("Select") == static_cast<uint32_t>(gb::Context::Button::Select));
+        EMU_VERIFY(mapping->addButton("Start") == static_cast<uint32_t>(gb::Context::Button::Start));
+        EMU_VERIFY(mapping->addButton("Up") == static_cast<uint32_t>(gb::Context::Button::Up));
+        EMU_VERIFY(mapping->addButton("Down") == static_cast<uint32_t>(gb::Context::Button::Down));
+        EMU_VERIFY(mapping->addButton("Left") == static_cast<uint32_t>(gb::Context::Button::Left));
+        EMU_VERIFY(mapping->addButton("Right") == static_cast<uint32_t>(gb::Context::Button::Right));
+        mInputDevice->addListener(*this);
+
         return true;
     }
 
     void Joypad::destroy()
     {
+        if (mInputDevice) mInputDevice->removeListener(*this);
+
         mClockListener.destroy();
         mRegisterAccessors = RegisterAccessors();
+
+        if (mApi)
+        {
+            auto componentType = mApi->getComponentManager().getComponentType(emu::InputDevice::ComponentID);
+            if (componentType)
+            {
+                if (mComponent) componentType->destroyComponent(*mComponent);
+            }
+        }
+
         initialize();
     }
 
@@ -145,8 +182,17 @@ namespace gb
         serializer.serialize(mRegJOYP);
     }
 
-    void Joypad::setController(uint32_t index, uint32_t buttons)
+    emu::IInputDevice& Joypad::getInputDevice()
     {
-        mButtons = buttons & gb::Context::ButtonAll;
+        return *mInputDevice;
+    }
+
+    void Joypad::onButtonSet(uint32_t index, bool value)
+    {
+        uint32_t mask = 1 << index;
+        if (value)
+            mButtons |= mask;
+        else
+            mButtons &= ~mask;
     }
 }

@@ -10,6 +10,7 @@
 namespace emu
 {
     class IEmulator;
+    class IComponentManager;
 
     class IEmulatorVisitor
     {
@@ -21,9 +22,9 @@ namespace emu
     class IEmulatorAPI
     {
     public:
-        virtual ~IEmulatorAPI() {}
         virtual void traverseEmulators(IEmulatorVisitor& visitor) = 0;
         virtual IEmulator* getEmulator(const char* name) = 0;
+        virtual IComponentManager& getComponentManager() = 0;
     };
 }
 

@@ -64,11 +64,13 @@ namespace gb_context
 
         void initialize()
         {
+            mApi = nullptr;
             mMapper = nullptr;
         }
 
-        bool create(const gb::Rom& rom, gb::Model model)
+        bool create(emu::IEmulatorAPI& api, const gb::Rom& rom, gb::Model model)
         {
+            mApi = &api;
             mModel = model;
 
             bool isGBC = mModel >= gb::Model::GBC;
@@ -120,7 +122,7 @@ namespace gb_context
             EMU_VERIFY(mInterrupts.create(mCpu, mRegistersIO, mRegistersIE));
             EMU_VERIFY(mGameLink.create(mRegistersIO));
             EMU_VERIFY(mDisplay.create(displayConfig, mClock, fixedClockDivider, mMemory, mInterrupts, mRegistersIO));
-            EMU_VERIFY(mJoypad.create(mClock, mInterrupts, mRegistersIO));
+            EMU_VERIFY(mJoypad.create(*mApi, mClock, mInterrupts, mRegistersIO));
             EMU_VERIFY(mTimer.create(mClock, masterClockFrequency, fixedClockDivider, mVariableClockDivider, mInterrupts, mRegistersIO));
             EMU_VERIFY(mAudio.create(mClock, masterClockFrequency, fixedClockDivider, mRegistersIO));
 
@@ -197,9 +199,14 @@ namespace gb_context
             mTimer.setVariableClockDivider(variableClockDivider);
         }
 
-        virtual void setController(uint32_t index, uint32_t buttons)
+        virtual uint32_t getInputDeviceCount() override
         {
-            mJoypad.setController(index, buttons);
+            return 1;
+        }
+
+        virtual emu::IInputDevice* getInputDevice(uint32_t index) override
+        {
+            return index == 0 ? &mJoypad.getInputDevice() : nullptr;
         }
 
         virtual void setSoundBuffer(int16_t* buffer, size_t size)
@@ -389,6 +396,7 @@ namespace gb_context
             mCpu.resume(tick);
         }
 
+        emu::IEmulatorAPI*          mApi;
         gb::Model                   mModel;
         emu::Clock                  mClock;
         emu::MemoryBus              mMemory;
@@ -421,10 +429,10 @@ namespace gb_context
 
 namespace gb
 {
-    Context* Context::create(const Rom& rom, Model model)
+    Context* Context::create(emu::IEmulatorAPI& api, const Rom& rom, Model model)
     {
         gb_context::ContextImpl* context = new gb_context::ContextImpl;
-        if (!context->create(rom, model))
+        if (!context->create(api, rom, model))
         {
             context->dispose();
             context = nullptr;

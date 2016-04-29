@@ -1,14 +1,19 @@
 #include "Tests.h"
 #include "nes.h"
+#include <Emulator/Emulator.h>
 #include <string>
 
 bool runTestRom(const char* path)
 {
+    emu::IEmulatorAPI* api = emuCreateAPI();
+    if (!api)
+        return false;
+
     bool success = false;
     auto rom = nes::Rom::load(path);
     if (rom)
     {
-        auto context = nes::Context::create(*rom);
+        auto context = nes::Context::create(*api, *rom);
         if (context)
         {
             context->update();
@@ -35,6 +40,7 @@ bool runTestRom(const char* path)
         }
         rom->dispose();
     }
+    emuDestroyAPI(*api);
     return success;
 }
 

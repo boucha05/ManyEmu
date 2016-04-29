@@ -2,12 +2,16 @@
 #include "InputManager.h"
 #include <Core/Core.h>
 #include <Core/InputController.h>
+#include <Emulator/Emulator.h>
+#include <Emulator/InputDevice.h>
 #include <vector>
 
 enum
 {
     Input_A,
     Input_B,
+    Input_X,
+    Input_Y,
     Input_Select,
     Input_Start,
     Input_VerticalAxis,
@@ -27,8 +31,9 @@ enum
 class StandardController : public emu::InputController
 {
 public:
-    StandardController(InputManager& inputManager)
-        : mInputManager(&inputManager)
+    StandardController(emu::IEmulatorAPI& api, InputManager& inputManager)
+        : mApi(api)
+        , mInputManager(&inputManager)
     {
     }
 
@@ -52,8 +57,10 @@ public:
         return buttonMask;
     }
 
-    virtual void addInput(uint32_t inputId, uint32_t buttonMaskMax, uint32_t buttonMaskMin = 0)
+    virtual void addInput(emu::IInputDevice& inputDevice, uint32_t inputId, const char* buttonMax, const char* buttonMin = nullptr)
     {
+        uint32_t buttonMaskMax = getButtonMask(inputDevice, buttonMax);
+        uint32_t buttonMaskMin = getButtonMask(inputDevice, buttonMin);
         InputMapping mapping =
         {
             inputId,
@@ -73,6 +80,19 @@ private:
 
     typedef std::vector<InputMapping> InputMappingTable;
 
+    uint32_t getButtonMask(emu::IInputDevice& inputDevice, const char* name)
+    {
+        uint32_t mask = 0;
+        if (name)
+        {
+            uint32_t index = inputDevice.getButtonIndex(name);
+            if (index < inputDevice.getButtonCount())
+                mask = 1 << index;
+        }
+        return mask;
+    }
+
+    emu::IEmulatorAPI&  mApi;
     InputMappingTable   mInputs;
     InputManager*       mInputManager;
 };
@@ -81,7 +101,7 @@ class IBackend
 {
 public:
     virtual const char* getExtension() = 0;
-    virtual void configureController(StandardController& controller, uint32_t player) = 0;
+    virtual void configureController(StandardController& controller, uint32_t player, emu::IInputDevice& inputDevice) = 0;
 };
 
 class BackendRegistry

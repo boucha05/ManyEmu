@@ -24,6 +24,71 @@ namespace
 
 namespace nes
 {
+    void APU::Controller::initialize()
+    {
+        mComponentType = nullptr;
+        mComponent = nullptr;
+        mInputDevice = nullptr;
+        mButtonsRaw = 0;
+        mButtonsMasked = 0;
+        mShifter = 0;
+    }
+
+    bool APU::Controller::create(emu::IEmulatorAPI& api)
+    {
+        mComponentType = api.getComponentManager().getComponentType(emu::InputDevice::ComponentID);
+        EMU_VERIFY(mComponentType);
+        mComponent = mComponentType->createComponent();
+        EMU_VERIFY(mComponentType);
+        mInputDevice = static_cast<emu::IInputDevice*>(mComponentType->getInterface(*mComponent, emu::IInputDevice::getID()));
+        EMU_VERIFY(mInputDevice);
+
+        auto mapping = static_cast<emu::IInputDeviceMapping*>(mComponentType->getInterface(*mComponent, emu::IInputDeviceMapping::getID()));
+        EMU_VERIFY(mapping);
+
+        EMU_VERIFY(mapping->addButton("A") == static_cast<uint32_t>(nes::Context::Button::A));
+        EMU_VERIFY(mapping->addButton("B") == static_cast<uint32_t>(nes::Context::Button::B));
+        EMU_VERIFY(mapping->addButton("Select") == static_cast<uint32_t>(nes::Context::Button::Select));
+        EMU_VERIFY(mapping->addButton("Start") == static_cast<uint32_t>(nes::Context::Button::Start));
+        EMU_VERIFY(mapping->addButton("Up") == static_cast<uint32_t>(nes::Context::Button::Up));
+        EMU_VERIFY(mapping->addButton("Down") == static_cast<uint32_t>(nes::Context::Button::Down));
+        EMU_VERIFY(mapping->addButton("Left") == static_cast<uint32_t>(nes::Context::Button::Left));
+        EMU_VERIFY(mapping->addButton("Right") == static_cast<uint32_t>(nes::Context::Button::Right));
+
+        mInputDevice->addListener(*this);
+        return true;
+    }
+
+    void APU::Controller::destroy()
+    {
+        if (mInputDevice)
+            mInputDevice->removeListener(*this);
+        if (mComponent)
+            mComponentType->destroyComponent(*mComponent);
+    }
+
+    void APU::Controller::filterButtons()
+    {
+        // Filter out invalid button combinations
+        mButtonsMasked = mButtonsRaw;
+        static const uint32_t leftRight = nes::Context::ButtonLeft | nes::Context::ButtonRight;
+        static const uint32_t upDown = nes::Context::ButtonUp | nes::Context::ButtonDown;
+        if ((mButtonsMasked & leftRight) == leftRight)
+            mButtonsMasked &= ~leftRight;
+        if ((mButtonsMasked & upDown) == upDown)
+            mButtonsMasked &= ~upDown;
+    }
+
+    void APU::Controller::onButtonSet(uint32_t index, bool value)
+    {
+        uint32_t mask = 1 << index;
+        if (value)
+            mButtonsRaw |= mask;
+        else
+            mButtonsRaw &= ~mask;
+        filterButtons();
+    }
+
     APU::APU()
     {
         initialize();
@@ -36,14 +101,15 @@ namespace nes
 
     void APU::initialize()
     {
+        mApi = nullptr;
         mClock = nullptr;
         mMemory = nullptr;
         mMasterClockDivider = 0;
         mMasterClockFrequency = 0;
         mFrameCountTicks = 0;
         memset(mRegister, 0, sizeof(mRegister));
-        memset(mController, 0, sizeof(mController));
-        memset(mShifter, 0, sizeof(mShifter));
+        for (uint32_t controllerIndex = 0; controllerIndex < APU_CONTROLLER_COUNT; ++controllerIndex)
+            mController[controllerIndex].initialize();
         mSoundBuffer = nullptr;
         mSoundBufferSize = 0;
         mSoundBufferOffset = 0;
@@ -60,19 +126,28 @@ namespace nes
         mIRQ = false;
     }
 
-    bool APU::create(emu::Clock& clock, emu::MemoryBus& memory, uint32_t masterClockDivider, uint32_t masterClockFrequency)
+    bool APU::create(emu::IEmulatorAPI& api, emu::Clock& clock, emu::MemoryBus& memory, uint32_t masterClockDivider, uint32_t masterClockFrequency)
     {
+        mApi = &api;
         mClock = &clock;
         mClock->addListener(*this);
         mMemory = &memory;
         mMasterClockDivider = masterClockDivider;
         mMasterClockFrequency = masterClockFrequency;
         mFrameCountTicks = masterClockFrequency / 240;
+        for (uint32_t index = 0; index < APU_CONTROLLER_COUNT; ++index)
+        {
+            EMU_VERIFY(mController[index].create(*mApi));
+        }
         return true;
     }
 
     void APU::destroy()
     {
+        for (uint32_t index = 0; index < APU_CONTROLLER_COUNT; ++index)
+        {
+            mController[index].destroy();
+        }
         if (mClock)
             mClock->removeListener(*this);
         initialize();
@@ -162,16 +237,16 @@ namespace nes
         //case APU_REG_SND_CHN: break;
         case APU_REG_JOY1:
         {
-            mRegister[APU_REG_JOY1] = 0x40 | (mShifter[0] & 1) | ((mShifter[2] & 1) << 1);
-            mShifter[0] = (mShifter[0] >> 1) | 0x80;
-            mShifter[2] = (mShifter[2] >> 1) | 0x80;
+            mRegister[APU_REG_JOY1] = 0x40 | (mController[0].mShifter & 1) | ((mController[2].mShifter & 1) << 1);
+            mController[0].mShifter = (mController[0].mShifter >> 1) | 0x80;
+            mController[2].mShifter = (mController[2].mShifter >> 1) | 0x80;
             break;
         }
         case APU_REG_JOY2:
         {
-            mRegister[APU_REG_JOY2] = 0x40 | (mShifter[1] & 1) | ((mShifter[3] & 1) << 1);
-            mShifter[1] = (mShifter[1] >> 1) | 0x80;
-            mShifter[3] = (mShifter[3] >> 1) | 0x80;
+            mRegister[APU_REG_JOY2] = 0x40 | (mController[1].mShifter & 1) | ((mController[3].mShifter & 1) << 1);
+            mController[1].mShifter = (mController[1].mShifter >> 1) | 0x80;
+            mController[2].mShifter = (mController[3].mShifter >> 1) | 0x80;
             break;
         }
         default:
@@ -286,8 +361,12 @@ namespace nes
                 // Controller strobe
                 if (value & 1)
                 {
-                    for (uint32_t controller = 0; controller < 4; ++controller)
-                        mShifter[controller] = mController[controller];
+                    for (uint32_t controllerIndex = 0; controllerIndex < APU_CONTROLLER_COUNT; ++controllerIndex)
+                    {
+                        auto& controller = mController[controllerIndex];
+                        controller.filterButtons();
+                        controller.mShifter = controller.mButtonsMasked;
+                    }
                 }
                 break;
 
@@ -308,20 +387,11 @@ namespace nes
         }
     }
 
-    void APU::setController(uint32_t index, uint8_t buttons)
+    emu::IInputDevice* APU::getInputDevice(uint32_t index)
     {
-        if (index > 4)
-            return;
-
-        // Filter out invalid button combinations
-        static const uint32_t leftRight = nes::Context::ButtonLeft | nes::Context::ButtonRight;
-        static const uint32_t upDown = nes::Context::ButtonUp | nes::Context::ButtonDown;
-        if ((buttons & leftRight) == leftRight)
-            buttons &= ~leftRight;
-        if ((buttons & upDown) == upDown)
-            buttons &= ~upDown;
-
-        mController[index] = buttons;
+        if (index > APU_CONTROLLER_COUNT)
+            return nullptr;
+        return mController[index].mInputDevice;
     }
 
     void APU::setSoundBuffer(int16_t* buffer, size_t size)
@@ -467,8 +537,13 @@ namespace nes
         uint32_t version = 2;
         serializer.serialize(version);
         serializer.serialize(mRegister, APU_REGISTER_COUNT);
-        serializer.serialize(mController, EMU_ARRAY_SIZE(mController));
-        serializer.serialize(mShifter, EMU_ARRAY_SIZE(mShifter));
+        for (uint32_t controllerIndex = 0; controllerIndex < APU_CONTROLLER_COUNT; ++controllerIndex)
+        {
+            serializer.serialize(mController[controllerIndex].mButtonsRaw);
+            mController[controllerIndex].filterButtons();
+        }
+        for (uint32_t controllerIndex = 0; controllerIndex < APU_CONTROLLER_COUNT; ++controllerIndex)
+            serializer.serialize(mController[controllerIndex].mShifter);
         serializer.serialize(mBufferTick);
         serializer.serialize(mSampleTick);
         serializer.serialize(mSequenceTick);

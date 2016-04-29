@@ -9,7 +9,6 @@
 #include <deque>
 #include <Core/InputController.h>
 #include <Core/Path.h>
-#include <Gameboy/GB.h>
 
 namespace
 {
@@ -21,14 +20,16 @@ namespace
             return "gb";
         }
 
-        virtual void configureController(StandardController& controller, uint32_t player)
+        virtual void configureController(StandardController& controller, uint32_t player, emu::IInputDevice& inputDevice)
         {
-            controller.addInput(Input_Player1 + Input_HorizontalAxis, gb::Context::ButtonRight, gb::Context::ButtonLeft);
-            controller.addInput(Input_Player1 + Input_VerticalAxis, gb::Context::ButtonDown, gb::Context::ButtonUp);
-            controller.addInput(Input_Player1 + Input_B, gb::Context::ButtonB);
-            controller.addInput(Input_Player1 + Input_A, gb::Context::ButtonA);
-            controller.addInput(Input_Player1 + Input_Select, gb::Context::ButtonSelect);
-            controller.addInput(Input_Player1 + Input_Start, gb::Context::ButtonStart);
+            controller.addInput(inputDevice, Input_Player1 + Input_HorizontalAxis, "Right", "Left");
+            controller.addInput(inputDevice, Input_Player1 + Input_VerticalAxis, "Down", "Up");
+            controller.addInput(inputDevice, Input_Player1 + Input_B, "B");
+            controller.addInput(inputDevice, Input_Player1 + Input_A, "A");
+            controller.addInput(inputDevice, Input_Player1 + Input_X, "B");
+            controller.addInput(inputDevice, Input_Player1 + Input_Y, "A");
+            controller.addInput(inputDevice, Input_Player1 + Input_Select, "Select");
+            controller.addInput(inputDevice, Input_Player1 + Input_Start, "Start");
         }
     };
 
