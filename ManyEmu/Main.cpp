@@ -7,14 +7,13 @@
 #include <vector>
 #include <deque>
 #include <Core/InputController.h>
-#include <Core/InputManager.h>
-#include <Core/Job.h>
-#include <Core/Path.h>
 #include <Core/Serialization.h>
 #include <Core/Stream.h>
 #include "Backend.h"
 #include "GameSession.h"
-#include <Windows.h>
+#include "InputManager.h"
+#include "Job.h"
+#include "Path.h"
 
 #define DUMP_ROM_LIST 0
 

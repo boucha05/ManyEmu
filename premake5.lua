@@ -100,11 +100,6 @@ StaticLib "Core"
         "Core/**.h",
         "Core/**.cpp",
     }
-    
-    includedirs
-    {
-        "Contrib/SDL2/include",
-    }
 
 StaticLib "Gameboy"
     files

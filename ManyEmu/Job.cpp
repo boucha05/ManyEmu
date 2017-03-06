@@ -1,5 +1,5 @@
 #include "Job.h"
-#include "Core.h"
+#include <Core/Core.h>
 
 void Job::initialize(Func _func, void* _context, uint32_t _priority)
 {

@@ -1,7 +1,7 @@
 #pragma once
 #include <Core/Core.h>
 #include <Core/InputController.h>
-#include <Core/InputManager.h>
+#include "InputManager.h"
 #include <vector>
 
 enum

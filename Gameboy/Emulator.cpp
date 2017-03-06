@@ -1,4 +1,3 @@
-#include <Core/Path.h>
 #include <Core/Serialization.h>
 #include <Core/Stream.h>
 #include "gb.h"
