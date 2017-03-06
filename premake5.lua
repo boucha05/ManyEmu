@@ -94,6 +94,18 @@ workspace "ManyEmu"
             "_CRT_NONSTDC_NO_WARNINGS",
         }
 
+StaticLib "Core"
+    files
+    {
+        "Core/**.h",
+        "Core/**.cpp",
+    }
+    
+    includedirs
+    {
+        "Contrib/SDL2/include",
+    }
+
 StaticLib "Gameboy"
     files
     {
@@ -111,8 +123,6 @@ StaticLib "NES"
 Application "ManyEmu"
     files
     {
-        "Core/**.h",
-        "Core/**.cpp",
         "ManyEmu/**.h",
         "ManyEmu/**.cpp",
     }
@@ -123,6 +133,7 @@ Application "ManyEmu"
     
     links
     {
+        "Core",
         "Gameboy",
         "NES",
     }
