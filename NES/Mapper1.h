@@ -39,7 +39,7 @@ namespace nes
             mRom = components.rom;
             const auto& romDescription = mRom->getDescription();
             const auto& romContent = mRom->getContent();
-            mMemPrgRomRead[0].setReadMethod(unsupportedRead, nullptr);
+            EMU_UNUSED(romContent);            mMemPrgRomRead[0].setReadMethod(unsupportedRead, nullptr);
             mMemPrgRomRead[1].setReadMethod(unsupportedRead, nullptr);
             mMemPrgRomWrite.setWriteMethod(regWrite, this);
             cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, 0x8000, 0xbfff, mMemPrgRomRead[0]);
@@ -252,7 +252,7 @@ namespace nes
             }
 
             uint8_t* nameTables = mPpu->getNameTableMemory();
-            uint32_t nameTableBanks[4] = { 0, 0, 0, 0 };
+            EMU_UNUSED(nameTables);            uint32_t nameTableBanks[4] = { 0, 0, 0, 0 };
             switch (mirroring)
             {
             case 0:
@@ -295,7 +295,7 @@ namespace nes
                 if (++mCycle >= 5)
                 {
                     uint32_t index = (addr >> 13) & 3;
-                    mRegister[index] = mShift;
+                    mRegister[index] = static_cast<uint8_t>(mShift);
                     onRegisterWrite(index, mShift);
                     mShift = 0;
                     mCycle = 0;
@@ -305,17 +305,25 @@ namespace nes
 
         static void regWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value)
         {
+            EMU_UNUSED(ticks);
             static_cast<MMC1*>(context)->regWrite(addr, value);
         }
 
         static uint8_t unsupportedRead(void* context, int32_t ticks, uint32_t addr)
         {
+            EMU_UNUSED(context);
+            EMU_UNUSED(ticks);
+            EMU_UNUSED(addr);
             EMU_ASSERT(0);
             return 0;
         }
 
         static void unsupportedWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value)
         {
+            EMU_UNUSED(context);
+            EMU_UNUSED(ticks);
+            EMU_UNUSED(addr);
+            EMU_UNUSED(value);
             EMU_ASSERT(0);
         }
 
@@ -339,11 +347,13 @@ namespace nes
 
         static uint8_t enablePrgRamRead(void* context, int32_t ticks, uint32_t addr)
         {
+            EMU_UNUSED(ticks);
             return static_cast<MMC1*>(context)->onEnablePrgRamRead(addr);
         }
 
         static void enablePrgRamWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value)
         {
+            EMU_UNUSED(ticks);
             static_cast<MMC1*>(context)->onEnablePrgRamWrite(addr, value);
         }
 
@@ -355,7 +365,7 @@ namespace nes
             case 1:
             case 2:
             case 3:
-                mRegister[index] = value;
+                mRegister[index] = static_cast<uint8_t>(value);
                 break;
 
             default:
@@ -394,6 +404,8 @@ namespace nes
             auto& romDesc = components.rom->getDescription();
             bool prgRomLarge = romDesc.prgRomPages * PRG_ROM_PAGE_SIZE > 256 * 1024;
             bool chrRomLarge = romDesc.chrRomPages * CHR_ROM_PAGE_SIZE > 8 * 1024;
+            EMU_UNUSED(prgRomLarge);
+            EMU_UNUSED(chrRomLarge);
 
             if (!mMMC1.create(components))
                 return false;

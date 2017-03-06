@@ -30,6 +30,7 @@ namespace
 
         virtual void configureController(StandardController& controller, uint32_t player)
         {
+            EMU_UNUSED(player);
             controller.addInput(Input_Player1 + Input_HorizontalAxis, nes::Context::ButtonRight, nes::Context::ButtonLeft);
             controller.addInput(Input_Player1 + Input_VerticalAxis, nes::Context::ButtonDown, nes::Context::ButtonUp);
             controller.addInput(Input_Player1 + Input_B, nes::Context::ButtonB);

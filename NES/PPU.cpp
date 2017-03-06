@@ -98,14 +98,21 @@ namespace
         EMU_ASSERT(false);
     }
 
-    uint8_t patternTableNotImplementedRead(void* contex, int32_t ticks, uint32_t addr)
+    uint8_t patternTableNotImplementedRead(void* context, int32_t ticks, uint32_t addr)
     {
+        EMU_UNUSED(context);
+        EMU_UNUSED(ticks);
+        EMU_UNUSED(addr);
         //NOT_IMPLEMENTED();
         return 0;
     }
 
-    void patternTableNotImplementedWrite(void* contex, int32_t ticks, uint32_t addr, uint8_t value)
+    void patternTableNotImplementedWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value)
     {
+        EMU_UNUSED(context);
+        EMU_UNUSED(ticks);
+        EMU_UNUSED(addr);
+        EMU_UNUSED(value);
         //NOT_IMPLEMENTED();
     }
 
@@ -219,7 +226,6 @@ namespace nes
 
         // Initialize name tables
         uint32_t vramFlags = createFlags & CREATE_VRAM_MASK;
-        uint32_t vramSize = 0;
         if (vramFlags == CREATE_VRAM_ONE_SCREEN)
         {
             mNameTableRAM.resize(VRAM_NAMETABLE_SIZE);
@@ -375,10 +381,12 @@ namespace nes
 
     void PPU::advanceClock(int32_t ticks)
     {
+        EMU_UNUSED(ticks);
     }
 
     void PPU::setDesiredTicks(int32_t ticks)
     {
+        EMU_UNUSED(ticks);
     }
 
     uint8_t PPU::regRead(int32_t ticks, uint32_t addr)
@@ -401,8 +409,8 @@ namespace nes
 
         case PPU_REG_OAMDATA:
         {
-            uint8_t addr = mRegister[PPU_REG_OAMADDR]++;
-            return mOAM[addr];
+            uint8_t addrOAM = mRegister[PPU_REG_OAMADDR]++;
+            return mOAM[addrOAM];
             break;
         }
 
@@ -469,11 +477,11 @@ namespace nes
 
         case PPU_REG_OAMDATA:
         {
-            uint8_t addr = mRegister[PPU_REG_OAMADDR]++;
-            mOAM[addr] = value;
+            uint8_t addrOAM = mRegister[PPU_REG_OAMADDR]++;
+            mOAM[addrOAM] = value;
 
             // If updating sprite 0, update hit test conditions
-            if (addr < 4)
+            if (addrOAM < 4)
                 updateSpriteHitTestConditions();
             break;
         }
@@ -532,6 +540,7 @@ namespace nes
 
     uint8_t PPU::paletteRead(int32_t ticks, uint32_t addr)
     {
+        EMU_UNUSED(ticks);
         addr &= PALETTE_RAM_MASK;
         if ((addr & 3) == 0)
             addr &= 0xf;
@@ -540,6 +549,7 @@ namespace nes
 
     void PPU::paletteWrite(int32_t ticks, uint32_t addr, uint8_t value)
     {
+        EMU_UNUSED(ticks);
         addr &= PALETTE_RAM_MASK;
         if ((addr & 3) == 0)
             addr &= 0xf;
@@ -617,6 +627,7 @@ namespace nes
 
     void PPU::onVBlankEnd(void* context, int32_t ticks)
     {
+        EMU_UNUSED(ticks);
         static_cast<PPU*>(context)->onVBlankEnd();
     }
 
@@ -696,15 +707,15 @@ namespace nes
     void PPU::drawBackground(uint8_t* dest, const uint8_t* names, const uint8_t* attributes, uint16_t base, uint16_t size)
     {
         MEMORY_BUS& memory = mMemory.getState();
-        uint32_t base0 = base + 0;
-        uint32_t base1 = base + 8;
+        uint16_t base0 = base + 0;
+        uint16_t base1 = base + 8;
         for (uint16_t index = 0; index < size; ++index)
         {
             // Fetch pattern
-            uint32_t name = names[index];
-            uint32_t offset = name * 16;
-            uint32_t pattern0 = memory_bus_read8(memory, 0, base0 + offset);
-            uint32_t pattern1 = memory_bus_read8(memory, 0, base1 + offset);
+            auto name = names[index];
+            uint16_t offset = name * 16;
+            auto pattern0 = memory_bus_read8(memory, 0, base0 + offset);
+            auto pattern1 = memory_bus_read8(memory, 0, base1 + offset);
             const uint8_t* patternMask0 = &patternMask[pattern0][0];
             const uint8_t* patternMask1 = &patternMask[pattern1][0];
 
@@ -746,7 +757,7 @@ namespace nes
             spriteLine ^= flipY;
 
             uint32_t id = mOAM[index * 4 + 1];
-            uint32_t addr = base + id * 16 + spriteLine;
+            uint16_t addr = static_cast<uint16_t>(base + id * 16 + spriteLine);
             uint32_t pattern0 = memory_bus_read8(memory, 0, addr + 0);
             uint32_t pattern1 = memory_bus_read8(memory, 0, addr + 8);
             const uint8_t* patternMask0 = &patternMask[pattern0][0];
@@ -821,7 +832,7 @@ namespace nes
 
             uint32_t id = mOAM[index * 4 + 1];
             uint32_t base = (id & 1) ? 0x1000 : 0x0000;
-            uint32_t addr = base + (id & ~1) * 16 + offset[spriteLine];
+            uint16_t addr = static_cast<uint16_t>(base + (id & ~1) * 16 + offset[spriteLine]);
             uint32_t pattern0 = memory_bus_read8(memory, 0, addr + 0);
             uint32_t pattern1 = memory_bus_read8(memory, 0, addr + 8);
             const uint8_t* patternMask0 = &patternMask[pattern0][0];
@@ -943,28 +954,32 @@ namespace nes
             page1 ^= 1;
             page2 ^= 1;
         }
-        uint32_t baseAttributeX = scrollX >> 5;
-        uint32_t baseAttributeY = scrollY >> 5;
-        uint32_t baseNameX = baseAttributeX << 2; // Must snap to attribute
-        uint32_t baseNameY = scrollY >> 3;
+        uint16_t baseAttributeX = static_cast<uint16_t>(scrollX >> 5);
+        uint16_t baseAttributeY = static_cast<uint16_t>(scrollY >> 5);
+        uint16_t baseNameX = baseAttributeX << 2; // Must snap to attribute
+        uint16_t baseNameY = static_cast<uint16_t>(scrollY >> 3);
         uint32_t fineX = scrollX - (baseNameX << 3);
         uint32_t largeSprites = (mRegister[PPU_REG_PPUCTRL] & PPU_CONTROL_SPRITE_SIZE) != 0;
 
         // Assign left and right regions
-        static const uint32_t addrAttribute[] = { 0x23c0, 0x27c0, 0x2bc0, 0x2fc0 };
-        static const uint32_t addrName[] = { 0x2000, 0x2400, 0x2800, 0x2c00 };
-        uint32_t addrAttribute1 = addrAttribute[page1] + baseAttributeY * 8 + baseAttributeX;
-        uint32_t addrAttribute2 = addrAttribute[page2] + baseAttributeY * 8;
-        uint32_t addrAttribute3 = addrAttribute[page1 ^ 2] + baseAttributeY * 8 + baseAttributeX;
-        uint32_t addrAttribute4 = addrAttribute[page2 ^ 2] + baseAttributeY * 8;
-        uint32_t sizeAttribute1 = 8 - baseAttributeX;
-        uint32_t sizeAttribute2 = baseAttributeX + 1;
-        uint32_t addrName1 = addrName[page1] + baseNameY * 32 + baseNameX;
-        uint32_t addrName2 = addrName[page2] + baseNameY * 32;
-        uint32_t addrName3 = addrName[page1 ^ 2] + baseNameY * 32 + baseNameX;
-        uint32_t addrName4 = addrName[page2 ^ 2] + baseNameY * 32;
-        uint32_t sizeName1 = 32 - baseNameX;
-        uint32_t sizeName2 = baseNameX + 4;
+        static const uint16_t addrAttribute[] = { 0x23c0, 0x27c0, 0x2bc0, 0x2fc0 };
+        static const uint16_t addrName[] = { 0x2000, 0x2400, 0x2800, 0x2c00 };
+        uint16_t addrAttribute1 = addrAttribute[page1] + baseAttributeY * 8 + baseAttributeX;
+        uint16_t addrAttribute2 = addrAttribute[page2] + baseAttributeY * 8;
+        uint16_t addrAttribute3 = addrAttribute[page1 ^ 2] + baseAttributeY * 8 + baseAttributeX;
+        uint16_t addrAttribute4 = addrAttribute[page2 ^ 2] + baseAttributeY * 8;
+        EMU_UNUSED(addrAttribute3);
+        EMU_UNUSED(addrAttribute4);
+        uint16_t sizeAttribute1 = 8 - baseAttributeX;
+        uint16_t sizeAttribute2 = baseAttributeX + 1;
+        uint16_t addrName1 = addrName[page1] + baseNameY * 32 + baseNameX;
+        uint16_t addrName2 = addrName[page2] + baseNameY * 32;
+        uint16_t addrName3 = addrName[page1 ^ 2] + baseNameY * 32 + baseNameX;
+        uint16_t addrName4 = addrName[page2 ^ 2] + baseNameY * 32;
+        EMU_UNUSED(addrName3);
+        EMU_UNUSED(addrName4);
+        uint16_t sizeName1 = 32 - baseNameX;
+        uint16_t sizeName2 = baseNameX + 4;
 
         paletteIndex = 0;
         attributeIndex = 0;
@@ -1117,7 +1132,8 @@ namespace nes
         ScanlineEvent* scanlineEvent = &mScanlineEvents[mScanlineType][mScanlineEventIndex];
         while (mScanlineOffsetTick >= scanlineEvent->offsetTick)
         {
-            int32_t tick = mScanlineBaseTick + scanlineEvent->offsetTick;
+            int32_t localTick = mScanlineBaseTick + scanlineEvent->offsetTick;
+            EMU_UNUSED(localTick);
 
             uint32_t action = scanlineEvent->action;
             ++scanlineEvent;

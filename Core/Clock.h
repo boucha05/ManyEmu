@@ -1,6 +1,7 @@
 #ifndef __CLOCK_H__
 #define __CLOCK_H__
 
+#include <Core/Core.h>
 #include <stdint.h>
 #include <map>
 #include <vector>
@@ -19,8 +20,8 @@ namespace emu
         public:
             virtual void execute() {}
             virtual void resetClock() {}
-            virtual void advanceClock(int32_t ticks) {}
-            virtual void setDesiredTicks(int32_t ticks) {}
+            virtual void advanceClock(int32_t ticks) { EMU_UNUSED(ticks); }
+            virtual void setDesiredTicks(int32_t ticks) { EMU_UNUSED(ticks); }
         };
 
         Clock();

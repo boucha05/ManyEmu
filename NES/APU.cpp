@@ -14,6 +14,8 @@ namespace
 
     void dummyTimerCallback(void* context, int32_t ticks)
     {
+        EMU_UNUSED(context);
+        EMU_UNUSED(ticks);
     }
 
     static const uint32_t kLength[] =
@@ -134,10 +136,12 @@ namespace nes
 
     void APU::setDesiredTicks(int32_t ticks)
     {
+        EMU_UNUSED(ticks);
     }
 
     uint8_t APU::regRead(int32_t ticks, uint32_t addr)
     {
+        EMU_UNUSED(ticks);
         addr = (addr & (APU_REGISTER_COUNT - 1));
         switch (addr)
         {
@@ -267,9 +271,9 @@ namespace nes
                 uint16_t base = value << 8;
                 for (uint16_t offset = 0; offset < 256; ++offset)
                 {
-                    uint16_t addr = base + offset;
-                    uint8_t value = memory_bus_read8(memory, ticks, addr);
-                    memory_bus_write8(memory, ticks, 0x2004, value);
+                    uint16_t localAddr = base + offset;
+                    uint8_t localValue = memory_bus_read8(memory, ticks, localAddr);
+                    memory_bus_write8(memory, ticks, 0x2004, localValue);
                 }
                 break;
             }
@@ -746,7 +750,7 @@ namespace nes
             +15, +13, +11, +9, +7, +5, +3, +1, -1, -3, -5, -8, -9, -11, -13, -15,
         };
         uint32_t value = kLevel[sequence];
-        level = (!linearCount || !length || (timer < 4)) ? 0 : value;
+        level = static_cast<uint8_t>((!linearCount || !length || (timer < 4)) ? 0 : value);
     }
 
     void APU::Triangle::updateLengthCounter()
@@ -1064,7 +1068,7 @@ namespace nes
     {
         if (!sampleCount)
             return;
-        sampleBuffer = memory_bus_read8(memory->getState(), tick, samplePos);
+        sampleBuffer = memory_bus_read8(memory->getState(), tick, static_cast<uint16_t>(samplePos));
         samplePos = ((samplePos + 1) & 0xffff) | 0x8000;
         available = true;
         if (--sampleCount == 0)
@@ -1090,6 +1094,7 @@ namespace nes
         if (sampleCount)
         {
             uint32_t readerTick = timerTick + period * (bit - 1);
+            EMU_UNUSED(readerTick);
             //clock->addEvent(dummyTimerCallback, nullptr, readerTick);
         }
     }

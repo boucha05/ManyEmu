@@ -243,6 +243,7 @@ namespace gb_context
         virtual void serializeGameState(emu::ISerializer& serializer)
         {
             uint32_t version = 1;
+            EMU_UNUSED(version);
             mClock.serialize(serializer);
             mCpu.serialize(serializer);
             if (mMapper)
@@ -347,21 +348,29 @@ namespace gb_context
 
         uint8_t readKEY1(int32_t tick, uint16_t addr)
         {
+            EMU_UNUSED(tick);
+            EMU_UNUSED(addr);
             return mRegKEY1;
         }
 
         void writeKEY1(int32_t tick, uint16_t addr, uint8_t value)
         {
+            EMU_UNUSED(tick);
+            EMU_UNUSED(addr);
             mRegKEY1 = (mRegKEY1 & ~KEY1_SPEED_SWITCH) | (value & KEY1_SPEED_SWITCH);
         }
 
         uint8_t readSVBK(int32_t tick, uint16_t addr)
         {
+            EMU_UNUSED(tick);
+            EMU_UNUSED(addr);
             return mRegSVBK;
         }
 
         void writeSVBK(int32_t tick, uint16_t addr, uint8_t value)
         {
+            EMU_UNUSED(tick);
+            EMU_UNUSED(addr);
             mRegSVBK = value;
             mBankWRAM = value & SVBK_BANK_MASK;
             updateMemoryMap();

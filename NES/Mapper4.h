@@ -60,17 +60,17 @@ namespace nes
             reset();
 
             // Enable memory ranges
-            for (uint32_t bank = 0; bank < 4; ++bank)
+            for (uint16_t bank = 0; bank < 4; ++bank)
             {
-                uint32_t addrStart = 0x8000 + bank * 0x2000;
-                uint32_t addrEnd = addrStart + 0x1fff;
+                uint16_t addrStart = 0x8000 + bank * 0x2000;
+                uint16_t addrEnd = addrStart + 0x1fff;
                 cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, addrStart, addrEnd, mMemPrgRomRead[bank]);
             }
             cpuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, 0x8000, 0xffff, mMemPrgRomWrite);
-            for (uint32_t bank = 0; bank < 8; ++bank)
+            for (uint16_t bank = 0; bank < 8; ++bank)
             {
-                uint32_t addrStart = 0x0000 + bank * 0x0400;
-                uint32_t addrEnd = addrStart + 0x03ff;
+                uint16_t addrStart = 0x0000 + bank * 0x0400;
+                uint16_t addrEnd = addrStart + 0x03ff;
                 ppuMemory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_READ, addrStart, addrEnd, mMemChrRomRead[bank]);
             }
 
@@ -152,6 +152,7 @@ namespace nes
             // CHR ROM
             uint32_t chrBank[8];
             uint32_t chrBankCount = romDescription.chrRomPages * 8;
+            EMU_UNUSED(chrBankCount);
             if (mChrMode == 0)
             {
                 chrBank[0] = mBankPorts[0] & ~1;

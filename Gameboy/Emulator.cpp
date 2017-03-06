@@ -30,6 +30,7 @@ namespace
 
         virtual bool getDisplaySize(emu::Context& context, uint32_t& sizeX, uint32_t& sizeY) override
         {
+            EMU_UNUSED(context);
             sizeX = gb::Context::DisplaySizeX;
             sizeY = gb::Context::DisplaySizeY;
             return true;

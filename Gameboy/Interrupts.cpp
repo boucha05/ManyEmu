@@ -134,16 +134,20 @@ namespace gb
 
     void Interrupts::clearInterrupt(int tick, Signal signal)
     {
+        EMU_UNUSED(tick);
         mRegIF &= ~(1 << static_cast<uint8_t>(signal));
     }
 
     uint8_t Interrupts::readIF(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         return mRegIF;
     }
 
     void Interrupts::writeIF(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         if (value & INT_NOT_IMPLEMENTED)
         {
             EMU_NOT_IMPLEMENTED();
@@ -154,11 +158,14 @@ namespace gb
 
     uint8_t Interrupts::readIE(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         return mRegIE;
     }
 
     void Interrupts::writeIE(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         if (value & INT_NOT_IMPLEMENTED)
         {
             EMU_NOT_IMPLEMENTED();
@@ -175,6 +182,7 @@ namespace gb
 
     void Interrupts::onCpuInterruptDisable(int32_t tick)
     {
+        EMU_UNUSED(tick);
         mMask = INT_MASK_NONE;
     }
 

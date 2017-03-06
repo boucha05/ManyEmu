@@ -581,17 +581,18 @@ namespace gb
     void CpuZ80::setClockDivider(uint32_t clockDivider)
     {
         for (auto index = 0; index < EMU_ARRAY_SIZE(mTicksMain); ++index)
-            mTicksMain[index] = refTicksMain[index] * clockDivider;
+            mTicksMain[index] = static_cast<uint8_t>(refTicksMain[index] * clockDivider);
         for (auto index = 0; index < EMU_ARRAY_SIZE(mTicksCB); ++index)
-            mTicksCB[index] = refTicksCB[index] * clockDivider;
-        mTicksCond_call = refTicksCond_call * clockDivider;
-        mTicksCond_ret = refTicksCond_ret * clockDivider;
-        mTicksCond_jp = refTicksCond_jp * clockDivider;
-        mTicksCond_jr = refTicksCond_jr * clockDivider;
+            mTicksCB[index] = static_cast<uint8_t>(refTicksCB[index] * clockDivider);
+        mTicksCond_call = static_cast<uint8_t>(refTicksCond_call * clockDivider);
+        mTicksCond_ret = static_cast<uint8_t>(refTicksCond_ret * clockDivider);
+        mTicksCond_jp = static_cast<uint8_t>(refTicksCond_jp * clockDivider);
+        mTicksCond_jr = static_cast<uint8_t>(refTicksCond_jr * clockDivider);
     }
 
     void CpuZ80::resume(int32_t tick)
     {
+        EMU_UNUSED(tick);
         if (mRegs.r8.halted || mRegs.r8.stopped)
         {
             mRegs.r8.halted = false;
@@ -728,7 +729,7 @@ namespace gb
         dest = src;
     }
 
-    void CpuZ80::insn_ld(addr& dest, uint8_t src)
+    void CpuZ80::insn_ld(const addr& dest, uint8_t src)
     {
         write8(dest.value, src);
     }
@@ -740,7 +741,7 @@ namespace gb
         dest = src;
     }
 
-    void CpuZ80::insn_ld(addr& dest, uint16_t src)
+    void CpuZ80::insn_ld(const addr& dest, uint16_t src)
     {
         write16(dest.value, src);
     }
@@ -759,36 +760,37 @@ namespace gb
 
     void CpuZ80::insn_add(uint8_t src)
     {
-        auto value = A;
-        auto result = static_cast<uint16_t>(value) + src;
-        A = result;
+        uint8_t value = A;
+        uint16_t result = static_cast<uint16_t>(value) + src;
+        A = static_cast<uint8_t>(result);
         flags_z0hc(result, value, src, 0);
     }
 
     void CpuZ80::insn_adc(uint8_t src)
     {
         uint8_t c_in = (FLAGS & FLAG_C) ? 1 : 0;
-        auto value = A;
-        auto result = static_cast<uint16_t>(value) + src + c_in;
+        uint8_t value = A;
+        uint16_t result = static_cast<uint16_t>(value) + src + c_in;
         uint8_t c_out = (result >= 0x100) ? 1 : 0;
-        A = result & 0xff;
+        EMU_UNUSED(c_out);
+        A = static_cast<uint8_t>(result & 0xff);
         flags_z0hc(result, value, src, c_in);
     }
 
     void CpuZ80::insn_sub(uint8_t src)
     {
-        auto value = A;
-        auto result = static_cast<uint16_t>(value) - src;
-        A = result & 0xff;
+        uint8_t value = A;
+        uint16_t result = static_cast<uint16_t>(value) - src;
+        A = static_cast<uint8_t>(result & 0xff);
         flags_z1hc(result, value, src, 0);
     }
 
     void CpuZ80::insn_sbc(uint8_t src)
     {
         uint8_t c_in = (FLAGS & FLAG_C) ? 1 : 0;
-        auto value = A;
-        auto result = static_cast<uint16_t>(value) - src - c_in;
-        A = result & 0xff;
+        uint8_t value = A;
+        uint16_t result = static_cast<uint16_t>(value) - src - c_in;
+        A = static_cast<uint8_t>(result & 0xff);
         flags_z1hc(result, value, src, c_in);
     }
 
@@ -819,32 +821,32 @@ namespace gb
 
     void CpuZ80::insn_inc(uint8_t& dest)
     {
-        auto value = dest;
-        auto result = value + 1;
+        uint8_t value = dest;
+        uint8_t result = value + 1;
         dest = result;
         flags_z0h_(result, value);
     }
 
-    void CpuZ80::insn_inc(addr& dest)
+    void CpuZ80::insn_inc(const addr& dest)
     {
-        auto value = read8(dest.value);
-        auto result = value + 1;
+        uint8_t value = read8(dest.value);
+        uint8_t result = value + 1;
         write8(dest.value, result);
         flags_z0h_(result, value);
     }
 
     void CpuZ80::insn_dec(uint8_t& dest)
     {
-        auto value = dest;
-        auto result = value - 1;
+        uint8_t value = dest;
+        uint8_t result = value - 1;
         dest = result;
         flags_z1h_(result, value);
     }
 
-    void CpuZ80::insn_dec(addr& dest)
+    void CpuZ80::insn_dec(const addr& dest)
     {
-        auto value = read8(dest.value);
-        auto result = value - 1;
+        uint8_t value = read8(dest.value);
+        uint8_t result = value - 1;
         write8(dest.value, result);
         flags_z1h_(result, value);
     }
@@ -898,16 +900,16 @@ namespace gb
 
     void CpuZ80::insn_add_sp(uint16_t src)
     {
-        auto value = SP;
-        auto result = value + src;
+        uint16_t value = SP;
+        uint16_t result = value + src;
         SP = result;
         flags_00hc(value, src);
     }
 
     void CpuZ80::insn_ld_sp(uint16_t& dest, uint16_t src)
     {
-        auto value = SP;
-        auto result = value + src;
+        uint16_t value = SP;
+        uint16_t result = value + src;
         dest = result;
         flags_00hc(value, src);
     }
@@ -916,138 +918,138 @@ namespace gb
 
     void CpuZ80::insn_rlca()
     {
-        auto value = A;
-        auto bit_in = (value >> 7) & 0x01;
-        auto bit_out = bit_in;
-        auto result = (value << 1) | bit_in;
+        uint8_t value = A;
+        uint8_t bit_in = (value >> 7) & 0x01;
+        uint8_t bit_out = bit_in;
+        uint8_t result = (value << 1) | bit_in;
         A = result;
         flags_000c(bit_out);
     }
 
     void CpuZ80::insn_rla()
     {
-        auto value = A;
-        auto bit_in = (FLAGS & FLAG_C) ? 0x01 : 0x00;
-        auto bit_out = (value >> 7) & 0x01;
-        auto result = (value << 1) | bit_in;
+        uint8_t value = A;
+        uint8_t bit_in = (FLAGS & FLAG_C) ? 0x01 : 0x00;
+        uint8_t bit_out = (value >> 7) & 0x01;
+        uint8_t result = (value << 1) | bit_in;
         A = result;
         flags_000c(bit_out);
     }
 
     void CpuZ80::insn_rrca()
     {
-        auto value = A;
-        auto bit_in = (value << 7) & 0x80;
-        auto bit_out = bit_in;
-        auto result = (value >> 1) | bit_in;
+        uint8_t value = A;
+        uint8_t bit_in = (value << 7) & 0x80;
+        uint8_t bit_out = bit_in;
+        uint8_t result = (value >> 1) | bit_in;
         A = result;
         flags_000c(bit_out);
     }
 
     void CpuZ80::insn_rra()
     {
-        auto value = A;
-        auto carry_in = (FLAGS & FLAG_C) ? 0x80 : 0x00;
-        auto carry_out = value & 0x01;
-        auto result = (value >> 1) | carry_in;
+        uint8_t value = A;
+        uint8_t carry_in = (FLAGS & FLAG_C) ? 0x80 : 0x00;
+        uint8_t carry_out = value & 0x01;
+        uint8_t result = (value >> 1) | carry_in;
         A = result;
         flags_000c(carry_out);
     }
 
     void CpuZ80::insn_rlc(uint8_t& dest)
     {
-        auto value = dest;
-        auto bit_in = (value >> 7) & 0x01;
-        auto bit_out = bit_in;
-        auto result = (value << 1) | bit_in;
+        uint8_t value = dest;
+        uint8_t bit_in = (value >> 7) & 0x01;
+        uint8_t bit_out = bit_in;
+        uint8_t result = (value << 1) | bit_in;
         dest = result;
         flags_z00c(result, bit_out);
     }
 
-    void CpuZ80::insn_rlc(addr& dest)
+    void CpuZ80::insn_rlc(const addr& dest)
     {
-        auto value = read8(dest.value);
-        auto bit_in = (value >> 7) & 0x01;
-        auto bit_out = bit_in;
-        auto result = (value << 1) | bit_in;
+        uint8_t value = read8(dest.value);
+        uint8_t bit_in = (value >> 7) & 0x01;
+        uint8_t bit_out = bit_in;
+        uint8_t result = (value << 1) | bit_in;
         write8(dest.value, result);
         flags_z00c(result, bit_out);
     }
 
     void CpuZ80::insn_rl(uint8_t& dest)
     {
-        auto value = dest;
-        auto bit_in = (FLAGS & FLAG_C) ? 0x01 : 0x00;
-        auto bit_out = (value >> 7) & 0x01;
-        auto result = (value << 1) | bit_in;
+        uint8_t value = dest;
+        uint8_t bit_in = (FLAGS & FLAG_C) ? 0x01 : 0x00;
+        uint8_t bit_out = (value >> 7) & 0x01;
+        uint8_t result = (value << 1) | bit_in;
         dest = result;
         flags_z00c(result, bit_out);
     }
 
-    void CpuZ80::insn_rl(addr& dest)
+    void CpuZ80::insn_rl(const addr& dest)
     {
-        auto value = read8(dest.value);
-        auto bit_in = (FLAGS & FLAG_C) ? 0x01 : 0x00;
-        auto bit_out = (value >> 7) & 0x01;
-        auto result = (value << 1) | bit_in;
+        uint8_t value = read8(dest.value);
+        uint8_t bit_in = (FLAGS & FLAG_C) ? 0x01 : 0x00;
+        uint8_t bit_out = (value >> 7) & 0x01;
+        uint8_t result = (value << 1) | bit_in;
         write8(dest.value, result);
         flags_z00c(result, bit_out);
     }
 
     void CpuZ80::insn_rrc(uint8_t& dest)
     {
-        auto value = dest;
-        auto bit_in = (value << 7) & 0x80;
-        auto bit_out = bit_in;
-        auto result = (value >> 1) | bit_in;
+        uint8_t value = dest;
+        uint8_t bit_in = (value << 7) & 0x80;
+        uint8_t bit_out = bit_in;
+        uint8_t result = (value >> 1) | bit_in;
         dest = result;
         flags_z00c(result, bit_out);
     }
 
-    void CpuZ80::insn_rrc(addr& dest)
+    void CpuZ80::insn_rrc(const addr& dest)
     {
-        auto value = read8(dest.value);
-        auto bit_in = (value << 7) & 0x80;
-        auto bit_out = bit_in;
-        auto result = (value >> 1) | bit_in;
+        uint8_t value = read8(dest.value);
+        uint8_t bit_in = (value << 7) & 0x80;
+        uint8_t bit_out = bit_in;
+        uint8_t result = (value >> 1) | bit_in;
         write8(dest.value, result);
         flags_z00c(result, bit_out);
     }
 
     void CpuZ80::insn_rr(uint8_t& dest)
     {
-        auto value = dest;
-        auto carry_in = (FLAGS & FLAG_C) ? 0x80 : 0x00;
-        auto carry_out = value & 0x01;
-        auto result = (value >> 1) | carry_in;
+        uint8_t value = dest;
+        uint8_t carry_in = (FLAGS & FLAG_C) ? 0x80 : 0x00;
+        uint8_t carry_out = value & 0x01;
+        uint8_t result = (value >> 1) | carry_in;
         dest = result;
         flags_z00c(result, carry_out);
     }
 
-    void CpuZ80::insn_rr(addr& dest)
+    void CpuZ80::insn_rr(const addr& dest)
     {
-        auto value = read8(dest.value);
-        auto carry_in = (FLAGS & FLAG_C) ? 0x80 : 0x00;
-        auto carry_out = value & 0x01;
-        auto result = (value >> 1) | carry_in;
+        uint8_t value = read8(dest.value);
+        uint8_t carry_in = (FLAGS & FLAG_C) ? 0x80 : 0x00;
+        uint8_t carry_out = value & 0x01;
+        uint8_t result = (value >> 1) | carry_in;
         write8(dest.value, result);
         flags_z00c(result, carry_out);
     }
 
     void CpuZ80::insn_sla(uint8_t& dest)
     {
-        auto value = dest;
-        auto bit_out = value & 0x80;
-        auto result = value << 1;
+        uint8_t value = dest;
+        uint8_t bit_out = value & 0x80;
+        uint8_t result = value << 1;
         dest = result;
         flags_z00c(result, bit_out);
     }
 
-    void CpuZ80::insn_sla(addr& dest)
+    void CpuZ80::insn_sla(const addr& dest)
     {
-        auto value = read8(dest.value);
-        auto bit_out = value & 0x80;
-        auto result = value << 1;
+        uint8_t value = read8(dest.value);
+        uint8_t bit_out = value & 0x80;
+        uint8_t result = value << 1;
         write8(dest.value, result);
         flags_z00c(result, bit_out);
     }
@@ -1060,7 +1062,7 @@ namespace gb
         flags_z000(result);
     }
 
-    void CpuZ80::insn_swap(addr& dest)
+    void CpuZ80::insn_swap(const addr& dest)
     {
         uint8_t value = read8(dest.value);
         uint8_t result = ((value >> 4) & 0x0f) | ((value << 4) & 0xf0);
@@ -1070,38 +1072,38 @@ namespace gb
 
     void CpuZ80::insn_sra(uint8_t& dest)
     {
-        auto value = dest;
-        auto bit_in = value & 0x80;
-        auto bit_out = value & 0x01;
-        auto result = (value >> 1) | bit_in;
+        uint8_t value = dest;
+        uint8_t bit_in = value & 0x80;
+        uint8_t bit_out = value & 0x01;
+        uint8_t result = (value >> 1) | bit_in;
         dest = result;
         flags_z00c(result, bit_out);
     }
 
-    void CpuZ80::insn_sra(addr& dest)
+    void CpuZ80::insn_sra(const addr& dest)
     {
         uint8_t value = read8(dest.value);
-        auto bit_in = value & 0x80;
-        auto bit_out = value & 0x01;
-        auto result = (value >> 1) | bit_in;
+        uint8_t bit_in = value & 0x80;
+        uint8_t bit_out = value & 0x01;
+        uint8_t result = (value >> 1) | bit_in;
         write8(dest.value, result);
         flags_z00c(result, bit_out);
     }
 
     void CpuZ80::insn_srl(uint8_t& dest)
     {
-        auto value = dest;
-        auto bit_out = value & 0x01;
-        auto result = value >> 1;
+        uint8_t value = dest;
+        uint8_t bit_out = value & 0x01;
+        uint8_t result = value >> 1;
         dest = result;
         flags_z00c(result, bit_out);
     }
 
-    void CpuZ80::insn_srl(addr& dest)
+    void CpuZ80::insn_srl(const addr& dest)
     {
         uint8_t value = read8(dest.value);
-        auto bit_out = value & 0x01;
-        auto result = value >> 1;
+        uint8_t bit_out = value & 0x01;
+        uint8_t result = value >> 1;
         write8(dest.value, result);
         flags_z00c(result, bit_out);
     }
@@ -1110,7 +1112,7 @@ namespace gb
 
     void CpuZ80::insn_bit(uint8_t mask, uint8_t src)
     {
-        auto result = mask & src;
+        uint8_t result = mask & src;
         flags_z01_(result);
     }
 
@@ -1119,9 +1121,9 @@ namespace gb
         dest |= mask;
     }
 
-    void CpuZ80::insn_set(uint8_t mask, addr& dest)
+    void CpuZ80::insn_set(uint8_t mask, const addr& dest)
     {
-        auto result = read8(dest.value) | mask;
+        uint8_t result = read8(dest.value) | mask;
         write8(dest.value, result);
     }
 
@@ -1130,9 +1132,9 @@ namespace gb
         dest &= ~mask;
     }
 
-    void CpuZ80::insn_res(uint8_t mask, addr& dest)
+    void CpuZ80::insn_res(uint8_t mask, const addr& dest)
     {
-        auto result = read8(dest.value) & ~mask;
+        uint8_t result = read8(dest.value) & ~mask;
         write8(dest.value, result);
     }
 

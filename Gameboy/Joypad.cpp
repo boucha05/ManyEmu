@@ -109,11 +109,15 @@ namespace gb
 
     uint8_t Joypad::readJOYP(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         return mRegJOYP;
     }
 
     void Joypad::writeJOYP(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         uint8_t nextJOYP = JOYP_ALL_RELEASED;
         if ((value & JOYP_BUTTON_KEYS) == 0)
         {
@@ -148,6 +152,7 @@ namespace gb
 
     void Joypad::setController(uint32_t index, uint32_t buttons)
     {
+        EMU_UNUSED(index);
         mButtons = buttons & gb::Context::ButtonAll;
     }
 }

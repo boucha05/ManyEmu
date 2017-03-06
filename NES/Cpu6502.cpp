@@ -524,6 +524,7 @@ namespace
     inline void insn_brk(CPU_STATE& state)
     {
         uint8_t dummy = fetch8(state);
+        EMU_UNUSED(dummy);
         uint8_t state_sr = state.sr | STATUS_RESERVED1 | STATUS_RESERVED0;
         export_flags(state);
         state.sr |= STATUS_I;
@@ -670,6 +671,7 @@ namespace
 
     inline void insn_nop(CPU_STATE& state)
     {
+        EMU_UNUSED(state);
     }
 
     inline void insn_ora(CPU_STATE& state, uint8_t src)
@@ -1001,6 +1003,8 @@ void serialize(CPU_STATE& state, emu::ISerializer& serializer)
 
     void executeDummyTimerEvent(void* context, int32_t ticks)
     {
+        EMU_UNUSED(context);
+        EMU_UNUSED(ticks);
     }
 }
 
@@ -1027,6 +1031,7 @@ bool cpu_create(CPU_STATE& cpu, MEMORY_BUS& bus, uint32_t master_clock_divider)
 
 void cpu_destroy(CPU_STATE& cpu)
 {
+    EMU_UNUSED(cpu);
 }
 
 void cpu_reset(CPU_STATE& state)

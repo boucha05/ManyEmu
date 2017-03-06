@@ -28,7 +28,7 @@ namespace gb
 
         uint16_t getRomBank()
         {
-            return mBankROM[1];
+            return static_cast<uint16_t>(mBankROM[1]);
         }
 
         void setRomBank(uint16_t value)
@@ -38,7 +38,7 @@ namespace gb
 
         uint16_t getRamBank()
         {
-            return mBankExternalRAM;
+            return static_cast<uint16_t>(mBankExternalRAM);
         }
 
         void setRamBank(uint16_t value)

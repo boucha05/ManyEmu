@@ -42,21 +42,29 @@ namespace gb
 
     uint8_t GameLink::readSB(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         return mRegSB;
     }
 
     void GameLink::writeSB(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         mRegSB = value;
     }
 
     uint8_t GameLink::readSC(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         return mRegSC;
     }
 
     void GameLink::writeSC(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         mRegSC = value;
         if ((mRegSC & 0x81) == 0x81)
         {

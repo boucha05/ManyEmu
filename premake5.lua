@@ -46,6 +46,9 @@ function configure()
         architecture "x86_64"
 
     filter {}
+        symbols "On"
+        flags { "FatalCompileWarnings" }
+        warnings "Extra"
 end
 
 workspace "ManyEmu"

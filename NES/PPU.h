@@ -19,7 +19,7 @@ namespace nes
         {
         public:
             virtual void onVBlankStart() {}
-            virtual void onVisibleLineStart(int32_t tick) {}
+            virtual void onVisibleLineStart(int32_t tick) { EMU_UNUSED(tick); }
         };
 
         PPU();

@@ -83,7 +83,6 @@ namespace
         virtual void update(InputManager& inputManager)
         {
             const uint8_t* state = SDL_GetKeyboardState(nullptr);
-            uint8_t buttonMask = 0;
             for (auto mapping : mMappings)
             {
                 float value = state[mapping.scancode] ? mapping.maxValue : mapping.minValue;
@@ -157,7 +156,6 @@ namespace
 
         virtual void update(InputManager& inputManager)
         {
-            uint8_t buttonMask = 0;
             for (auto mapping : mButtons)
             {
                 bool state = SDL_GameControllerGetButton(mGameController, mapping.button) != 0;

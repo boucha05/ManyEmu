@@ -11,6 +11,7 @@ namespace
 
     int getExceptionFilter(void* context)
     {
+        EMU_UNUSED(context);
         return EXCEPTION_EXECUTE_HANDLER;
     }
 }

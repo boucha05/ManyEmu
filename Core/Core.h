@@ -12,6 +12,8 @@
 #endif
 #define EMU_VERIFY(e)   if (e) ; else return false
 
+#define EMU_UNUSED(arg) (void)arg
+
 #define EMU_INVOKE_ONCE(e)                  \
 {                                           \
     static bool __invoked_before = false;   \

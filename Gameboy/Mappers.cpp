@@ -28,12 +28,19 @@ namespace
 
     uint8_t read8null(void* context, int32_t tick, uint32_t addr)
     {
+        EMU_UNUSED(context);
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_INVOKE_ONCE(printf("External RAM read disabled!\n"));
         return 0;
     }
 
     void write8null(void* context, int32_t tick, uint32_t addr, uint8_t value)
     {
+        EMU_UNUSED(context);
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
+        EMU_UNUSED(value);
         EMU_INVOKE_ONCE(printf("External RAM write disabled!\n"));
     }
 }
@@ -171,6 +178,10 @@ namespace gb
 
     void MapperROM::write8(void* context, int32_t tick, uint32_t addr, uint8_t value)
     {
+        EMU_UNUSED(context);
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
+        EMU_UNUSED(value);
         EMU_NOT_IMPLEMENTED();
     }
 
@@ -205,16 +216,17 @@ namespace gb
 
     bool MapperMBC1::updateMemoryMap()
     {
-        uint8_t validBankROM = mBankROM;
+        uint8_t validBankROM = static_cast<uint8_t>(mBankROM);
         if ((validBankROM & MBC1_ROM_BANK_INVALID_MASK) == 0)
             validBankROM |= MBC1_ROM_BANK_INVALID_ADJ;
         setRomBank(validBankROM);
-        setRamBank(mBankRAM);
+        setRamBank(static_cast<uint16_t>(mBankRAM));
         return MapperBase::updateMemoryMap();
     }
 
     void MapperMBC1::write8(int32_t tick, uint32_t addr, uint8_t value)
     {
+        EMU_UNUSED(tick);
         switch (addr >> 13)
         {
         case 0:
@@ -284,6 +296,7 @@ namespace gb
 
     void MapperMBC5::write8(int32_t tick, uint32_t addr, uint8_t value)
     {
+        EMU_UNUSED(tick);
         switch (addr >> 12)
         {
         case 0:

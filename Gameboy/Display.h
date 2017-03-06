@@ -142,11 +142,15 @@ namespace gb
 
         static void onWriteOAM(void* context, int32_t tick, uint32_t addr, uint8_t value)
         {
-            static_cast<Display*>(context)->writeOAM(tick, addr, value);
+            static_cast<Display*>(context)->writeOAM(tick, static_cast<uint16_t>(addr), value);
         }
 
         static void onWriteNotUsable(void* context, int32_t tick, uint32_t addr, uint8_t value)
         {
+            EMU_UNUSED(context);
+            EMU_UNUSED(tick);
+            EMU_UNUSED(addr);
+            EMU_UNUSED(value);
         }
 
         void onVBlankStart(int32_t tick);

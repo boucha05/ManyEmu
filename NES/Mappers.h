@@ -23,7 +23,7 @@ namespace nes
         class IListener
         {
         public:
-            virtual void onIrqUpdate(bool active) {}
+            virtual void onIrqUpdate(bool active) { EMU_UNUSED(active); }
         };
 
         struct Components
@@ -40,8 +40,8 @@ namespace nes
         virtual void reset() { }
         virtual void beginFrame() { }
         virtual void update() { }
-        virtual void serializeGameData(emu::ISerializer& serializer) { }
-        virtual void serializeGameState(emu::ISerializer& serializer) { }
+        virtual void serializeGameData(emu::ISerializer& serializer) { EMU_UNUSED(serializer); }
+        virtual void serializeGameState(emu::ISerializer& serializer) { EMU_UNUSED(serializer); }
     };
 
     typedef IMapper* (*MapperCreateFunc)();

@@ -42,7 +42,7 @@ MEM_PAGE* find_page(const MEMORY_BUS& bus, uint16_t addr, uint32_t pageTable)
 uint8_t memory_read8(const MEM_PAGE& page, int32_t ticks, uint16_t addr)
 {
     MEM_ACCESS* access = page.access;
-    uint16_t addrFixed = addr - page.offset;
+    uint16_t addrFixed = static_cast<uint16_t>(addr - page.offset);
     const uint8_t* buffer = access->io.read.mem;
     if (buffer)
     {
@@ -58,7 +58,7 @@ uint8_t memory_read8(const MEM_PAGE& page, int32_t ticks, uint16_t addr)
 void memory_write8(const MEM_PAGE& page, int32_t ticks, uint16_t addr, uint8_t value)
 {
     MEM_ACCESS* access = page.access;
-    uint16_t addrFixed = addr - page.offset;
+    uint16_t addrFixed = static_cast<uint16_t>(addr - page.offset);
     uint8_t* buffer = access->io.write.mem;
     if (buffer)
     {

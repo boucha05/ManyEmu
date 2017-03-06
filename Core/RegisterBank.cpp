@@ -7,6 +7,9 @@ namespace
 {
     uint8_t nullRead8(void* context, int32_t ticks, uint16_t addr)
     {
+        EMU_UNUSED(context);
+        EMU_UNUSED(ticks);
+        EMU_UNUSED(addr);
 #if !REPORT_INVALID_REGISTERS
         EMU_NOT_IMPLEMENTED();
 #endif
@@ -15,6 +18,10 @@ namespace
 
     void nullWrite8(void* context, int32_t ticks, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(context);
+        EMU_UNUSED(ticks);
+        EMU_UNUSED(addr);
+        EMU_UNUSED(value);
 #if !REPORT_INVALID_REGISTERS
         EMU_NOT_IMPLEMENTED();
 #endif
@@ -22,12 +29,12 @@ namespace
 
     uint8_t regsRead8(void* context, int32_t ticks, uint32_t addr)
     {
-        return static_cast<emu::RegisterBank*>(context)->read8(ticks, addr);
+        return static_cast<emu::RegisterBank*>(context)->read8(ticks, static_cast<uint16_t>(addr));
     }
 
     void regsWrite8(void* context, int32_t ticks, uint32_t addr, uint8_t value)
     {
-        static_cast<emu::RegisterBank*>(context)->write8(ticks, addr, value);
+        static_cast<emu::RegisterBank*>(context)->write8(ticks, static_cast<uint16_t>(addr), value);
     }
 }
 
@@ -191,6 +198,8 @@ namespace emu
         mAddr = 0;
         mRead8Method = [](int32_t ticks, uint16_t addr)
         {
+            EMU_UNUSED(ticks);
+            EMU_UNUSED(addr);
             return 0;
         };
     }
@@ -253,6 +262,9 @@ namespace emu
         mAddr = 0;
         mWrite8Method = [](int32_t ticks, uint16_t addr, uint8_t value)
         {
+            EMU_UNUSED(ticks);
+            EMU_UNUSED(addr);
+            EMU_UNUSED(value);
         };
     }
 

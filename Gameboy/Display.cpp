@@ -400,8 +400,8 @@ namespace gb
 
             for (uint32_t index = 0; index < 5; ++index)
             {
-                EMU_VERIFY(mRegisterAccessors.read.HDMA[index].create(registers, 0x51 + index, *this, &Display::readHDMA));
-                EMU_VERIFY(mRegisterAccessors.write.HDMA[index].create(registers, 0x51 + index, *this, &Display::writeHDMA));
+                EMU_VERIFY(mRegisterAccessors.read.HDMA[index].create(registers, static_cast<uint16_t>(0x51 + index), *this, &Display::readHDMA));
+                EMU_VERIFY(mRegisterAccessors.write.HDMA[index].create(registers, static_cast<uint16_t>(0x51 + index), *this, &Display::writeHDMA));
             }
         }
 
@@ -477,11 +477,14 @@ namespace gb
 
     uint8_t Display::readLCDC(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         return mRegLCDC;
     }
 
     void Display::writeLCDC(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         uint8_t modified = mRegLCDC ^ value;
         if (modified)
         {
@@ -508,6 +511,7 @@ namespace gb
 
     uint8_t Display::readSTAT(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(addr);
         uint8_t mode = getMode(tick);
         uint8_t coincidence = mRegLY == mRegLYC ? STAT_LYC_LY_STATUS : 0;
         uint8_t value = mRegSTAT | mode | coincidence;
@@ -516,6 +520,7 @@ namespace gb
 
     void Display::writeSTAT(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         value &= STAT_WRITE_MASK;
         uint8_t modified = mRegSTAT ^ value;
         if (modified)
@@ -540,11 +545,14 @@ namespace gb
 
     uint8_t Display::readSCY(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         return mRegSCY;
     }
 
     void Display::writeSCY(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         if (mRegSCY != value)
         {
             render(tick);
@@ -554,11 +562,14 @@ namespace gb
 
     uint8_t Display::readSCX(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         return mRegSCX;
     }
 
     void Display::writeSCX(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         if (mRegSCX != value)
         {
             render(tick);
@@ -568,6 +579,7 @@ namespace gb
 
     uint8_t Display::readLY(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(addr);
         updateRasterPos(tick);
         auto value = mRegLY;
         if (value >= 153)
@@ -577,17 +589,22 @@ namespace gb
 
     void Display::writeLY(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         mRegLY = value;
     }
 
     uint8_t Display::readLYC(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         return mRegLYC;
     }
 
     void Display::writeLYC(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         if (mRegLYC != value)
         {
             mRegLYC = value;
@@ -597,6 +614,7 @@ namespace gb
 
     void Display::writeDMA(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         if (!mConfig.fastDMA)
         {
             EMU_NOT_IMPLEMENTED();
@@ -617,11 +635,14 @@ namespace gb
 
     uint8_t Display::readBGP(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         return mRegBGP;
     }
 
     void Display::writeBGP(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         if (mRegBGP != value)
         {
             mCachedPalette = false;
@@ -632,11 +653,14 @@ namespace gb
 
     uint8_t Display::readOBP0(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         return mRegOBP0;
     }
 
     void Display::writeOBP0(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         if (mRegOBP0 != value)
         {
             mCachedPalette = false;
@@ -647,11 +671,14 @@ namespace gb
 
     uint8_t Display::readOBP1(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         return mRegOBP1;
     }
 
     void Display::writeOBP1(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         if (mRegOBP1 != value)
         {
             mCachedPalette = false;
@@ -662,11 +689,14 @@ namespace gb
 
     uint8_t Display::readWY(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         return mRegWY;
     }
 
     void Display::writeWY(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         if (mRegWY != value)
         {
             render(tick);
@@ -676,11 +706,14 @@ namespace gb
 
     uint8_t Display::readWX(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         return mRegWX;
     }
 
     void Display::writeWX(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         if (mRegWX != value)
         {
             render(tick);
@@ -690,33 +723,44 @@ namespace gb
 
     uint8_t Display::readVBK(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         return mBankVRAM;
     }
 
     void Display::writeVBK(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         mBankVRAM = value & VBK_MASK;
         updateMemoryMap();
     }
 
     uint8_t Display::readBGPI(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         return mRegBGPI;
     }
 
     void Display::writeBGPI(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         mRegBGPI = value;
     }
 
     uint8_t Display::readBGPD(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         uint8_t index = mRegBGPI & BGPI_INDEX_MASK;
         return mRegBGPD[index];
     }
 
     void Display::writeBGPD(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         render(tick);
         auto index = mRegBGPI & BGPI_INDEX_MASK;
         mRegBGPD[index] = value;
@@ -730,22 +774,29 @@ namespace gb
 
     uint8_t Display::readOBPI(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         return mRegOBPI;
     }
 
     void Display::writeOBPI(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         mRegOBPI = value;
     }
 
     uint8_t Display::readOBPD(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         uint8_t index = mRegOBPI & OBPI_INDEX_MASK;
         return mRegOBPD[index];
     }
 
     void Display::writeOBPD(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         render(tick);
         auto index = mRegOBPI & OBPI_INDEX_MASK;
         mRegOBPD[index] = value;
@@ -759,6 +810,7 @@ namespace gb
 
     uint8_t Display::readHDMA(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
         uint32_t index = addr - 0x51;
         return mRegHDMA[index];
     }
@@ -787,9 +839,9 @@ namespace gb
             dst = (dst & HDMA_DST_MASK) + HDMA_DST_BASE;
             for (uint32_t pos = 0; pos < size; ++pos)
             {
-                uint8_t value = mMemory->read8(mMemoryHDMAReadAccessor, tick, src + pos);
+                uint8_t localValue = mMemory->read8(mMemoryHDMAReadAccessor, tick, static_cast<uint16_t>(src + pos));
                 auto dstFinal = ((dst + pos) & HDMA_DST_FINAL_MASK) + HDMA_DST_BASE;
-                mMemory->write8(mMemoryHDMAWriteAccessor, tick, dstFinal, value);
+                mMemory->write8(mMemoryHDMAWriteAccessor, tick, static_cast<uint16_t>(dstFinal), localValue);
             }
             mRegHDMA[4] = HDMA5_DONE;
         }
@@ -916,8 +968,9 @@ namespace gb
             }
             else
             {
-                uint8_t rasterLine = tick / mTicksPerLine;
+                uint8_t rasterLine = static_cast<uint8_t>(tick / mTicksPerLine);
                 uint8_t deltaLine = rasterLine - mRasterLine;
+                EMU_UNUSED(deltaLine);
                 mRasterLine = rasterLine;
                 mRegLY = rasterLine;
                 mLineTick = tick % mTicksPerLine;
@@ -955,7 +1008,6 @@ namespace gb
         }
 
         // Update dirty predictions
-        auto intEnabledOld = mIntEnabled;
         if (mIntUpdate)
         {
             if (mIntUpdate & INT_MODE_0)
@@ -1091,7 +1143,7 @@ namespace gb
                 if ((spriteY >= SPRITE_VISIBLE_Y_END) || (spriteY + spriteSizeY <= SPRITE_VISIBLE_Y_BEGIN))
                     continue;
 
-                mOAMOrder[mActiveSprites++] = index;
+                mOAMOrder[mActiveSprites++] = static_cast<uint8_t>(index);
             }
         }
         else
@@ -1340,7 +1392,7 @@ namespace gb
 
                 if (hasWindow)
                 {
-                    uint8_t windowLineY = line - mRegWY;
+                    uint8_t windowLineY = static_cast<uint8_t>(line - mRegWY);
                     uint8_t windowTileY = windowLineY >> 3;
                     uint8_t windowTileOffsetY = windowLineY & 0x07;
                     if (windowPrevTileY != windowTileY)
@@ -1354,7 +1406,7 @@ namespace gb
                 }
 
                 if (spritesEnabled)
-                    drawSprites(rowStorage, line, spriteSizeY, spritePaletteMask, spritePaletteShift, spriteBankMask);
+                    drawSprites(rowStorage, static_cast<uint8_t>(line), spriteSizeY, spritePaletteMask, spritePaletteShift, spriteBankMask);
             }
             blitLine(reinterpret_cast<uint32_t*>(dest), rowStorage + 8, DISPLAY_SIZE_X);
             dest += mPitch;
@@ -1385,9 +1437,9 @@ namespace gb
             if (mSurface && (firstLine <= lastLine))
                 renderLines(firstLine, lastLine);
 
-            mRenderedLine = lastLine + 1;
+            mRenderedLine = static_cast<uint8_t>(lastLine + 1);
             mRenderedTick = tick;
-            mRenderedLineFirstTick = mLineFirstTick;
+            mRenderedLineFirstTick = static_cast<uint8_t>(mLineFirstTick);
         }
     }
 }

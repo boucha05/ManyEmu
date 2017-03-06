@@ -1,4 +1,5 @@
 #include "Job.h"
+#include "Core.h"
 
 void Job::initialize(Func _func, void* _context, uint32_t _priority)
 {
@@ -22,6 +23,7 @@ struct JobScheduler::WorkerThread : public IExecutable
     WorkerThread(JobScheduler* _scheduler, uint32_t threadIndex)
         : scheduler(_scheduler)
     {
+        EMU_UNUSED(threadIndex);
     }
 
     virtual void execute() override
@@ -110,6 +112,7 @@ void JobScheduler::addReadyJob(Job& job)
 
 Job* JobScheduler::pickJob(uint32_t threadIndex)
 {
+    EMU_UNUSED(threadIndex);
     while (!mReadyJobs)
     {
         if (mTerminate)
@@ -138,6 +141,7 @@ Job* JobScheduler::pickJob(uint32_t threadIndex)
 
 void JobScheduler::terminateJob(Job& job, uint32_t threadIndex)
 {
+    EMU_UNUSED(threadIndex);
     auto unlockedJob = job.unlockedJob;
     if (unlockedJob && (--unlockedJob->waitCount == 0))
     {

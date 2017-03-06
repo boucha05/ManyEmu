@@ -101,6 +101,7 @@ namespace gb
 
     bool Timer::create(emu::Clock& clock, uint32_t clockFrequency, uint32_t fixedClockDivider, uint32_t variableClockDivider, Interrupts& interrupts, emu::RegisterBank& registers)
     {
+        EMU_UNUSED(fixedClockDivider);
         mClock = &clock;
         mInterrupts = &interrupts;
         mClockFrequency = clockFrequency;
@@ -235,7 +236,7 @@ namespace gb
                 uint32_t timer = divClock + mRegTIMA;
                 while (timer >= TIMER_OVERFLOW)
                     timer -= TIMER_OVERFLOW - mRegTMA;
-                mRegTIMA = timer;
+                mRegTIMA = static_cast<uint8_t>(timer);
             }
         }
     }
@@ -279,30 +280,36 @@ namespace gb
         {
             mInterrupts->setInterrupt(tick, gb::Interrupts::Signal::Timer);
             auto delta = tick - mTimerLastIntTick;
+            EMU_UNUSED(delta);
             mTimerLastIntTick = tick;
         }
     }
 
     uint8_t Timer::readDIV(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(addr);
         advanceDIV(tick);
         return mRegDIV;
     }
 
     void Timer::writeDIV(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
+        EMU_UNUSED(value);
         advanceDIV(tick);
         mRegDIV = 0;
     }
 
     uint8_t Timer::readTIMA(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(addr);
         updateTimerValue(tick);
         return mRegTIMA;
     }
 
     void Timer::writeTIMA(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         updateTimerValue(tick);
         mRegTIMA = value;
         updateTimerPrediction();
@@ -310,11 +317,14 @@ namespace gb
 
     uint8_t Timer::readTMA(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         return mRegTMA;
     }
 
     void Timer::writeTMA(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         if (mRegTMA != value)
         {
             updateTimerValue(tick);
@@ -325,11 +335,14 @@ namespace gb
 
     uint8_t Timer::readTAC(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         return mRegTAC;
     }
 
     void Timer::writeTAC(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         if (mRegTAC != value)
         {
             updateTimerValue(tick);

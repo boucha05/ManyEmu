@@ -28,6 +28,7 @@ namespace
 
         virtual void configureController(StandardController& controller, uint32_t player)
         {
+            EMU_UNUSED(player);
             controller.addInput(Input_Player1 + Input_HorizontalAxis, gb::Context::ButtonRight, gb::Context::ButtonLeft);
             controller.addInput(Input_Player1 + Input_VerticalAxis, gb::Context::ButtonDown, gb::Context::ButtonUp);
             controller.addInput(Input_Player1 + Input_B, gb::Context::ButtonB);

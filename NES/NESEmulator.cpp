@@ -28,6 +28,7 @@ namespace nes
 
     bool Emulator::getDisplaySize(emu::Context& context, uint32_t& sizeX, uint32_t& sizeY)
     {
+        EMU_UNUSED(context);
         sizeX = nes::Context::DisplaySizeX;
         sizeY = nes::Context::DisplaySizeY;
         return true;

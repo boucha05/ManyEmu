@@ -12,6 +12,7 @@ namespace nes
 
         virtual bool initialize(const Components& components)
         {
+            EMU_UNUSED(components);
             return true;
         }
     };

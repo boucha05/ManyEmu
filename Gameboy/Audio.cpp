@@ -428,6 +428,7 @@ namespace gb
 
     void Audio::Frequency::onWriteNRx4(int32_t tick)
     {
+        EMU_UNUSED(tick);
         if (mNRx4 & NRx4_RELOAD)
             reload();
     }
@@ -470,6 +471,7 @@ namespace gb
 
     void Audio::NoiseFrequency::onWriteNRx4(int32_t tick)
     {
+        EMU_UNUSED(tick);
         if (mNRx4 & NRx4_RELOAD)
             reload();
     }
@@ -603,6 +605,8 @@ namespace gb
 
     bool Audio::create(emu::Clock& clock, uint32_t masterClockFrequency, uint32_t masterClockDivider, emu::RegisterBank& registers)
     {
+        EMU_UNUSED(masterClockFrequency);
+
         mClock = &clock;
         EMU_VERIFY(mClockListener.create(clock, *this));
 
@@ -662,8 +666,8 @@ namespace gb
 
         for (uint32_t index = 0; index < EMU_ARRAY_SIZE(mRegWAVE); ++index)
         {
-            EMU_VERIFY(mRegisterAccessors.read.WAVE[index].create(registers, 0x30 + index, *this, &Audio::readWAVE));
-            EMU_VERIFY(mRegisterAccessors.write.WAVE[index].create(registers, 0x30 + index, *this, &Audio::writeWAVE));
+            EMU_VERIFY(mRegisterAccessors.read.WAVE[index].create(registers, static_cast<uint16_t>(0x30 + index), *this, &Audio::readWAVE));
+            EMU_VERIFY(mRegisterAccessors.write.WAVE[index].create(registers, static_cast<uint16_t>(0x30 + index), *this, &Audio::writeWAVE));
         }
 
         return true;
@@ -737,22 +741,22 @@ namespace gb
                 if (mChannel1Length.getOutputMask())
                 {
                     mChannel1Frequency.update(tick);
-                    level[0] = mChannel1Length.getOutputMask() & mChannel1Pattern.getSample(mChannel1Frequency.getCycle(), mChannel1Volume.getVolume());
+                    level[0] = static_cast<uint8_t>(mChannel1Length.getOutputMask() & mChannel1Pattern.getSample(mChannel1Frequency.getCycle(), mChannel1Volume.getVolume()));
                 }
                 if (mChannel2Length.getOutputMask())
                 {
                     mChannel2Frequency.update(tick);
-                    level[1] = mChannel2Length.getOutputMask() & mChannel2Pattern.getSample(mChannel2Frequency.getCycle(), mChannel2Volume.getVolume());
+                    level[1] = static_cast<uint8_t>(mChannel2Length.getOutputMask() & mChannel2Pattern.getSample(mChannel2Frequency.getCycle(), mChannel2Volume.getVolume()));
                 }
                 if (mChannel3Length.getOutputMask())
                 {
                     mChannel3Frequency.update(tick);
-                    level[2] = mChannel3Length.getOutputMask() & mChannel3Pattern.getSample(mChannel3Frequency.getCycle());
+                    level[2] = static_cast<uint8_t>(mChannel3Length.getOutputMask() & mChannel3Pattern.getSample(mChannel3Frequency.getCycle()));
                 }
                 if (mChannel4Length.getOutputMask())
                 {
                     mChannel4Frequency.update(tick);
-                    level[3] = mChannel4Length.getOutputMask() & mChannel4Pattern.getSample(mChannel4Frequency.getCycle(), mChannel4Volume.getVolume());
+                    level[3] = static_cast<uint8_t>(mChannel4Length.getOutputMask() & mChannel4Pattern.getSample(mChannel4Frequency.getCycle(), mChannel4Volume.getVolume()));
                 }
 
                 for (uint32_t track = 0; track < 2; ++track)
@@ -837,24 +841,30 @@ namespace gb
 
     uint8_t Audio::readNR10(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR10;
     }
 
     void Audio::writeNR10(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR10 = value;
     }
 
     uint8_t Audio::readNR11(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR11;
     }
 
     void Audio::writeNR11(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR11 = value;
         mChannel1Length.onWriteNRx1();
@@ -862,36 +872,45 @@ namespace gb
 
     uint8_t Audio::readNR12(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR12;
     }
 
     void Audio::writeNR12(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR12 = value;
     }
 
     uint8_t Audio::readNR13(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR13;
     }
 
     void Audio::writeNR13(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR13 = value;
     }
 
     uint8_t Audio::readNR14(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR14;
     }
 
     void Audio::writeNR14(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR14 = value;
         mChannel1Length.onWriteNRx4();
@@ -902,12 +921,15 @@ namespace gb
 
     uint8_t Audio::readNR21(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR21;
     }
 
     void Audio::writeNR21(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR21 = value;
         mChannel2Length.onWriteNRx1();
@@ -915,36 +937,45 @@ namespace gb
 
     uint8_t Audio::readNR22(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR22;
     }
 
     void Audio::writeNR22(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR22 = value;
     }
 
     uint8_t Audio::readNR23(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR23;
     }
 
     void Audio::writeNR23(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR23 = value;
     }
 
     uint8_t Audio::readNR24(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR24;
     }
 
     void Audio::writeNR24(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR24 = value;
         mChannel2Length.onWriteNRx4();
@@ -954,24 +985,30 @@ namespace gb
 
     uint8_t Audio::readNR30(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR30;
     }
 
     void Audio::writeNR30(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR30 = value;
     }
 
     uint8_t Audio::readNR31(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR31;
     }
 
     void Audio::writeNR31(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR31 = value;
         mChannel3Length.onWriteNRx1();
@@ -979,36 +1016,45 @@ namespace gb
 
     uint8_t Audio::readNR32(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR32;
     }
 
     void Audio::writeNR32(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR32 = value;
     }
 
     uint8_t Audio::readNR33(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR33;
     }
 
     void Audio::writeNR33(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR33 = value;
     }
 
     uint8_t Audio::readNR34(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR34;
     }
 
     void Audio::writeNR34(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR34 = value;
         mChannel3Length.onWriteNRx4();
@@ -1017,12 +1063,15 @@ namespace gb
 
     uint8_t Audio::readNR41(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR41;
     }
 
     void Audio::writeNR41(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR41 = value;
         mChannel4Length.onWriteNRx1();
@@ -1030,36 +1079,45 @@ namespace gb
 
     uint8_t Audio::readNR42(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR42;
     }
 
     void Audio::writeNR42(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR42 = value;
     }
 
     uint8_t Audio::readNR43(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR43;
     }
 
     void Audio::writeNR43(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR43 = value;
     }
 
     uint8_t Audio::readNR44(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR44;
     }
 
     void Audio::writeNR44(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR44 = value;
         mChannel4Length.onWriteNRx4();
@@ -1069,42 +1127,52 @@ namespace gb
 
     uint8_t Audio::readNR50(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR50;
     }
 
     void Audio::writeNR50(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR50 = value;
     }
 
     uint8_t Audio::readNR51(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR51;
     }
 
     void Audio::writeNR51(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR51 = value;
     }
 
     uint8_t Audio::readNR52(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
+        EMU_UNUSED(addr);
         EMU_NOT_IMPLEMENTED();
         return mRegNR52;
     }
 
     void Audio::writeNR52(int32_t tick, uint16_t addr, uint8_t value)
     {
+        EMU_UNUSED(addr);
         update(tick);
         mRegNR52 = value;
     }
 
     uint8_t Audio::readWAVE(int32_t tick, uint16_t addr)
     {
+        EMU_UNUSED(tick);
         EMU_NOT_IMPLEMENTED();
         return mRegWAVE[addr - 0x30];
     }

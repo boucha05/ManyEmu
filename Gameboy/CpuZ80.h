@@ -21,15 +21,15 @@ namespace gb
         class IInterruptListener
         {
         public:
-            virtual void onInterruptEnable(int32_t tick) {}
-            virtual void onInterruptDisable(int32_t tick) {}
+            virtual void onInterruptEnable(int32_t tick) { EMU_UNUSED(tick); }
+            virtual void onInterruptDisable(int32_t tick) { EMU_UNUSED(tick); }
         };
 
         class IStopListener
         {
         public:
-            virtual void onHalt(int32_t tick) {}
-            virtual void onStop(int32_t tick) {}
+            virtual void onHalt(int32_t tick) { EMU_UNUSED(tick); }
+            virtual void onStop(int32_t tick) { EMU_UNUSED(tick); }
         };
         
         CpuZ80();
@@ -95,11 +95,11 @@ namespace gb
 
         // GMB 8bit - Loadcommands
         void insn_ld(uint8_t& dest, uint8_t src);
-        void insn_ld(addr& dest, uint8_t src);
+        void insn_ld(const addr& dest, uint8_t src);
 
         // GMB 16bit - Loadcommands
         void insn_ld(uint16_t& dest, uint16_t src);
-        void insn_ld(addr& dest, uint16_t src);
+        void insn_ld(const addr& dest, uint16_t src);
         void insn_push(uint16_t src);
         void insn_pop(uint16_t& dest);
 
@@ -113,9 +113,9 @@ namespace gb
         void insn_or(uint8_t src);
         void insn_cp(uint8_t src);
         void insn_inc(uint8_t& dest);
-        void insn_inc(addr& dest);
+        void insn_inc(const addr& dest);
         void insn_dec(uint8_t& dest);
-        void insn_dec(addr& dest);
+        void insn_dec(const addr& dest);
         void insn_daa();
         void insn_cpl();
 
@@ -132,28 +132,28 @@ namespace gb
         void insn_rrca();
         void insn_rra();
         void insn_rlc(uint8_t& dest);
-        void insn_rlc(addr& dest);
+        void insn_rlc(const addr& dest);
         void insn_rl(uint8_t& dest);
-        void insn_rl(addr& dest);
+        void insn_rl(const addr& dest);
         void insn_rrc(uint8_t& dest);
-        void insn_rrc(addr& dest);
+        void insn_rrc(const addr& dest);
         void insn_rr(uint8_t& dest);
-        void insn_rr(addr& dest);
+        void insn_rr(const addr& dest);
         void insn_sla(uint8_t& dest);
-        void insn_sla(addr& dest);
+        void insn_sla(const addr& dest);
         void insn_swap(uint8_t& dest);
-        void insn_swap(addr& dest);
+        void insn_swap(const addr& dest);
         void insn_sra(uint8_t& dest);
-        void insn_sra(addr& dest);
+        void insn_sra(const addr& dest);
         void insn_srl(uint8_t& dest);
-        void insn_srl(addr& dest);
+        void insn_srl(const addr& dest);
 
         // GMB Singlebit Operation Commands
         void insn_bit(uint8_t mask, uint8_t src);
         void insn_set(uint8_t mask, uint8_t& dest);
-        void insn_set(uint8_t mask, addr& dest);
+        void insn_set(uint8_t mask, const addr& dest);
         void insn_res(uint8_t mask, uint8_t& dest);
-        void insn_res(uint8_t mask, addr& dest);
+        void insn_res(uint8_t mask, const addr& dest);
 
         // GMB CPU-Controlcommands
         void insn_ccf();

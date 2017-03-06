@@ -725,9 +725,9 @@ void Application::update()
         while (mPlayback->seekCapacity > mConfig.replayBufferSize)
         {
             EMU_ASSERT(!mPlayback->seekQueue.empty());
-            size_t size = mPlayback->seekQueue.front();
+            size_t localSize = mPlayback->seekQueue.front();
             mPlayback->seekQueue.pop_front();
-            mPlayback->seekCapacity -= size;
+            mPlayback->seekCapacity -= localSize;
             EMU_ASSERT(mPlayback->seekCapacity >= 0);
         }
         mPlayback->elapsedFrames = 0;

@@ -215,7 +215,7 @@ namespace
 
         virtual void setController(uint32_t index, uint32_t buttons)
         {
-            apu.setController(index, buttons);
+            apu.setController(index, static_cast<uint8_t>(buttons));
         }
 
         virtual void setSoundBuffer(int16_t* buffer, size_t size)

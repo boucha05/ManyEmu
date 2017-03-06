@@ -27,6 +27,8 @@ namespace nes
             mRom = components.rom;
             const auto& romDescription = mRom->getDescription();
             const auto& romContent = mRom->getContent();
+            EMU_UNUSED(romDescription);
+            EMU_UNUSED(romContent);
             mMemPrgRomWrite.setWriteMethod(regWrite, this);
 
             // CHR RAM
@@ -89,12 +91,14 @@ namespace nes
 
         void regWrite(uint32_t addr, uint8_t value)
         {
+            EMU_UNUSED(addr);
             mRegister = value;
             updateMemoryMap();
         }
 
         static void regWrite(void* context, int32_t ticks, uint32_t addr, uint8_t value)
         {
+            EMU_UNUSED(ticks);
             static_cast<Mapper2*>(context)->regWrite(addr, value);
         }
 

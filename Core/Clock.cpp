@@ -6,6 +6,8 @@ namespace
 {
     void advancedDummyCallback(void* context, int32_t ticks)
     {
+        EMU_UNUSED(context);
+        EMU_UNUSED(ticks);
     }
 }
 
@@ -129,7 +131,7 @@ namespace emu
 
     void Clock::addSync(int32_t ticks)
     {
-        addEvent([](void* context, int32_t tick) {}, nullptr, ticks);
+        addEvent([](void* context, int32_t ticks) { EMU_UNUSED(context); EMU_UNUSED(ticks); }, nullptr, ticks);
     }
 
     void Clock::clearEvents()
@@ -156,6 +158,7 @@ namespace emu
         //EMU_ASSERT(mTimers.empty());
 
         uint32_t version = 1;
+        EMU_UNUSED(version);
         serializer.serialize(mTargetTicks);
         serializer.serialize(mDesiredTicks);
     }
