@@ -1,8 +1,6 @@
 #define SDL_MAIN_HANDLED
-#define GLEW_STATIC
 
 #include <SDL.h>
-#include <gl/glew.h>
 #include <string>
 #include <vector>
 #include <deque>
@@ -11,9 +9,12 @@
 #include <Core/Stream.h>
 #include "Backend.h"
 #include "GameSession.h"
+#include "GameView.h"
 #include "InputManager.h"
 #include "Job.h"
 #include "Path.h"
+#include "Texture.h"
+#include <functional>
 
 #define DUMP_ROM_LIST 0
 
@@ -35,80 +36,6 @@ namespace
         }
         return true;
     }
-
-    class Texture
-    {
-    public:
-        Texture()
-        {
-            initialize();
-        }
-
-        ~Texture()
-        {
-            destroy();
-        }
-
-        bool create(uint32_t width, uint32_t height)
-        {
-            EMU_VERIFY(width > 0);
-            EMU_VERIFY(height > 0);
-            mWidth = width;
-            mHeight = height;
-            glGenTextures(1, &mTexture);
-            glBindTexture(GL_TEXTURE_2D, mTexture);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-            return true;
-        }
-
-        void destroy()
-        {
-            if (mTexture)
-            {
-                glDeleteTextures(1, &mTexture);
-                mTexture = 0;
-            }
-        }
-
-        bool update(const void* data, size_t size)
-        {
-            auto imageSize = mWidth * mHeight * 4;
-            EMU_VERIFY(size >= imageSize);
-
-            glBindTexture(GL_TEXTURE_2D, mTexture);
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mWidth, mHeight, GL_RGBA, GL_UNSIGNED_BYTE, data);
-            return true;
-        }
-
-        uint32_t getWidth() const
-        {
-            return mWidth;
-        }
-
-        uint32_t getHeight() const
-        {
-            return mHeight;
-        }
-
-        ImTextureID getImTextureID() const
-        {
-            return reinterpret_cast<ImTextureID>(static_cast<intptr_t>(mTexture));
-        }
-
-    private:
-        void initialize()
-        {
-            mWidth = 0;
-            mHeight = 0;
-            mTexture = 0;
-        }
-
-        uint32_t    mWidth;
-        uint32_t    mHeight;
-        GLuint      mTexture;
-    };
 
     class SandboxImpl : public Sandbox
     {
@@ -137,7 +64,6 @@ namespace
             bool            display;            // Display video output (enabled by default, for debugging only)
             bool            stubDisplay;        // Use fake display
             bool            vsync;              // Wait vsync
-            bool            showSandbox;        // Show sandbox
 
             Config()
                 : frameSkip(0)
@@ -156,7 +82,6 @@ namespace
                 , display(true)
                 , stubDisplay(false)
                 , vsync(true)
-                , showSandbox(true)
             {
             }
         };
@@ -175,13 +100,6 @@ namespace
         {
             if (!mValid)
                 return;
-
-            // Scene view
-            if (ImGui::BeginDock("Sandbvox", &mConfig.showSandbox))
-            {
-                render();
-            }
-            ImGui::EndDock();
         }
 
         virtual void update() override;
@@ -204,11 +122,8 @@ namespace
         void destroySound();
         GameSession* createGameSession(const std::string& path, const std::string& saveDirectory);
         void destroyGameSession(GameSession& gameSession);
-        void render();
         void audioCallback(int16_t* data, uint32_t size);
         static void audioCallback(void* userData, Uint8* stream, int len);
-
-        static const uint32_t BUFFERING = 2;
 
         typedef std::vector<GameSession*> GameSessionArray;
 
@@ -216,11 +131,10 @@ namespace
         JobScheduler                mJobScheduler;
         uint32_t                    mTexSizeX;
         uint32_t                    mTexSizeY;
-        Texture                     mTexture[BUFFERING];
+        Texture                     mTexture;
         std::vector<uint8_t>        mFakeTexture;
         bool                        mValid;
         bool                        mFirst;
-        uint32_t                    mBufferIndex;
         uint32_t                    mFrameIndex;
         uint32_t                    mBufferCount;
         SDL_AudioDeviceID           mSoundDevice;
@@ -249,6 +163,8 @@ namespace
         GameSessionArray            mGameSessions;
         uint32_t                    mActiveGameSession;
 
+        GameView*                   mGameView;
+
         struct Playback
         {
             Playback(size_t size)
@@ -271,7 +187,6 @@ namespace
     SandboxImpl::SandboxImpl()
         : mValid(false)
         , mFirst(true)
-        , mBufferIndex(0)
         , mFrameIndex(0)
         , mBufferCount(0)
         , mSoundDevice(0)
@@ -292,6 +207,7 @@ namespace
         , mPlayer1(nullptr)
         , mActiveGameSession(0)
         , mPlayback(nullptr)
+        , mGameView(nullptr)
     {
     }
 
@@ -316,10 +232,7 @@ namespace
 
         mTexSizeX = 256;
         mTexSizeY = 240;
-        for (auto& texture : mTexture)
-        {
-            EMU_VERIFY(texture.create(mTexSizeX, mTexSizeY));
-        }
+        EMU_VERIFY(mTexture.create(mTexSizeX, mTexSizeY));
         mFakeTexture.resize(mTexSizeX * mTexSizeY * 4);
 
 #if 0
@@ -416,6 +329,8 @@ namespace
             mGameSessions[mActiveGameSession]->getBackend()->configureController(*mPlayer1Controller, 0);
         }
 
+        mGameView = &application.getGameView();
+
         mValid = true;
         return true;
     }
@@ -423,6 +338,8 @@ namespace
     void SandboxImpl::destroy(Application& application)
     {
         EMU_UNUSED(application);
+
+        mGameView = nullptr;
 
         for (auto gameSession : mGameSessions)
             destroyGameSession(*gameSession);
@@ -471,12 +388,7 @@ namespace
         }
 
         mInputManager.destroy();
-
-        for (auto& texture : mTexture)
-        {
-            texture.destroy();
-        }
-
+        mTexture.destroy();
         mJobScheduler.destroy();
     }
 
@@ -573,6 +485,9 @@ namespace
 
     void SandboxImpl::update()
     {
+        if (mGameView)
+            mGameView->clear();
+
         if (!mValid)
             return;
 
@@ -669,7 +584,7 @@ namespace
 
         if (pixels)
         {
-            mTexture[mBufferIndex].update(pixels, mFakeTexture.size());
+            mTexture.update(pixels, mFakeTexture.size());
         }
 
         if (mSoundFile)
@@ -755,10 +670,7 @@ namespace
         }
 
         ++mFrameIndex;
-    }
 
-    void SandboxImpl::render()
-    {
         bool visible = !mFirst;
         mFirst = false;
         if (mConfig.frameSkip)
@@ -766,55 +678,10 @@ namespace
             --mConfig.frameSkip;
             visible = false;
         }
-        else
-        {
-            //exit(1);
-        }
-
         if (visible)
         {
-            auto size = ImGui::GetContentRegionAvail();
-            uint32_t screenSizeX = static_cast<uint32_t>(size.x);
-            uint32_t screenSizeY = static_cast<uint32_t>(size.y);
-
-            uint32_t imageRectW = mTexSizeX;
-            uint32_t imageRectH = mTexSizeY;
-            if (mActiveGameSession <= mGameSessions.size())
-            {
-                auto& gameSession = *mGameSessions[mActiveGameSession];
-                if (gameSession.isValid())
-                {
-                    gameSession.getDisplaySize(imageRectW, imageRectH);
-                }
-            }
-
-            uint32_t screenRectW = 0;
-            uint32_t screenRectH = 0;
-            uint32_t screenRectX = 0;
-            uint32_t screenRectY = 0;
-            uint32_t scaledX = screenSizeY * imageRectW / imageRectH;
-            if (screenSizeX > scaledX)
-            {
-                screenRectW = scaledX;
-                screenRectH = screenSizeY;
-                screenRectX = (screenSizeX - screenRectW + 1) >> 1;
-            }
-            else
-            {
-                screenRectW = screenSizeX;
-                screenRectH = screenSizeX * imageRectH / imageRectW;
-                screenRectY = (screenSizeY - screenRectH + 1) >> 1;
-            }
-
-            ImGui::Image(
-                mTexture[mBufferIndex].getImTextureID(),
-                ImVec2(static_cast<float>(screenRectW), static_cast<float>(screenRectH)),
-                ImVec2(0, 0),
-                ImVec2(static_cast<float>(imageRectW) / mTexSizeX, static_cast<float>(imageRectH) / mTexSizeY));
+            mGameView->setGameSession(*mGameSessions[mActiveGameSession], mTexture);
         }
-
-        if (++mBufferIndex >= BUFFERING)
-            mBufferIndex = 0;
     }
 
     void SandboxImpl::audioCallback(int16_t* data, uint32_t size)

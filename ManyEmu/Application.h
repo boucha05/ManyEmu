@@ -7,6 +7,8 @@ namespace emu
     class ISerializer;
 }
 
+class GameView;
+
 class Application
 {
 public:
@@ -22,9 +24,21 @@ public:
         virtual void serialize(emu::ISerializer& serializer) { (void)serializer; }
     };
 
+    class IView
+    {
+    public:
+        virtual ~IView() {}
+        virtual const char* getName() const = 0;
+        virtual void onGUI() = 0;
+    };
+
     virtual bool run() = 0;
     virtual void addPlugin(IPlugin& plugin) = 0;
     virtual void removePlugin(IPlugin& plugin) = 0;
+    virtual void addView(IView& view) = 0;
+    virtual void removeView(IView& view) = 0;
+
+    virtual GameView& getGameView() = 0;
 
     static Application* create();
     static void destroy(Application& instance);

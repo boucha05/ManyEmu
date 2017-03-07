@@ -1,10 +1,12 @@
 #define SDL_MAIN_HANDLED
 #include "Application.h"
+#include "GameView.h"
 #include <Core/YamlSerializer.h>
 #include "imgui_impl_sdl_gl3.h"
 #include <SDL.h>
 #include <gl/gl3w.h>
 #include <algorithm>
+#include <map>
 #include <vector>
 
 using namespace emu;
@@ -208,6 +210,26 @@ namespace
             }
         }
 
+        virtual void addView(IView& view) override
+        {
+            mViews.push_back(&view);
+            mViewSettings[view.getName()];
+        }
+
+        virtual void removeView(IView& view) override
+        {
+            auto item = std::find(mViews.begin(), mViews.end(), &view);
+            if (item != mViews.end())
+            {
+                mViews.erase(item);
+            }
+        }
+
+        virtual GameView& getGameView() override
+        {
+            return mGameView;
+        }
+
     private:
         void initialize()
         {
@@ -245,12 +267,21 @@ namespace
             // Setup ImGui binding
             ImGui_ImplSdlGL3_Init(mWindow);
 
+            addView(mGameView);
+
             mRunning = true;
             return true;
         }
 
         void destroy()
         {
+            removeView(mGameView);
+
+            while (!mViews.empty())
+            {
+                removeView(*mViews.back());
+            }
+
             while (!mPlugins.empty())
             {
                 removePlugin(*mPlugins.back());
@@ -270,6 +301,14 @@ namespace
             {
                 ImGuiSerializer imGuiSerializer(serializer);
                 ImGui::SerializeDock(imGuiSerializer);
+                serializer.nodeEnd();
+            }
+            if (serializer.nodeBegin("Views"))
+            {
+                for (auto viewSettings : mViewSettings)
+                {
+                    serializer.value(viewSettings.first.c_str(), viewSettings.second);
+                }
                 serializer.nodeEnd();
             }
             if (serializer.nodeBegin("Plugins"))
@@ -353,6 +392,13 @@ namespace
                 }
                 if (ImGui::BeginMenu("View"))
                 {
+                    for (const auto& view : mViews)
+                    {
+                        auto& viewSettings = mViewSettings[view->getName()];
+                        ImGui::MenuItem(view->getName(), nullptr, &viewSettings.visible);
+                    }
+
+                    ImGui::Separator();
                     ImGui::MenuItem("ImGUI test window", nullptr, &mSettings.showImGuiTestView);
                     ImGui::EndMenu();
                 }
@@ -373,6 +419,16 @@ namespace
                 ImGui::ShowTestWindow(&mSettings.showImGuiTestView);
             }
 
+            for (auto view : mViews)
+            {
+                auto name = view->getName();
+                if (ImGui::BeginDock(name, &mViewSettings[name].visible))
+                {
+                    view->onGUI();
+                }
+                ImGui::EndDock();
+            }
+
             for (auto item : mPlugins)
             {
                 item->onGUI();
@@ -389,11 +445,31 @@ namespace
             SDL_GL_SwapWindow(mWindow);
         }
 
-        Settings                mSettings;
-        bool                    mRunning;
-        SDL_Window*             mWindow;
-        SDL_GLContext           mGLContext;
-        std::vector<IPlugin*>   mPlugins;
+        struct ViewSettings
+        {
+            ViewSettings()
+                : visible(true)
+            {
+            }
+
+            void serialize(emu::ISerializer& serializer)
+            {
+                serializer
+                    .value("Visible", visible);
+            }
+
+            bool                                visible;
+        };
+
+        Settings                                mSettings;
+        bool                                    mRunning;
+        SDL_Window*                             mWindow;
+        SDL_GLContext                           mGLContext;
+        std::vector<IPlugin*>                   mPlugins;
+        std::vector<IView*>                     mViews;
+        std::map<std::string, ViewSettings>     mViewSettings;
+
+        GameView                                mGameView;
     };
 }
 
