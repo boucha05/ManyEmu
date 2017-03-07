@@ -8,6 +8,7 @@ namespace emu
 }
 
 class GameView;
+class LogView;
 
 class Application
 {
@@ -39,6 +40,7 @@ public:
     virtual void removeView(IView& view) = 0;
 
     virtual GameView& getGameView() = 0;
+    virtual LogView& getLogView() = 0;
 
     static Application* create();
     static void destroy(Application& instance);

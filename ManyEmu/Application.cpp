@@ -1,6 +1,7 @@
 #define SDL_MAIN_HANDLED
 #include "Application.h"
 #include "GameView.h"
+#include "LogView.h"
 #include <Core/YamlSerializer.h>
 #include "imgui_impl_sdl_gl3.h"
 #include <SDL.h>
@@ -175,6 +176,8 @@ namespace
 
         virtual bool run() override
         {
+            LogView::Enabled enabled(getLogView());
+
             EMU_VERIFY(mRunning);
             while (mRunning)
             {
@@ -230,6 +233,11 @@ namespace
             return mGameView;
         }
 
+        virtual LogView& getLogView() override
+        {
+            return mLogView;
+        }
+
     private:
         void initialize()
         {
@@ -268,6 +276,7 @@ namespace
             ImGui_ImplSdlGL3_Init(mWindow);
 
             addView(mGameView);
+            addView(mLogView);
 
             mRunning = true;
             return true;
@@ -276,6 +285,7 @@ namespace
         void destroy()
         {
             removeView(mGameView);
+            removeView(mLogView);
 
             while (!mViews.empty())
             {
@@ -379,6 +389,8 @@ namespace
                 item->update();
             }
 
+            getLogView().update();
+
             ImGui_ImplSdlGL3_NewFrame(mWindow);
 
             float menuHeight = 0.0f;
@@ -470,6 +482,7 @@ namespace
         std::map<std::string, ViewSettings>     mViewSettings;
 
         GameView                                mGameView;
+        LogView                                 mLogView;
     };
 }
 
