@@ -437,7 +437,7 @@ namespace
 
         void render()
         {
-            static const ImVec4 clear_color = ImColor(114, 144, 154);
+            static const ImVec4 clear_color = ImColor(0, 0, 0);
             glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
             glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
             glClear(GL_COLOR_BUFFER_BIT);
