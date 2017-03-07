@@ -46,7 +46,14 @@ function configure()
         architecture "x86_64"
 
     filter {}
-    includedirs { "." }
+    includedirs
+    {
+        ".",
+        "Contrib/imgui",
+        "Contrib/imgui_extensions",
+        "Contrib/imgui/examples/libs/gl3w",
+        "Contrib/imgui/examples/sdl_opengl3_example",
+    }
     symbols "On"
     flags { "FatalCompileWarnings" }
     warnings "Extra"
@@ -93,6 +100,24 @@ workspace "ManyEmu"
             "_CRT_SECURE_NO_WARNINGS",
             "_CRT_NONSTDC_NO_WARNINGS",
         }
+
+StaticLib "ImGUI"
+    files
+    {
+        "Contrib/imgui_extensions/*.h",
+        "Contrib/imgui_extensions/*.inl",
+        "Contrib/imgui_extensions/*.cpp",
+        "Contrib/imgui/*.h",
+        "Contrib/imgui/*.cpp",
+        "Contrib/imgui/examples/sdl_opengl3_example/imgui_impl_sdl_gl3.cpp",
+        "Contrib/imgui/examples/sdl_opengl3_example/imgui_impl_sdl_gl3.h",
+        "Contrib/imgui/examples/libs/gl3w/**.*",
+    }
+    removefiles
+    {
+        "Contrib/imgui/imgui.cpp"
+    }
+    externalStaticLib("Contrib/SDL2", "SDL2")
 
 StaticLib "yaml-cpp"
     files
@@ -141,6 +166,7 @@ Application "ManyEmu"
     
     links
     {
+        "ImGUI",
         "Core",
         "Gameboy",
         "NES",

@@ -1,3 +1,6 @@
 [submodule "Contrib/yaml-cpp"]
 	path = Contrib/yaml-cpp
 	url = https://github.com/jbeder/yaml-cpp.git
+[submodule "Contrib/imgui"]
+	path = Contrib/imgui
+	url = https://github.com/ocornut/imgui.git
