@@ -94,12 +94,25 @@ workspace "ManyEmu"
             "_CRT_NONSTDC_NO_WARNINGS",
         }
 
+StaticLib "yaml-cpp"
+    files
+    {
+        "Contrib/yaml-cpp/include/**.h",
+        "Contrib/yaml-cpp/src/**.h",
+        "Contrib/yaml-cpp/src/**.cpp",
+    }
+    includedirs { "Contrib/yaml-cpp/include"}
+    warnings "Default"
+    disablewarnings { "4267" }
+
 StaticLib "Core"
     files
     {
         "Core/**.h",
         "Core/**.cpp",
     }
+    includedirs { "Contrib/yaml-cpp/include"}
+    links { "yaml-cpp" }
 
 StaticLib "Gameboy"
     files

@@ -1,5 +1,5 @@
 #include <Core/MemoryBus.h>
-#include <Core/Serialization.h>
+#include <Core/Serializer.h>
 #include "Mappers.h"
 #include "nes.h"
 #include "PPU.h"
@@ -103,19 +103,20 @@ namespace nes
         virtual void serializeGameState(emu::ISerializer& serializer)
         {
             uint32_t version = 1;
-            serializer.serialize(version);
-            serializer.serialize(mNameTableLocal);
-            serializer.serialize(mBankPorts, EMU_ARRAY_SIZE(mBankPorts));
-            serializer.serialize(mChrMode);
-            serializer.serialize(mPrgMode);
-            serializer.serialize(mPort);
-            serializer.serialize(mMirroring);
-            serializer.serialize(mWramEnable);
-            serializer.serialize(mWramWriteProtect);
-            serializer.serialize(mIrqCount);
-            serializer.serialize(mIrqReload);
-            serializer.serialize(mIrqEnable);
-            serializer.serialize(mIrqPending);
+            serializer
+                .value("Version", version)
+                .value("NameTableLocal", mNameTableLocal)
+                .value("BankPorts", mBankPorts)
+                .value("ChrMode", mChrMode)
+                .value("PrgMode", mPrgMode)
+                .value("Port", mPort)
+                .value("Mirroring", mMirroring)
+                .value("WramEnable", mWramEnable)
+                .value("WramWriteProtect", mWramWriteProtect)
+                .value("IrqCount", mIrqCount)
+                .value("IrqReload", mIrqReload)
+                .value("IrqEnable", mIrqEnable)
+                .value("IrqPending", mIrqPending);
             updateMemoryMap();
             updateIrqStatus(0);
         }
@@ -333,7 +334,7 @@ namespace nes
         nes::PPU*                   mPpu;
         PPUListener                 mPpuListener;
         nes::IMapper::IListener*    mMapperListener;
-        std::vector<uint8_t>        mNameTableLocal;
+        emu::Buffer                 mNameTableLocal;
         MEM_ACCESS                  mMemPrgRomRead[4];
         MEM_ACCESS                  mMemPrgRomWrite;
         MEM_ACCESS                  mMemChrRomRead[8];

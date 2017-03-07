@@ -1,6 +1,6 @@
 #include "Clock.h"
 #include "Core.h"
-#include "Serialization.h"
+#include "Serializer.h"
 
 namespace
 {
@@ -159,7 +159,8 @@ namespace emu
 
         uint32_t version = 1;
         EMU_UNUSED(version);
-        serializer.serialize(mTargetTicks);
-        serializer.serialize(mDesiredTicks);
+        serializer
+            .value("TargetTicks", mTargetTicks)
+            .value("DesiredTicks", mDesiredTicks);
     }
 }

@@ -1,5 +1,5 @@
 #include <Core/MemoryBus.h>
-#include <Core/Serialization.h>
+#include <Core/Serializer.h>
 #include "APU.h"
 #include "nes.h"
 #include <vector>
@@ -470,22 +470,24 @@ namespace nes
     void APU::serialize(emu::ISerializer& serializer)
     {
         uint32_t version = 2;
-        serializer.serialize(version);
-        serializer.serialize(mRegister, APU_REGISTER_COUNT);
-        serializer.serialize(mController, EMU_ARRAY_SIZE(mController));
-        serializer.serialize(mShifter, EMU_ARRAY_SIZE(mShifter));
-        serializer.serialize(mBufferTick);
-        serializer.serialize(mSampleTick);
-        serializer.serialize(mSequenceTick);
-        serializer.serialize(mSequenceCount);
-        mPulse[0].serialize(serializer);
-        mPulse[1].serialize(serializer);
-        mTriangle.serialize(serializer);
-        mNoise.serialize(serializer);
+        serializer
+            .value("Version", version)
+            .value("Register", mRegister)
+            .value("Controller", mController)
+            .value("Shifter", mShifter)
+            .value("BufferTick", mBufferTick)
+            .value("SampleTick", mSampleTick)
+            .value("SequenceTick", mSequenceTick)
+            .value("SequenceCount", mSequenceCount)
+            .value("Pulse0", mPulse[0])
+            .value("Pulse1", mPulse[1])
+            .value("Triangle", mTriangle)
+            .value("Noise", mNoise);
         if (version >= 2)
-            mDMC.serialize(serializer);
-        serializer.serialize(mMode5Step);
-        serializer.serialize(mIRQ);
+            serializer.value("DMC", mDMC);
+        serializer
+            .value("Mode5Step", mMode5Step)
+            .value("IRQ", mIRQ);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -675,27 +677,28 @@ namespace nes
     void APU::Pulse::serialize(emu::ISerializer& serializer)
     {
         uint32_t version = 1;
-        serializer.serialize(version);
-        serializer.serialize(duty);
-        serializer.serialize(loop);
-        serializer.serialize(constant);
-        serializer.serialize(envelope);
-        serializer.serialize(sweepEnable);
-        serializer.serialize(sweepPeriod);
-        serializer.serialize(sweepNegate);
-        serializer.serialize(sweepShift);
-        serializer.serialize(timer);
-        serializer.serialize(length);
-        serializer.serialize(enabled);
-        serializer.serialize(period);
-        serializer.serialize(timerCount);
-        serializer.serialize(cycle);
-        serializer.serialize(level);
-        serializer.serialize(envelopeDivider);
-        serializer.serialize(envelopeCounter);
-        serializer.serialize(envelopeVolume);
-        serializer.serialize(sweepReload);
-        serializer.serialize(sweepDivider);
+        serializer
+            .value("Version", version)
+            .value("Dutey", duty)
+            .value("Loop", loop)
+            .value("Constant", constant)
+            .value("Envelope", envelope)
+            .value("SweepEnable", sweepEnable)
+            .value("SweepPeriod", sweepPeriod)
+            .value("SweepNegate", sweepNegate)
+            .value("SweepShift", sweepShift)
+            .value("Timer", timer)
+            .value("Length", length)
+            .value("Enabled", enabled)
+            .value("Period", period)
+            .value("TimerCount", timerCount)
+            .value("Cycle", cycle)
+            .value("Level", level)
+            .value("EnvelopeDivider", envelopeDivider)
+            .value("EnvelopeCounter", envelopeCounter)
+            .value("EnvelopeVolume", envelopeVolume)
+            .value("SweepReload", sweepReload)
+            .value("SweepDivider", sweepDivider);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -803,18 +806,19 @@ namespace nes
     void APU::Triangle::serialize(emu::ISerializer& serializer)
     {
         uint32_t version = 1;
-        serializer.serialize(version);
-        serializer.serialize(control);
-        serializer.serialize(linear);
-        serializer.serialize(timer);
-        serializer.serialize(length);
-        serializer.serialize(reload);
-        serializer.serialize(enabled);
-        serializer.serialize(period);
-        serializer.serialize(timerCount);
-        serializer.serialize(linearCount);
-        serializer.serialize(sequence);
-        serializer.serialize(level);
+        serializer
+            .value("Version", version)
+            .value("Control", control)
+            .value("Linear", linear)
+            .value("Timer", timer)
+            .value("Length", length)
+            .value("Reload", reload)
+            .value("Enabled", enabled)
+            .value("Period", period)
+            .value("TimerCount", timerCount)
+            .value("LinearCount", linearCount)
+            .value("Sequence", sequence)
+            .value("Level", level);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -951,21 +955,22 @@ namespace nes
     void APU::Noise::serialize(emu::ISerializer& serializer)
     {
         uint32_t version = 1;
-        serializer.serialize(version);
-        serializer.serialize(loop);
-        serializer.serialize(constant);
-        serializer.serialize(envelope);
-        serializer.serialize(shiftMode);
-        serializer.serialize(timer);
-        serializer.serialize(length);
-        serializer.serialize(enabled);
-        serializer.serialize(period);
-        serializer.serialize(timerCount);
-        serializer.serialize(generator);
-        serializer.serialize(level);
-        serializer.serialize(envelopeDivider);
-        serializer.serialize(envelopeCounter);
-        serializer.serialize(envelopeVolume);
+        serializer
+            .value("Version", version)
+            .value("Loop", loop)
+            .value("Constant", constant)
+            .value("Envelope", envelope)
+            .value("ShiftMode", shiftMode)
+            .value("Timer", timer)
+            .value("Length", length)
+            .value("Enabled", enabled)
+            .value("Period", period)
+            .value("TimerCount", timerCount)
+            .value("Generator", generator)
+            .value("Level", level)
+            .value("EnvelopeDivider", envelopeDivider)
+            .value("EnvelopeCounter", envelopeCounter)
+            .value("EnvelopeVolume", envelopeVolume);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1138,21 +1143,22 @@ namespace nes
     void APU::DMC::serialize(emu::ISerializer& serializer)
     {
         uint32_t version = 1;
-        serializer.serialize(version);
-        serializer.serialize(loop);
-        serializer.serialize(period);
-        serializer.serialize(sampleAddress);
-        serializer.serialize(sampleLength);
-        serializer.serialize(updateTick);
-        serializer.serialize(timerTick);
-        serializer.serialize(samplePos);
-        serializer.serialize(sampleCount);
-        serializer.serialize(sampleBuffer);
-        serializer.serialize(shift);
-        serializer.serialize(bit);
-        serializer.serialize(level);
-        serializer.serialize(available);
-        serializer.serialize(silenced);
-        serializer.serialize(irq);
+        serializer
+            .value("Version", version)
+            .value("Loop", loop)
+            .value("Period", period)
+            .value("SampleAddress", sampleAddress)
+            .value("SampleLength", sampleLength)
+            .value("UpdateTick", updateTick)
+            .value("TimerTick", timerTick)
+            .value("SamplePos", samplePos)
+            .value("SampleCount", sampleCount)
+            .value("SampleBuffer", sampleBuffer)
+            .value("Shift", shift)
+            .value("Bit", bit)
+            .value("Level", level)
+            .value("Available", available)
+            .value("Silenced", silenced)
+            .value("IRQ", irq);
     }
 }

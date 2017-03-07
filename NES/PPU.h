@@ -147,9 +147,9 @@ namespace nes
         ScanlineEventTable      mScanlineEvents[SCANLINE_TYPE_COUNT];
         ScanlineEventTable      mScanlineEventsVisible;
         ScanlineEventTable      mScanlineEventsVBlank;
-        std::vector<uint8_t>    mNameTableRAM;
-        std::vector<uint8_t>    mPaletteRAM;
-        std::vector<uint8_t>    mOAM;
+        emu::Buffer             mNameTableRAM;
+        emu::Buffer             mPaletteRAM;
+        emu::Buffer             mOAM;
         uint8_t*                mSurface;
         size_t                  mPitch;
         int32_t                 mLastTickRendered;

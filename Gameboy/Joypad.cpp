@@ -1,5 +1,5 @@
 #include <Core/RegisterBank.h>
-#include <Core/Serialization.h>
+#include <Core/Serializer.h>
 #include "Joypad.h"
 #include "Interrupts.h"
 
@@ -146,8 +146,9 @@ namespace gb
 
     void Joypad::serialize(emu::ISerializer& serializer)
     {
-        serializer.serialize(mButtons);
-        serializer.serialize(mRegJOYP);
+        serializer
+            .value("Buttons", mButtons)
+            .value("RegJOYP", mRegJOYP);
     }
 
     void Joypad::setController(uint32_t index, uint32_t buttons)

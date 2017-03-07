@@ -1,5 +1,5 @@
 #include <Core/MemoryBus.h>
-#include <Core/Serialization.h>
+#include <Core/Serializer.h>
 #include "Mappers.h"
 #include "nes.h"
 #include "PPU.h"
@@ -62,9 +62,10 @@ namespace nes
         virtual void serializeGameState(emu::ISerializer& serializer)
         {
             uint32_t version = 1;
-            serializer.serialize(version);
-            serializer.serialize(mChrRam);
-            serializer.serialize(mRegister);
+            serializer
+                .value("Version", version)
+                .value("ChrRam", mChrRam)
+                .value("Register", mRegister);
             updateMemoryMap();
         }
 
@@ -108,7 +109,7 @@ namespace nes
         MEM_ACCESS              mMemPrgRomWrite;
         MEM_ACCESS              mMemChrRamRead;
         MEM_ACCESS              mMemChrRamWrite;
-        std::vector<uint8_t>    mChrRam;
+        emu::Buffer             mChrRam;
         uint8_t                 mRegister;
     };
 }

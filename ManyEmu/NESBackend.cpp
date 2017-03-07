@@ -5,7 +5,7 @@
 #include <vector>
 #include <deque>
 #include <Core/InputController.h>
-#include <Core/Serialization.h>
+#include <Core/Serializer.h>
 #include <Core/Stream.h>
 #include <NES/NESEmulator.h>
 #include <NES/Tests.h>

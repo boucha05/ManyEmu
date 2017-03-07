@@ -1,5 +1,5 @@
 #include <Core/RegisterBank.h>
-#include <Core/Serialization.h>
+#include <Core/Serializer.h>
 #include "Display.h"
 #include "Interrupts.h"
 #include <algorithm>
@@ -894,42 +894,43 @@ namespace gb
 
     void Display::serialize(emu::ISerializer& serializer)
     {
-        serializer.serialize(mVRAM);
-        serializer.serialize(mOAM);
-        serializer.serialize(mSimulatedTick);
-        serializer.serialize(mRenderedLine);
-        serializer.serialize(mRenderedTick);
-        serializer.serialize(mDesiredTick);
-        serializer.serialize(mLineFirstTick);
-        serializer.serialize(mLineTick);
-        serializer.serialize(mLineIntTick);
-        serializer.serialize(mRasterTick);
-        serializer.serialize(mRasterLine);
-        serializer.serialize(mBankVRAM);
-        serializer.serialize(mRegLCDC);
-        serializer.serialize(mRegSTAT);
-        serializer.serialize(mRegSCY);
-        serializer.serialize(mRegSCX);
-        serializer.serialize(mRegLY);
-        serializer.serialize(mRegLYC);
-        serializer.serialize(mRegDMA);
-        serializer.serialize(mRegBGP);
-        serializer.serialize(mRegOBP0);
-        serializer.serialize(mRegOBP1);
-        serializer.serialize(mRegWY);
-        serializer.serialize(mRegWX);
-        serializer.serialize(mRegBGPI);
-        serializer.serialize(mRegBGPD, EMU_ARRAY_SIZE(mRegBGPD));
-        serializer.serialize(mRegOBPI);
-        serializer.serialize(mRegOBPD, EMU_ARRAY_SIZE(mRegOBPD));
-        serializer.serialize(mRegHDMA, EMU_ARRAY_SIZE(mRegHDMA));
-        serializer.serialize(mLineIntLastLY);
-        serializer.serialize(mLineIntLastLYC);
-        serializer.serialize(mLineIntLastEnabled);
-        serializer.serialize(mIntUpdate);
-        serializer.serialize(mIntEnabled);
-        serializer.serialize(mIntSync);
-        serializer.serialize(mIntPredictionMode0);
+        serializer
+            .value("VRAM", mVRAM)
+            .value("OAM", mOAM)
+            .value("SimulatedTick", mSimulatedTick)
+            .value("RenderedLine", mRenderedLine)
+            .value("RenderedTick", mRenderedTick)
+            .value("DesiredTick", mDesiredTick)
+            .value("LineFirstTick", mLineFirstTick)
+            .value("LineTick", mLineTick)
+            .value("LineIntTick", mLineIntTick)
+            .value("RasterTick", mRasterTick)
+            .value("RasterLine", mRasterLine)
+            .value("BankVRAM", mBankVRAM)
+            .value("RegLCDC", mRegLCDC)
+            .value("RegSTAT", mRegSTAT)
+            .value("RegSCY", mRegSCY)
+            .value("RegSCX", mRegSCX)
+            .value("RegLY", mRegLY)
+            .value("RegLYC", mRegLYC)
+            .value("RegDMA", mRegDMA)
+            .value("RegBGP", mRegBGP)
+            .value("RegOBP0", mRegOBP0)
+            .value("RegOBP1", mRegOBP1)
+            .value("RegWY", mRegWY)
+            .value("RegWX", mRegWX)
+            .value("RegBGPI", mRegBGPI)
+            .value("RegBGPD", mRegBGPD)
+            .value("RegOBPI", mRegOBPI)
+            .value("RegOBPD", mRegOBPD)
+            .value("RegHDMA", mRegHDMA)
+            .value("LineIntLastLY", mLineIntLastLY)
+            .value("LineIntLastLYC", mLineIntLastLYC)
+            .value("LineIntLastEnabled", mLineIntLastEnabled)
+            .value("IntUpdate", mIntUpdate)
+            .value("IntEnabled", mIntEnabled)
+            .value("IntSync", mIntSync)
+            .value("IntPredictionMode0", mIntPredictionMode0);
         if (serializer.isReading())
         {
             mSortedSprites = false;

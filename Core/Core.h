@@ -3,9 +3,13 @@
 
 #define EMU_CONFIG_LITTLE_ENDIAN    1
 
-#include <stdint.h>
+#define EMU_DLL_EXPORT      __declspec(dllexport)
+#define EMU_DLL_IMPORT      __declspec(dllimport)
+
+#include <cstdint>
+#include <vector>
 #if defined(DEBUG) || defined(_DEBUG)
-#include <assert.h>
+#include <cassert>
 #define EMU_ASSERT(e)   emu::Assert(!!(e), #e)
 #else
 #define EMU_ASSERT(e)
@@ -138,6 +142,10 @@ namespace emu
 
     void Assert(bool valid, const char* msg);
     void notImplemented(const char* function);
+
+    class Buffer : public std::vector<uint8_t>
+    {
+    };
 
 #define EMU_NOT_IMPLEMENTED()   EMU_INVOKE_ONCE(emu::notImplemented(__FUNCTION__))
 

@@ -1,5 +1,5 @@
 #include <Core/MemoryBus.h>
-#include <Core/Serialization.h>
+#include <Core/Serializer.h>
 #include "CpuZ80.h"
 #include "GB.h"
 #include <memory.h>
@@ -1928,19 +1928,20 @@ namespace gb
     void CpuZ80::serialize(emu::ISerializer& serializer)
     {
         uint32_t version = 1;
-        serializer.serialize(version);
-        serializer.serialize(AF);
-        serializer.serialize(BC);
-        serializer.serialize(DE);
-        serializer.serialize(HL);
-        serializer.serialize(SP);
-        serializer.serialize(PC);
-        serializer.serialize(IME);
-        serializer.serialize(mRegs.r8.halted);
-        serializer.serialize(mRegs.r8.stopped);
-        serializer.serialize(mDesiredTicks);
-        serializer.serialize(mExecutedTicks);
-        serializer.serialize(mFrame);
+        serializer
+            .value("Version", version)
+            .value("AF", AF)
+            .value("BC", BC)
+            .value("DE", DE)
+            .value("HL", HL)
+            .value("SP", SP)
+            .value("PC", PC)
+            .value("IME", IME)
+            .value("Halted", mRegs.r8.halted)
+            .value("Stopped", mRegs.r8.stopped)
+            .value("DesiredTicks", mDesiredTicks)
+            .value("ExecutedTicks", mExecutedTicks)
+            .value("Frame", mFrame);
     }
 
     void CpuZ80::setIME(bool enable)

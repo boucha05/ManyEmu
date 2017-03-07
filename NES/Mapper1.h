@@ -1,5 +1,5 @@
 #include <Core/MemoryBus.h>
-#include <Core/Serialization.h>
+#include <Core/Serializer.h>
 #include "Mappers.h"
 #include "nes.h"
 #include "PPU.h"
@@ -118,21 +118,23 @@ namespace nes
         void serializeGameData(emu::ISerializer& serializer)
         {
             if (mRom->getDescription().battery)
-                serializer.serialize(&mPrgRam[0], mPrgRam.size());
+                serializer.value("PrgRam", mPrgRam);
         }
 
         void serializeGameState(emu::ISerializer& serializer)
         {
             uint32_t version = 2;
-            serializer.serialize(version);
-            serializer.serialize(mChrRam);
+            serializer
+                .value("Version", version)
+                .value("ChrRam", mChrRam);
             if ((version >= 2) || !mRom->getDescription().battery)
-                serializer.serialize(mPrgRam);
-            serializer.serialize(mShift);
-            serializer.serialize(mCycle);
-            serializer.serialize(mPrgRomPage, EMU_ARRAY_SIZE(mPrgRomPage));
-            serializer.serialize(mChrRomPage, EMU_ARRAY_SIZE(mChrRomPage));
-            serializer.serialize(mRegister, EMU_ARRAY_SIZE(mRegister));
+                serializer.value("PrgRam", mPrgRam);
+            serializer
+                .value("Shift", mShift)
+                .value("Cycle", mCycle)
+                .value("PrgRomPage", mPrgRomPage)
+                .value("ChrRomPage", mChrRomPage)
+                .value("Register", mRegister);
             updateMemoryMap();
         }
 
@@ -382,8 +384,8 @@ namespace nes
         MEM_ACCESS              mMemPrgRamWrite;
         MEM_ACCESS              mMemChrRomRead[2];
         MEM_ACCESS              mMemChrRomWrite[2];
-        std::vector<uint8_t>    mChrRam;
-        std::vector<uint8_t>    mPrgRam;
+        emu::Buffer             mChrRam;
+        emu::Buffer             mPrgRam;
         uint32_t                mShift;
         uint32_t                mCycle;
         uint32_t                mPrgRomPage[2];

@@ -1,6 +1,6 @@
 #include <Core/Clock.h>
 #include <Core/MemoryBus.h>
-#include <Core/Serialization.h>
+#include <Core/Serializer.h>
 #include "nes.h"
 #include "APU.h"
 #include "Cpu6502.h"
@@ -261,12 +261,14 @@ namespace
             cpu.serialize(serializer);
             ppu.serialize(serializer);
             apu.serialize(serializer);
-            serializer.serialize(cpuRam);
-            serializer.serialize(saveRam);
+            serializer
+                .value("CpuRAM", cpuRam)
+                .value("SaveRAM", saveRam);
             if (version >= 2)
             {
-                serializer.serialize(irqApu);
-                serializer.serialize(irqMapper);
+                serializer
+                    .value("IrqAPU", irqApu)
+                    .value("IrqMapper", irqMapper);
             }
             mapper->serializeGameState(serializer);
         }
@@ -398,8 +400,8 @@ namespace
         nes::PPU                ppu;
         PPUListener             ppuListener;
         nes::APU                apu;
-        std::vector<uint8_t>    cpuRam;
-        std::vector<uint8_t>    saveRam;
+        emu::Buffer             cpuRam;
+        emu::Buffer             saveRam;
         MapperListener          mapperListener;
         nes::IMapper*           mapper;
     };

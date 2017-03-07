@@ -7,7 +7,7 @@
 #include <vector>
 #include <deque>
 #include <Core/InputController.h>
-#include <Core/Serialization.h>
+#include <Core/Serializer.h>
 #include <Core/Stream.h>
 #include "Backend.h"
 #include "GameSession.h"
@@ -145,9 +145,7 @@ private:
     uint32_t                    mSoundMaxSize;
     bool                        mSoundRunning;
     emu::FileStream*            mSoundFile;
-    emu::BinaryWriter*          mSoundWriter;
     emu::FileStream*            mTimingFile;
-    emu::TextWriter*            mTimingWriter;
     InputManager                mInputManager;
     KeyboardDevice*             mKeyboard;
     GamepadDevice*              mGamepad;
@@ -199,9 +197,7 @@ Application::Application()
     , mSoundMaxSize(0)
     , mSoundRunning(false)
     , mSoundFile(nullptr)
-    , mSoundWriter(nullptr)
     , mTimingFile(nullptr)
-    , mTimingWriter(nullptr)
     , mKeyboard(nullptr)
     , mGamepad(nullptr)
     , mPlayer1Controller(nullptr)
@@ -344,8 +340,6 @@ bool Application::create()
         mTimingFile = new emu::FileStream(path.c_str(), "w");
         if (!mTimingFile->valid())
             return false;
-
-        mTimingWriter = new emu::TextWriter(*mTimingFile);
     }
 
     mPlayback = new Playback(mConfig.replayBufferSize);
@@ -384,12 +378,6 @@ void Application::destroy()
     {
         delete mPlayback;
         mPlayback = nullptr;
-    }
-
-    if (mTimingWriter)
-    {
-        delete mTimingWriter;
-        mTimingWriter = nullptr;
     }
 
     if (mTimingFile)
@@ -476,8 +464,6 @@ bool Application::createSound()
         mSoundFile = new emu::FileStream(path.c_str(), "wb");
         if (!mSoundFile->valid())
             return false;
-
-        mSoundWriter = new emu::BinaryWriter(*mSoundFile);
     }
 
     mSoundReadPos = 0;
@@ -496,11 +482,6 @@ bool Application::createSound()
 
 void Application::destroySound()
 {
-    if (mSoundWriter)
-    {
-        delete mSoundWriter;
-        mSoundWriter = nullptr;
-    }
     if (mSoundFile)
     {
         delete mSoundFile;
@@ -652,14 +633,14 @@ void Application::update()
     if (pixels)
         SDL_UnlockTexture(mTexture[mBufferIndex]);
 
-    if (mSoundWriter)
+    if (mSoundFile)
     {
         for (uint32_t pos = 0; pos < mSoundBuffer.size(); ++pos)
         {
             if (mSoundBuffer[pos] != 0)
                 pos = pos;
         }
-        mSoundWriter->serialize(&mSoundBuffer[0], mSoundBuffer.size() * 2);
+        mSoundFile->write(&mSoundBuffer[0], mSoundBuffer.size() * 2);
     }
     
     if (mConfig.enableAudio && !mConfig.stubAudio)
@@ -689,9 +670,11 @@ void Application::update()
     }
 
     float frameTime = static_cast<float>(frameEnd - frameStart) / SDL_GetPerformanceFrequency();
-    if (mTimingWriter)
+    if (mTimingFile)
     {
-        mTimingWriter->write("%7d %6.3f\n", mFrameIndex, frameTime * 1000.0f);
+        char temp[64];
+        sprintf(temp, "%7d %6.3f\n", mFrameIndex, frameTime * 1000.0f);
+        mTimingFile->write(temp, strlen(temp));
     }
 
     float timeDir = mInputManager.getInput(Input_TimeDir);

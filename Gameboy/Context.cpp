@@ -1,7 +1,7 @@
 #include <Core/Clock.h>
 #include <Core/MemoryBus.h>
 #include <Core/RegisterBank.h>
-#include <Core/Serialization.h>
+#include <Core/Serializer.h>
 #include "Audio.h"
 #include "CpuZ80.h"
 #include "Display.h"
@@ -248,18 +248,19 @@ namespace gb_context
             mCpu.serialize(serializer);
             if (mMapper)
                 mMapper->serializeGameState(serializer);
-            serializer.serialize(mWRAM);
-            serializer.serialize(mHRAM);
-            serializer.serialize(mVariableClockDivider);
-            serializer.serialize(mBankWRAM);
-            serializer.serialize(mRegKEY1);
-            serializer.serialize(mRegSVBK);
-            mInterrupts.serialize(serializer);
-            mGameLink.serialize(serializer);
-            mDisplay.serialize(serializer);
-            mJoypad.serialize(serializer);
-            mTimer.serialize(serializer);
-            mAudio.serialize(serializer);
+            serializer
+                .value("WRAM", mWRAM)
+                .value("HRAM", mHRAM)
+                .value("VariableClockDivider", mVariableClockDivider)
+                .value("BankWRAM", mBankWRAM)
+                .value("RegKEY1", mRegKEY1)
+                .value("RegSVBK", mRegSVBK)
+                .value("Interrupts", mInterrupts)
+                .value("GameLink", mGameLink)
+                .value("Display", mDisplay)
+                .value("Joypad", mJoypad)
+                .value("Timer", mTimer)
+                .value("Audio", mAudio);
             if (serializer.isReading())
             {
                 updateMemoryMap();
@@ -410,8 +411,8 @@ namespace gb_context
         StopListener                mStopListener;
         MEM_ACCESS_READ_WRITE       mMemoryWRAM[4];
         MEM_ACCESS_READ_WRITE       mMemoryHRAM;
-        std::vector<uint8_t>        mWRAM;
-        std::vector<uint8_t>        mHRAM;
+        emu::Buffer                 mWRAM;
+        emu::Buffer                 mHRAM;
         uint32_t                    mVariableClockDivider;
         uint32_t                    mTicksPerFrame;
         uint8_t*                    mBankMapWRAM[8];

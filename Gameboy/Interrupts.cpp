@@ -1,4 +1,4 @@
-#include <Core/Serialization.h>
+#include <Core/Serializer.h>
 #include "Interrupts.h"
 #include "CpuZ80.h"
 
@@ -121,9 +121,10 @@ namespace gb
 
     void Interrupts::serialize(emu::ISerializer& serializer)
     {
-        serializer.serialize(mMask);
-        serializer.serialize(mRegIF);
-        serializer.serialize(mRegIE);
+        serializer
+            .value("Mask", mMask)
+            .value("RegIF", mRegIF)
+            .value("RegIE", mRegIE);
     }
 
     void Interrupts::setInterrupt(int tick, Signal signal)

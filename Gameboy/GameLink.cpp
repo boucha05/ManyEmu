@@ -1,4 +1,4 @@
-#include <Core/Serialization.h>
+#include <Core/Serializer.h>
 #include "GameLink.h"
 #include "CpuZ80.h"
 
@@ -36,8 +36,9 @@ namespace gb
 
     void GameLink::serialize(emu::ISerializer& serializer)
     {
-        serializer.serialize(mRegSB);
-        serializer.serialize(mRegSC);
+        serializer
+            .value("RegSB", mRegSB)
+            .value("RegSC", mRegSC);
     }
 
     uint8_t GameLink::readSB(int32_t tick, uint16_t addr)

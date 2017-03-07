@@ -1,4 +1,4 @@
-#include <Core/Serialization.h>
+#include <Core/Serializer.h>
 #include <Core/Stream.h>
 #include "nes.h"
 #include "NESEmulator.h"

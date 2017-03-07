@@ -1,6 +1,6 @@
 #include "GameSession.h"
 #include "Path.h"
-#include <Core/Serialization.h>
+#include <Core/Serializer.h>
 #include <Core/Stream.h>
 #include <Windows.h>
 
@@ -154,7 +154,7 @@ bool GameSession::serializeGameState(emu::ISerializer& serializer)
         return false;
 
     uint32_t version = 1;
-    serializer.serialize(version);
+    serializer.value("Version", version);
     if (serializer.isReading())
     {
         if (!reset())

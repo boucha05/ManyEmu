@@ -1,5 +1,5 @@
 #include <Core/RegisterBank.h>
-#include <Core/Serialization.h>
+#include <Core/Serializer.h>
 #include "Audio.h"
 #include "Interrupts.h"
 
@@ -209,9 +209,10 @@ namespace gb
 
     void Audio::Sweep::serialize(emu::ISerializer& serializer)
     {
-        serializer.serialize(mEnabled);
-        serializer.serialize(mPeriod);
-        serializer.serialize(mCounter);
+        serializer
+            .value("Enabled", mEnabled)
+            .value("Period", mPeriod)
+            .value("mCounter", mCounter);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -259,8 +260,9 @@ namespace gb
 
     void Audio::Length::serialize(emu::ISerializer& serializer)
     {
-        serializer.serialize(mCounter);
-        serializer.serialize(mOutputMask);
+        serializer
+            .value("Counter", mCounter)
+            .value("OutputMask", mOutputMask);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -314,8 +316,9 @@ namespace gb
 
     void Audio::Volume::serialize(emu::ISerializer& serializer)
     {
-        serializer.serialize(mCounter);
-        serializer.serialize(mVolume);
+        serializer
+            .value("Counter", mCounter)
+            .value("Volume", mVolume);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -396,11 +399,12 @@ namespace gb
 
     void Audio::BaseFrequency::serialize(emu::ISerializer& serializer)
     {
-        serializer.serialize(mClockLastTick);
-        serializer.serialize(mClockStep);
-        serializer.serialize(mClockPeriodFast);
-        serializer.serialize(mClockPeriod);
-        serializer.serialize(mCycle);
+        serializer
+            .value("", mClockLastTick)
+            .value("", mClockStep)
+            .value("", mClockPeriodFast)
+            .value("", mClockPeriod)
+            .value("", mCycle);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -1235,43 +1239,44 @@ namespace gb
 
     void Audio::serialize(emu::ISerializer& serializer)
     {
-        serializer.serialize(mDesiredTick);
-        serializer.serialize(mUpdateTick);
-        serializer.serialize(mSequencerTick);
-        serializer.serialize(mSequencerStep);
-        serializer.serialize(mRegNR10);
-        serializer.serialize(mRegNR11);
-        serializer.serialize(mRegNR12);
-        serializer.serialize(mRegNR13);
-        serializer.serialize(mRegNR14);
-        serializer.serialize(mRegNR21);
-        serializer.serialize(mRegNR22);
-        serializer.serialize(mRegNR23);
-        serializer.serialize(mRegNR24);
-        serializer.serialize(mRegNR30);
-        serializer.serialize(mRegNR31);
-        serializer.serialize(mRegNR32);
-        serializer.serialize(mRegNR33);
-        serializer.serialize(mRegNR34);
-        serializer.serialize(mRegNR41);
-        serializer.serialize(mRegNR42);
-        serializer.serialize(mRegNR43);
-        serializer.serialize(mRegNR44);
-        serializer.serialize(mRegNR50);
-        serializer.serialize(mRegNR51);
-        serializer.serialize(mRegNR52);
-        serializer.serialize(mRegWAVE, EMU_ARRAY_SIZE(mRegWAVE));
-        mChannel1Sweep.serialize(serializer);
-        mChannel1Length.serialize(serializer);
-        mChannel1Volume.serialize(serializer);
-        mChannel1Frequency.serialize(serializer);
-        mChannel2Length.serialize(serializer);
-        mChannel2Volume.serialize(serializer);
-        mChannel2Frequency.serialize(serializer);
-        mChannel3Length.serialize(serializer);
-        mChannel3Frequency.serialize(serializer);
-        mChannel4Length.serialize(serializer);
-        mChannel4Volume.serialize(serializer);
-        mChannel4Frequency.serialize(serializer);
+        serializer
+            .value("DesiredTick", mDesiredTick)
+            .value("UpdateTick", mUpdateTick)
+            .value("SequencerTick", mSequencerTick)
+            .value("SequencerStep", mSequencerStep)
+            .value("RegNR10", mRegNR10)
+            .value("RegNR11", mRegNR11)
+            .value("RegNR12", mRegNR12)
+            .value("RegNR13", mRegNR13)
+            .value("RegNR14", mRegNR14)
+            .value("RegNR21", mRegNR21)
+            .value("RegNR22", mRegNR22)
+            .value("RegNR23", mRegNR23)
+            .value("RegNR24", mRegNR24)
+            .value("RegNR30", mRegNR30)
+            .value("RegNR31", mRegNR31)
+            .value("RegNR32", mRegNR32)
+            .value("RegNR33", mRegNR33)
+            .value("RegNR34", mRegNR34)
+            .value("RegNR41", mRegNR41)
+            .value("RegNR42", mRegNR42)
+            .value("RegNR43", mRegNR43)
+            .value("RegNR44", mRegNR44)
+            .value("RegNR50", mRegNR50)
+            .value("RegNR51", mRegNR51)
+            .value("RegNR52", mRegNR52)
+            .value("RegWAVE", mRegWAVE)
+            .value("Channel1Sweep", mChannel1Sweep)
+            .value("Channel1Length", mChannel1Length)
+            .value("Channel1Volume", mChannel1Volume)
+            .value("Channel1Frequency", mChannel1Frequency)
+            .value("Channel2Length", mChannel2Length)
+            .value("Channel2Volume", mChannel2Volume)
+            .value("Channel2Frequency", mChannel2Frequency)
+            .value("Channel3Length", mChannel3Length)
+            .value("Channel3Frequency", mChannel3Frequency)
+            .value("Channel4Length", mChannel4Length)
+            .value("Channel4Volume", mChannel4Volume)
+            .value("Channel4Frequency", mChannel4Frequency);
     }
 }

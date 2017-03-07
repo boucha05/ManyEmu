@@ -1,5 +1,5 @@
 #include <Core/RegisterBank.h>
-#include <Core/Serialization.h>
+#include <Core/Serializer.h>
 #include "Timer.h"
 #include "Interrupts.h"
 
@@ -353,18 +353,19 @@ namespace gb
 
     void Timer::serialize(emu::ISerializer& serializer)
     {
-        serializer.serialize(mSimulatedTick);
-        serializer.serialize(mDesiredTick);
-        serializer.serialize(mDivSpeed);
-        serializer.serialize(mDivTick);
-        serializer.serialize(mRegDIV);
-        serializer.serialize(mRegTIMA);
-        serializer.serialize(mRegTMA);
-        serializer.serialize(mRegTAC);
-        serializer.serialize(mTimerLastClockTick);
-        serializer.serialize(mTimerTick);
-        serializer.serialize(mTimerClock);
-        serializer.serialize(mTimerIntTick);
-        serializer.serialize(mTimerLastIntTick);
+        serializer
+            .value("SimulatedTick", mSimulatedTick)
+            .value("DesiredTick", mDesiredTick)
+            .value("DivSpeed", mDivSpeed)
+            .value("DivTick", mDivTick)
+            .value("RegDIV", mRegDIV)
+            .value("RegTIMA", mRegTIMA)
+            .value("RegTMA", mRegTMA)
+            .value("RegTAC", mRegTAC)
+            .value("TimerLastClockTick", mTimerLastClockTick)
+            .value("TimerTick", mTimerTick)
+            .value("TimerClock", mTimerClock)
+            .value("TimerIntTick", mTimerIntTick)
+            .value("TimerLastIntTick", mTimerLastIntTick);
     }
 }

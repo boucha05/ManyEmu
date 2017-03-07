@@ -1,4 +1,4 @@
-#include <Core/Serialization.h>
+#include <Core/Serializer.h>
 #include "Mappers.h"
 
 namespace
@@ -151,15 +151,16 @@ namespace gb
     void MapperBase::serializeGameData(emu::ISerializer& serializer)
     {
         if (mRom->getDescription().hasBattery)
-            serializer.serialize(mExternalRAM);
+            serializer.value("ExternalRAM", mExternalRAM);
     }
 
     void MapperBase::serializeGameState(emu::ISerializer& serializer)
     {
-        serializer.serialize(mExternalRAM);
-        serializer.serialize(mBankROM, EMU_ARRAY_SIZE(mBankROM));
-        serializer.serialize(mBankExternalRAM);
-        serializer.serialize(mEnableExternalRAM);
+        serializer
+            .value("ExternalRam", mExternalRAM)
+            .value("BankROM", mBankROM)
+            .value("BankExternalRAM", mBankExternalRAM)
+            .value("EnableExternalRAM", mEnableExternalRAM);
         updateMemoryMap();
     }
 
@@ -208,9 +209,10 @@ namespace gb
 
     void MapperMBC1::serializeGameState(emu::ISerializer& serializer)
     {
-        serializer.serialize(mBankROM);
-        serializer.serialize(mBankRAM);
-        serializer.serialize(mRamBankMode);
+        serializer
+            .value("BankROM", mBankROM)
+            .value("BankRAM", mBankRAM)
+            .value("RamBankMode", mRamBankMode);
         MapperBase::serializeGameState(serializer);
     }
 
@@ -285,7 +287,7 @@ namespace gb
 
     void MapperMBC5::serializeGameState(emu::ISerializer& serializer)
     {
-        serializer.serialize(mRamBankMode);
+        serializer.value("RamBankMode", mRamBankMode);
         MapperBase::serializeGameState(serializer);
     }
 

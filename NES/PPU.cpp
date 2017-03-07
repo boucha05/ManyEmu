@@ -1,4 +1,4 @@
-#include <Core/Serialization.h>
+#include <Core/Serializer.h>
 #include "nes.h"
 #include "PPU.h"
 #include <vector>
@@ -1196,25 +1196,26 @@ namespace nes
     void PPU::serialize(emu::ISerializer& serializer)
     {
         uint32_t version = 1;
-        serializer.serialize(version);
-        serializer.serialize(mRegister, PPU_REGISTER_COUNT);
-        serializer.serialize(mDataReadBuffer);
-        serializer.serialize(mInternalAddress);
-        serializer.serialize(mScanlineAddress);
-        serializer.serialize(mFineX);
-        serializer.serialize(mWriteToggle);
-        serializer.serialize(mVisibleArea);
-        serializer.serialize(mCheckHitTest);
-        serializer.serialize(mNameTableRAM);
-        serializer.serialize(mPaletteRAM);
-        serializer.serialize(mOAM);
-        serializer.serialize(mLastTickRendered);
-        serializer.serialize(mLastTickUpdated);
-        serializer.serialize(mScanlineNumber);
-        serializer.serialize(mScanlineBaseTick);
-        serializer.serialize(mScanlineOffsetTick);
-        serializer.serialize(mScanlineType);
-        serializer.serialize(mScanlineEventIndex);
+        serializer
+            .value("Version", version)
+            .value("Register", mRegister)
+            .value("DataReadBuffer", mDataReadBuffer)
+            .value("InternalAddress", mInternalAddress)
+            .value("ScanlineAddress", mScanlineAddress)
+            .value("FineX", mFineX)
+            .value("WriteToggle", mWriteToggle)
+            .value("VisibleArea", mVisibleArea)
+            .value("CheckHitTest", mCheckHitTest)
+            .value("NameTableRAM", mNameTableRAM)
+            .value("PaletteRAM", mPaletteRAM)
+            .value("OAM", mOAM)
+            .value("LastTickRendered", mLastTickRendered)
+            .value("LastTickUpdated", mLastTickUpdated)
+            .value("ScanlineNumber", mScanlineNumber)
+            .value("ScanlineBaseTick", mScanlineBaseTick)
+            .value("ScanlineOffsetTick", mScanlineOffsetTick)
+            .value("ScanlineType", mScanlineType)
+            .value("ScanlineEventIndex", mScanlineEventIndex);
         updateSpriteHitTestConditions();
     }
 }

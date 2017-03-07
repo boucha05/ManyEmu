@@ -1,5 +1,5 @@
 #include "InputController.h"
-#include "Serialization.h"
+#include "Serializer.h"
 #include "Stream.h"
 #include <vector>
 
@@ -65,7 +65,7 @@ namespace
     struct InputStreamData
     {
         std::vector<uint8_t>    repeat;
-        std::vector<uint8_t>    value;
+        emu::Buffer    value;
 
         void clear()
         {
@@ -76,20 +76,11 @@ namespace
         void serialize(emu::ISerializer& serializer)
         {
             // Version
-            uint32_t version = 1;
-            serializer.serialize(version);
-
-            // Serialize size
-            uint32_t size = static_cast<uint32_t>(repeat.size());
-            serializer.serialize(size);
-            repeat.resize(size);
-            value.resize(size);
-
-            // Serialize content
-            for (auto& item : repeat)
-                serializer.serialize(item);
-            for (auto& item : value)
-                serializer.serialize(item);
+            uint32_t version = 2;
+            serializer
+                .value("Version", version)
+                .value("Repeat", repeat)
+                .value("Value", value);
         }
     };
 

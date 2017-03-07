@@ -1,5 +1,5 @@
 #include <Core/MemoryBus.h>
-#include <Core/Serialization.h>
+#include <Core/Serializer.h>
 #include "Cpu6502.h"
 #include "nes.h"
 #include <memory.h>
@@ -984,21 +984,22 @@ namespace
 void serialize(CPU_STATE& state, emu::ISerializer& serializer)
     {
         uint32_t version = 2;
-        serializer.serialize(version);
-        serializer.serialize(state.a);
-        serializer.serialize(state.x);
-        serializer.serialize(state.y);
-        serializer.serialize(state.sr);
-        serializer.serialize(state.sp);
-        serializer.serialize(state.pc);
-        serializer.serialize(state.desired_ticks);
-        serializer.serialize(state.executed_ticks);
-        serializer.serialize(state.flag_c);
-        serializer.serialize(state.flag_z);
-        serializer.serialize(state.flag_v);
-        serializer.serialize(state.flag_n);
+        serializer
+            .value("Version", version)
+            .value("A", state.a)
+            .value("X", state.x)
+            .value("Y", state.y)
+            .value("SR", state.sr)
+            .value("SP", state.sp)
+            .value("PC", state.pc)
+            .value("DesiredTicks", state.desired_ticks)
+            .value("ExecutedTicks", state.executed_ticks)
+            .value("FlagC", state.flag_c)
+            .value("FlagZ", state.flag_z)
+            .value("FlagV", state.flag_v)
+            .value("FlagN", state.flag_n);
         if (version >= 2)
-            serializer.serialize(state.irq);
+            serializer.value("IRQ", state.irq);
     }
 
     void executeDummyTimerEvent(void* context, int32_t ticks)

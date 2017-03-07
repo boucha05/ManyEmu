@@ -58,7 +58,7 @@ namespace gb
         MEM_ACCESS              mMemoryROM[2];
         MEM_ACCESS_READ_WRITE   mMemoryExternalRAM;
         MEM_ACCESS_READ_WRITE   mMemoryExternalRAMEmpty;
-        std::vector<uint8_t>    mExternalRAM;
+        emu::Buffer             mExternalRAM;
         uint32_t                mBankROM[2];
         uint32_t                mBankExternalRAM;
         bool                    mEnableExternalRAM;

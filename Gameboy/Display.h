@@ -185,8 +185,8 @@ namespace gb
         MEM_ACCESS_READ_WRITE       mMemoryVRAM;
         MEM_ACCESS_READ_WRITE       mMemoryOAM;
         MEM_ACCESS_READ_WRITE       mMemoryNotUsable;
-        std::vector<uint8_t>        mVRAM;
-        std::vector<uint8_t>        mOAM;
+        emu::Buffer                 mVRAM;
+        emu::Buffer                 mOAM;
         std::vector<uint8_t>        mOAMOrder;
         std::vector<uint32_t>       mPalette;
         uint8_t*                    mSurface;
