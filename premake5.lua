@@ -167,6 +167,7 @@ Application "ManyEmu"
     links
     {
         "ImGUI",
+        "OpenGL32.lib",
         "Core",
         "Gameboy",
         "NES",
