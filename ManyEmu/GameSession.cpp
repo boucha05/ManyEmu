@@ -1,5 +1,6 @@
 #include "GameSession.h"
 #include "Path.h"
+#include <Core/Log.h>
 #include <Core/Serializer.h>
 #include <Core/Stream.h>
 #include <Windows.h>
@@ -207,7 +208,7 @@ bool GameSession::execute()
     }
     __except (getExceptionFilter(GetExceptionInformation()))
     {
-        printf("Dead!\n");
+        emu::Log::printf(emu::Log::Type::Error, "Dead!\n");
         mValid = false;
     }
     return success;

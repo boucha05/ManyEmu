@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Application.h"
+#include <Core/Log.h>
 
 class LogView : public Application::IView
 {
@@ -45,9 +46,9 @@ public:
     ~LogView();
     void enable();
     void disable();
-    void update();
     virtual const char* getName() const override;
     virtual void onGUI() override;
+    ImColor& getSeverityColor(emu::Log::Type type);
 
 private:
     class Impl;

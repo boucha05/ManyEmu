@@ -1,3 +1,4 @@
+#include <Core/Log.h>
 #include <Core/Serializer.h>
 #include "GameLink.h"
 #include "CpuZ80.h"
@@ -69,7 +70,7 @@ namespace gb
         mRegSC = value;
         if ((mRegSC & 0x81) == 0x81)
         {
-            printf("%c", mRegSB);
+            emu::Log::printf(emu::Log::Type::Debug, "%c", mRegSB);
         }
     }
 }

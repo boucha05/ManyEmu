@@ -1,4 +1,5 @@
 #include "Core.h"
+#include "Log.h"
 #include "RegisterBank.h"
 
 #define REPORT_INVALID_REGISTERS    1
@@ -157,7 +158,7 @@ namespace emu
         if (reg.mFunc == &nullRead8)
         {
             if (!reg.mCount)
-                printf("Register read not implemented: $%04X\n", mBase + addr);
+                emu::Log::printf(emu::Log::Type::Warning, "Register read not implemented: $%04X\n", mBase + addr);
         }
         ++reg.mCount;
 #endif
@@ -173,7 +174,7 @@ namespace emu
         if (reg.mFunc == &nullWrite8)
         {
             if (!reg.mCount)
-                printf("Register write not implemented: $%04X, $%02X\n", mBase + addr, value);
+                emu::Log::printf(emu::Log::Type::Warning, "Register write not implemented: $%04X, $%02X\n", mBase + addr, value);
         }
         ++reg.mCount;
 #endif

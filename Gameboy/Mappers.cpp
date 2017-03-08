@@ -1,4 +1,5 @@
 #include <Core/Serializer.h>
+#include <Core/Log.h>
 #include "Mappers.h"
 
 namespace
@@ -31,7 +32,7 @@ namespace
         EMU_UNUSED(context);
         EMU_UNUSED(tick);
         EMU_UNUSED(addr);
-        EMU_INVOKE_ONCE(printf("External RAM read disabled!\n"));
+        EMU_INVOKE_ONCE(emu::Log::printf(emu::Log::Type::Debug, "External RAM read disabled!\n"));
         return 0;
     }
 
@@ -41,7 +42,7 @@ namespace
         EMU_UNUSED(tick);
         EMU_UNUSED(addr);
         EMU_UNUSED(value);
-        EMU_INVOKE_ONCE(printf("External RAM write disabled!\n"));
+        EMU_INVOKE_ONCE(emu::Log::printf(emu::Log::Type::Debug, "External RAM write disabled!\n"));
     }
 }
 

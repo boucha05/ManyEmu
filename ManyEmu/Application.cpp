@@ -389,8 +389,6 @@ namespace
                 item->update();
             }
 
-            getLogView().update();
-
             ImGui_ImplSdlGL3_NewFrame(mWindow);
 
             float menuHeight = 0.0f;
@@ -495,3 +493,15 @@ void Application::destroy(Application& instance)
 {
     delete &static_cast<ApplicationImpl&>(instance);
 }
+
+#ifdef _WIN32
+int main();
+int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+{
+    (void)hInstance;
+    (void)hPrevInstance;
+    (void)lpCmdLine;
+    (void)nCmdShow;
+    return main();
+}
+#endif

@@ -1,3 +1,4 @@
+#include <Core/Log.h>
 #include "Tests.h"
 #include "nes.h"
 #include <string>
@@ -26,7 +27,7 @@ bool runTestRom(const char* path)
                     {
                         result[pos] = context->read8(0x6004 + pos);
                     } while (result[pos++]);
-                    printf("%s", result);
+                    emu::Log::printf(emu::Log::Type::Warning, "%s", result);
                     success = state == 0;
                     break;
                 }
@@ -71,7 +72,7 @@ bool runTestRoms()
             ++passed;
     }
 
-    printf("Executed: %d\nPassed: %d\n", executed, passed);
+    emu::Log::printf(emu::Log::Type::Warning, "Executed: %d\nPassed: %d\n", executed, passed);
 
     return true;
 }

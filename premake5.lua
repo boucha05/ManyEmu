@@ -74,9 +74,16 @@ function SharedLib(name)
         defines { "EXPORT_" .. name:upper(), "SHARED_LIB" }
 end
 
-function Application(name)
+function ConsoleApplication(name)
     project(name)
         kind "ConsoleApp"
+        language "C++"
+        configure()
+end
+
+function WindowedApplication(name)
+    project(name)
+        kind "WindowedApp"
         language "C++"
         configure()
 end
@@ -153,7 +160,7 @@ StaticLib "NES"
         "NES/**.cpp",
     }
 
-Application "ManyEmu"
+WindowedApplication "ManyEmu"
     files
     {
         "ManyEmu/**.h",

@@ -1,83 +1,50 @@
 #include <Core/Core.h>
+#include <Core/Log.h>
 #include "LogView.h"
-
-#include <fcntl.h>
-#include <io.h>
+#include "Thread.h"
+#include <array>
 
 class LogView::Impl
 {
 public:
     Impl()
         : mCount(0)
+        , mListener(*this)
     {
-        _pipe(mPipes, PIPE_SIZE, O_TEXT);
-        mStdOut = dup(fileno(stdout));
-        mStdErr = dup(fileno(stderr));
-        mBuffer.resize(PIPE_SIZE);
+        emu::Log::addListener(mListener);
+        mSeverityColor.resize(static_cast<size_t>(emu::Log::Type::COUNT), ImColor(1.0f, 1.0f, 1.0f));
+        getSeverityColor(emu::Log::Type::Debug) = ImColor(0.5f, 0.5f, 0.5f);
+        getSeverityColor(emu::Log::Type::Warning) = ImColor(0.0f, 1.0f, 0.0f);
+        getSeverityColor(emu::Log::Type::Error) = ImColor(1.0f, 0.0f, 0.0f);
         clear();
     }
 
     ~Impl()
     {
-        _close(mStdErr);
-        _close(mStdOut);
-        _close(mPipes[READ]);
-        _close(mPipes[WRITE]);
+        emu::Log::removeListener(mListener);
     }
 
     void clear()
     {
+        ScopedLock lock(mMutex);
         mMessages.clear();
-        mMessages.emplace_back();
     }
 
     void enable()
     {
-        if (mCount++ == 0)
-        {
-            fflush(stdout);
-            fflush(stderr);
-            _dup2(mPipes[WRITE], fileno(stdout));
-            _dup2(mPipes[WRITE], fileno(stderr));
-        }
+        ScopedLock lock(mMutex);
+        ++mCount;
     }
 
     void disable()
     {
-        if (--mCount == 0)
-        {
-            fflush(stdout);
-            fflush(stderr);
-            _dup2(mStdOut, fileno(stdout));
-            _dup2(mStdErr, fileno(stderr));
-
-            update();
-        }
-    }
-
-    void update()
-    {
-        fflush(stdout);
-        fflush(stderr);
-        if (!_eof(mPipes[READ]))
-        {
-            unsigned int size = _read(mPipes[READ], mBuffer.data(), PIPE_SIZE);
-            unsigned int start = 0;
-            for (unsigned int pos = 0; pos < size; ++pos)
-            {
-                if (mBuffer[pos] == '\n')
-                {
-                    mMessages.back().append(mBuffer.data() + start, pos - start);
-                    mMessages.emplace_back();
-                    start = pos + 1;
-                }
-            }
-            mMessages.back().append(mBuffer.data() + start, size - start);
-        }
+        ScopedLock lock(mMutex);
+        --mCount;
     }
 
     void onGUI()
     {
+        ScopedLock lock(mMutex);
         ImGui::BeginChild("Log");
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
         ImGuiListClipper clipper(static_cast<int>(mMessages.size()));
@@ -85,29 +52,55 @@ public:
         {
             for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
             {
-                ImGui::Text(mMessages[i].c_str());
+                const auto& message = mMessages[i];
+                ImGui::TextColored(mSeverityColor[static_cast<size_t>(message.type)], message.text.c_str());
             }
         }
         ImGui::PopStyleVar();
         ImGui::EndChild();
     }
 
-private:
-    enum PIPES
+    void addMessage(emu::Log::Type type, const char* text)
     {
-        READ,
-        WRITE,
+        ScopedLock lock(mMutex);
+        if (mCount > 0)
+        {
+            mMessages.push_back({ type, text });
+        }
+    }
+
+    ImColor& getSeverityColor(emu::Log::Type type)
+    {
+        return mSeverityColor[static_cast<size_t>(type)];
+    }
+
+private:
+    struct LogListener : public emu::Log::IListener
+    {
+        LogListener(LogView::Impl& impl)
+        {
+            mImpl = &impl;
+        }
+
+        virtual void message(emu::Log::Type type, const char* text) override
+        {
+            mImpl->addMessage(type, text);
+        }
+
+        LogView::Impl*  mImpl;
     };
 
-    static const unsigned int PIPE_SIZE = 65536;
+    struct Message
+    {
+        emu::Log::Type  type;
+        std::string     text;
+    };
 
-    int32_t     mCount;
-    int         mPipes[2];
-    int         mStdOut;
-    int         mStdErr;
-
-    std::vector<char>           mBuffer;
-    std::vector<std::string>    mMessages;
+    Mutex                                   mMutex;
+    int32_t                                 mCount;
+    std::vector<Message>                    mMessages;
+    LogListener                             mListener;
+    std::vector<ImColor>                    mSeverityColor;
 };
 
 LogView::LogView()
@@ -135,12 +128,12 @@ const char* LogView::getName() const
     return "Log";
 }
 
-void LogView::update()
-{
-    mImpl.update();
-}
-
 void LogView::onGUI()
 {
     mImpl.onGUI();
+}
+
+ImColor& LogView::getSeverityColor(emu::Log::Type type)
+{
+    return mImpl.getSeverityColor(type);
 }

@@ -1,4 +1,5 @@
 #include "Core.h"
+#include "Log.h"
 #include "MemoryBus.h"
 #include <memory.h>
 #include <stdio.h>
@@ -14,7 +15,7 @@ namespace
 {
     void NOT_IMPLEMENTED(const char* func)
     {
-        printf("%s(): function not implemented\n", func);
+        emu::Log::printf(emu::Log::Type::Warning, "%s(): function not implemented\n", func);
         EMU_ASSERT(false);
     }
 }

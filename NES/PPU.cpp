@@ -1,3 +1,4 @@
+#include <Core/Log.h>
 #include <Core/Serializer.h>
 #include "nes.h"
 #include "PPU.h"
@@ -94,7 +95,7 @@ namespace
 
     void NOT_IMPLEMENTED()
     {
-        printf("Feature not implemented\n");
+        emu::Log::printf(emu::Log::Type::Warning, "Feature not implemented\n");
         EMU_ASSERT(false);
     }
 
@@ -568,7 +569,7 @@ namespace nes
 
     void PPU::startVBlank()
     {
-        //printf("[VBLANK start]\n");
+        //emu::Log::printf(emu::Log::Type::Debug, "[VBLANK start]\n");
         uint8_t ppustatus = mRegister[PPU_REG_PPUSTATUS];
         uint8_t ppuctrl = mRegister[PPU_REG_PPUCTRL];
         if (!(ppustatus & PPU_STATUS_VBLANK))
@@ -583,7 +584,7 @@ namespace nes
     {
         uint8_t ppustatus = mRegister[PPU_REG_PPUSTATUS];
         //if (ppustatus & PPU_STATUS_VBLANK)
-        //    printf("[VBLANK end]\n");
+        //    emu::Log::printf(emu::Log::Type::Debug, "[VBLANK end]\n");
         mRegister[PPU_REG_PPUSTATUS] = ppustatus & ~PPU_STATUS_VBLANK;
     }
 
@@ -591,7 +592,7 @@ namespace nes
     {
         for (auto listener : mListeners)
             listener->onVBlankStart();
-        //printf("[VBLANK interrupt]\n");
+        //emu::Log::printf(emu::Log::Type::Debug, "[VBLANK interrupt]\n");
     }
 
     void PPU::signalVisibleLineStart(int32_t tick)

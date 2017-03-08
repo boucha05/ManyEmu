@@ -1,4 +1,5 @@
 #include <Core/Clock.h>
+#include <Core/Log.h>
 #include <Core/MemoryBus.h>
 #include <Core/Serializer.h>
 #include "nes.h"
@@ -43,7 +44,7 @@ namespace
 
     void NOT_IMPLEMENTED()
     {
-        printf("Feature not implemented\n");
+        emu::Log::printf(emu::Log::Type::Warning, "Feature not implemented\n");
         EMU_ASSERT(false);
     }
 }

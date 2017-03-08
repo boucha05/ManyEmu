@@ -1,3 +1,4 @@
+#include <Core/Log.h>
 #include <Core/MemoryBus.h>
 #include <Core/Serializer.h>
 #include "APU.h"
@@ -8,7 +9,7 @@ namespace
 {
     void NOT_IMPLEMENTED(const char* feature)
     {
-        printf("APU: feature not implemented: %s\n", feature);
+        emu::Log::printf(emu::Log::Type::Warning, "APU: feature not implemented: %s\n", feature);
         EMU_ASSERT(false);
     }
 

@@ -1,3 +1,4 @@
+#include <Core/Log.h>
 #include <Core/MemoryBus.h>
 #include <Core/Serializer.h>
 #include "Cpu6502.h"
@@ -146,13 +147,13 @@ namespace
 
     void NOT_IMPLEMENTED_ADDR_MODE(const char* mode)
     {
-        printf("Address mode %s not implemented\n", mode);
+        emu::Log::printf(emu::Log::Type::Warning, "Address mode %s not implemented\n", mode);
         EMU_ASSERT(false);
     }
 
     void NOT_IMPLEMENTED(const char* insn)
     {
-        printf("Instruction %s not implemented\n", insn);
+        emu::Log::printf(emu::Log::Type::Warning, "Instruction %s not implemented\n", insn);
         EMU_ASSERT(false);
     }
 

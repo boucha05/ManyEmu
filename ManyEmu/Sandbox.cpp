@@ -1,10 +1,9 @@
-#define SDL_MAIN_HANDLED
-
 #include <SDL.h>
 #include <string>
 #include <vector>
 #include <deque>
 #include <Core/InputController.h>
+#include <Core/Log.h>
 #include <Core/Serializer.h>
 #include <Core/Stream.h>
 #include "Backend.h"
@@ -576,7 +575,7 @@ namespace
             same = same && verifyMemory(mTestStream1.getBuffer(), mTestStream2.getBuffer(), mTestStream1.getSize(), diffPos);
             if (!same)
             {
-                printf("Frame %d: serialization failed at offset %d\n!", mFrameIndex, static_cast<uint32_t>(diffPos));
+                emu::Log::printf(emu::Log::Type::Error, "Frame %d: serialization failed at offset %d\n!", mFrameIndex, static_cast<uint32_t>(diffPos));
                 EMU_ASSERT(false);
                 terminate();
             }
@@ -790,13 +789,13 @@ namespace
         _finddata_t data;
         auto handle = _findfirst(filter.c_str(), &data);
         int valid = 1;
-        printf("File;ROM size;RAM size;Title;UseCGB;OnlyCGB;UseSGB;RAM;Battery;Timer;Rumble;Mapper;Destination;Cartridge type;Version;Licensee old;Licensee new;Manufacturer;Header checksum;Global checksum\n");
+        emu::Log::printf(emu::Log::Type::Debug, "File;ROM size;RAM size;Title;UseCGB;OnlyCGB;UseSGB;RAM;Battery;Timer;Rumble;Mapper;Destination;Cartridge type;Version;Licensee old;Licensee new;Manufacturer;Header checksum;Global checksum\n");
         while (handle && valid)
         {
             std::string path = Path::join(config.romFolder, data.name);
             gb::Rom::Description desc;
             gb::Rom::readDescription(desc, path.c_str());
-            printf("%s;%d;%d;%s;%d;%d;%d;%d;%d;%d;%d;%s;%s;0x%02x;%d;0x%02x;0x%04x;0x%08x;0x%02x;0x%04x\n",
+            emu::Log::printf(emu::Log::Type::Debug, "%s;%d;%d;%s;%d;%d;%d;%d;%d;%d;%d;%s;%s;0x%02x;%d;0x%02x;0x%04x;0x%08x;0x%02x;0x%04x\n",
                 data.name,
                 desc.romSize,
                 desc.ramSize,

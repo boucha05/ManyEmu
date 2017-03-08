@@ -1,5 +1,6 @@
 #include "YamlSerializer.h"
 #include "Base64.h"
+#include "Log.h"
 
 #pragma warning(push, 3)
 #include <yaml-cpp/yaml.h>
@@ -31,7 +32,7 @@ namespace
             catch (YAML::Exception except)
             {
                 mSuccess = false;
-                printf("YamlReaderImpl: %s\n", except.what());
+                emu::Log::printf(emu::Log::Type::Error, "YamlReaderImpl: %s\n", except.what());
             }
         }
 
@@ -200,7 +201,7 @@ namespace
             catch (YAML::Exception except)
             {
                 mSuccess = false;
-                printf("YamlWriterImpl: %s\n", except.what());
+                emu::Log::printf(emu::Log::Type::Warning, "YamlWriterImpl: %s\n", except.what());
             }
         }
 
