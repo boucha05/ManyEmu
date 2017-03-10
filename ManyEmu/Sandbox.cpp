@@ -119,7 +119,7 @@ namespace
         void overrideConfig();
         bool createSound();
         void destroySound();
-        GameSession* createGameSession(const std::string& path, const std::string& saveDirectory);
+        GameSession* createGameSession(Application& application, const std::string& path, const std::string& saveDirectory);
         void destroyGameSession(GameSession& gameSession);
         void audioCallback(int16_t* data, uint32_t size);
         static void audioCallback(void* userData, Uint8* stream, int len);
@@ -318,7 +318,7 @@ namespace
 
         for (auto rom : mConfig.roms)
         {
-            auto gameSession = createGameSession(Path::join(mConfig.romFolder, rom), mConfig.saveFolder);
+            auto gameSession = createGameSession(application, Path::join(mConfig.romFolder, rom), mConfig.saveFolder);
             EMU_VERIFY(gameSession);
             mGameSessions.push_back(gameSession);
         }
@@ -451,13 +451,13 @@ namespace
         SDL_AudioQuit();
     }
 
-    GameSession* SandboxImpl::createGameSession(const std::string& path, const std::string& saveDirectory)
+    GameSession* SandboxImpl::createGameSession(Application& application, const std::string& path, const std::string& saveDirectory)
     {
         std::string root;
         std::string ext;
         Path::splitExt(path, root, ext);
         Path::normalizeCase(ext);
-        auto backend = BackendRegistry::getInstance().getBackend(ext.c_str());
+        auto backend = application.getBackendRegistry().getBackend(ext.c_str());
         if (!backend)
             return nullptr;
 

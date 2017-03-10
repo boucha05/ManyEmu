@@ -1,5 +1,6 @@
 #define SDL_MAIN_HANDLED
 #include "Application.h"
+#include "Backend.h"
 #include "GameView.h"
 #include "LogView.h"
 #include <Core/YamlSerializer.h>
@@ -238,6 +239,11 @@ namespace
             return mLogView;
         }
 
+        virtual BackendRegistry& getBackendRegistry() override
+        {
+            return mBackendRegistry;
+        }
+
     private:
         void initialize()
         {
@@ -266,7 +272,7 @@ namespace
             int windowY = mSettings.y >= 0 ? mSettings.y : SDL_WINDOWPOS_CENTERED;
             int windowWidth = mSettings.width;
             int windowHeight = mSettings.height;
-            mWindow = SDL_CreateWindow("RomViewer", windowX, windowY, windowWidth, windowHeight, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
+            mWindow = SDL_CreateWindow("ManyEmu", windowX, windowY, windowWidth, windowHeight, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
             EMU_VERIFY(mWindow);
 
             mGLContext = SDL_GL_CreateContext(mWindow);
@@ -481,6 +487,8 @@ namespace
 
         GameView                                mGameView;
         LogView                                 mLogView;
+
+        BackendRegistry                         mBackendRegistry;
     };
 }
 

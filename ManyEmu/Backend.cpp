@@ -1,11 +1,5 @@
 #include "Backend.h"
 
-BackendRegistry& BackendRegistry::getInstance()
-{
-    static BackendRegistry instance;
-    return instance;
-}
-
 BackendRegistry::BackendRegistry()
 {
 }

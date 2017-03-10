@@ -1,4 +1,5 @@
 #include "Backend.h"
+#include "GameboyPlugin.h"
 #include "InputManager.h"
 #include <SDL.h>
 #include <string>
@@ -50,6 +51,39 @@ namespace
         }
     };
 
-    BackendRegistry::AutoRegister<GBBackend> gb;
-    BackendRegistry::AutoRegister<GBCBackend> gbc;
+    class GameboyPluginImpl : public GameboyPlugin
+    {
+    public:
+        virtual bool create(Application& application) override
+        {
+            application.getBackendRegistry().add(mGBBackend);
+            application.getBackendRegistry().add(mGBCBackend);
+            return true;
+        }
+
+        virtual void destroy(Application& application) override
+        {
+            application.getBackendRegistry().remove(mGBCBackend);
+            application.getBackendRegistry().remove(mGBBackend);
+        }
+
+        virtual const char* getName() const override
+        {
+            return "Gameboy";
+        }
+
+    private:
+        GBBackend   mGBBackend;
+        GBCBackend  mGBCBackend;
+    };
+}
+
+GameboyPlugin* GameboyPlugin::create()
+{
+    return new GameboyPluginImpl();
+}
+
+void GameboyPlugin::destroy(GameboyPlugin& instance)
+{
+    delete &static_cast<GameboyPluginImpl&>(instance);
 }

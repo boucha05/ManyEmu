@@ -1,5 +1,6 @@
 #include "Backend.h"
 #include "InputManager.h"
+#include "NESPlugin.h"
 #include <SDL.h>
 #include <string>
 #include <vector>
@@ -38,5 +39,36 @@ namespace
         }
     };
 
-    BackendRegistry::AutoRegister<NESBackend> nes;
+    class NESPluginImpl : public NESPlugin
+    {
+    public:
+        virtual bool create(Application& application) override
+        {
+            application.getBackendRegistry().add(mNESBackend);
+            return true;
+        }
+
+        virtual void destroy(Application& application) override
+        {
+            application.getBackendRegistry().remove(mNESBackend);
+        }
+
+        virtual const char* getName() const override
+        {
+            return "NES";
+        }
+
+    private:
+        NESBackend      mNESBackend;
+    };
+}
+
+NESPlugin* NESPlugin::create()
+{
+    return new NESPluginImpl();
+}
+
+void NESPlugin::destroy(NESPlugin& instance)
+{
+    delete &static_cast<NESPluginImpl&>(instance);
 }

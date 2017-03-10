@@ -94,32 +94,12 @@ public:
         virtual void visit(IBackend& backend);
     };
 
-    static BackendRegistry& getInstance();
-
     BackendRegistry();
     ~BackendRegistry();
     IBackend* getBackend(const char* extension);
     void add(IBackend& backend);
     void remove(IBackend& backend);
     void accept(Visitor& visitor);
-
-    template <typename T>
-    class AutoRegister
-    {
-    public:
-        AutoRegister()
-        {
-            BackendRegistry::getInstance().add(mInstance);
-        }
-
-        ~AutoRegister()
-        {
-            BackendRegistry::getInstance().remove(mInstance);
-        }
-
-    private:
-        T   mInstance;
-    };
 
 private:
     std::vector<IBackend*>  mBackends;

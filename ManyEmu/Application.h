@@ -7,6 +7,7 @@ namespace emu
     class ISerializer;
 }
 
+class BackendRegistry;
 class GameView;
 class LogView;
 
@@ -41,6 +42,8 @@ public:
 
     virtual GameView& getGameView() = 0;
     virtual LogView& getLogView() = 0;
+
+    virtual BackendRegistry& getBackendRegistry() = 0;
 
     static Application* create();
     static void destroy(Application& instance);
