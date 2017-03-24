@@ -10,6 +10,7 @@ namespace emu
 class BackendRegistry;
 class GameView;
 class LogView;
+class ThreadPool;
 
 class Application
 {
@@ -44,6 +45,7 @@ public:
     virtual LogView& getLogView() = 0;
 
     virtual BackendRegistry& getBackendRegistry() = 0;
+    virtual ThreadPool& getThreadPool() = 0;
 
     static Application* create();
     static void destroy(Application& instance);

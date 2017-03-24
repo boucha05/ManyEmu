@@ -3,6 +3,7 @@
 #include "Backend.h"
 #include "GameView.h"
 #include "LogView.h"
+#include "ThreadPool.h"
 #include <Core/YamlSerializer.h>
 #include "imgui_impl_sdl_gl3.h"
 #include <SDL.h>
@@ -165,6 +166,7 @@ namespace
         };
 
         ApplicationImpl()
+            : mThreadPool(std::thread::hardware_concurrency())
         {
             initialize();
             create();
@@ -242,6 +244,11 @@ namespace
         virtual BackendRegistry& getBackendRegistry() override
         {
             return mBackendRegistry;
+        }
+
+        virtual ThreadPool& getThreadPool() override
+        {
+            return mThreadPool;
         }
 
     private:
@@ -477,6 +484,7 @@ namespace
             bool                                visible;
         };
 
+        ThreadPool                              mThreadPool;
         Settings                                mSettings;
         bool                                    mRunning;
         SDL_Window*                             mWindow;

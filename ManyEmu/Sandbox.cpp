@@ -10,10 +10,8 @@
 #include "GameSession.h"
 #include "GameView.h"
 #include "InputManager.h"
-#include "Job.h"
 #include "Path.h"
 #include "Texture.h"
-#include <functional>
 
 #define DUMP_ROM_LIST 0
 
@@ -127,7 +125,6 @@ namespace
         typedef std::vector<GameSession*> GameSessionArray;
 
         Config                      mConfig;
-        JobScheduler                mJobScheduler;
         uint32_t                    mTexSizeX;
         uint32_t                    mTexSizeY;
         Texture                     mTexture;
@@ -221,13 +218,9 @@ namespace
 
     bool SandboxImpl::create(Application& application)
     {
-        EMU_UNUSED(application);
-
         overrideConfig();
 
         Path::makeDirs(mConfig.saveFolder);
-
-        mJobScheduler.create(SDL_GetCPUCount());
 
         mTexSizeX = 256;
         mTexSizeY = 240;
@@ -388,7 +381,6 @@ namespace
 
         mInputManager.destroy();
         mTexture.destroy();
-        mJobScheduler.destroy();
     }
 
     bool SandboxImpl::createSound()
