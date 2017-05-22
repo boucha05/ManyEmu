@@ -72,7 +72,7 @@ std::string Path::normalizePath(const std::string& path)
 std::string Path::normalizeCase(const std::string& path)
 {
     std::string result = path;
-    std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+    std::transform(result.begin(), result.end(), result.begin(), [](char value) { return static_cast<char>(tolower(value)); });
     return result;
 }
 

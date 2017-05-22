@@ -201,7 +201,7 @@ namespace emu
         {
             EMU_UNUSED(ticks);
             EMU_UNUSED(addr);
-            return 0;
+            return static_cast<uint8_t>(0);
         };
     }
 
