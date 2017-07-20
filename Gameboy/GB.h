@@ -2,11 +2,7 @@
 #define __GB_H__
 
 #include <Core/Core.h>
-
-namespace emu
-{
-    class IEmulator;
-}
+#include <Core/Emulator.h>
 
 namespace gb
 {
@@ -110,9 +106,13 @@ namespace gb
         static Context* create(const Rom& rom, Model model);
     };
 
-    emu::IEmulator& getEmulatorGB();
-    emu::IEmulator& getEmulatorGBC();
-    emu::IEmulator& getEmulatorSGB();
+    class Emulator : public emu::IEmulator
+    {
+    public:
+        static Emulator& getEmulatorGB();
+        static Emulator& getEmulatorGBC();
+        static Emulator& getEmulatorSGB();
+    };
 }
 
 #endif

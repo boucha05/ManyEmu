@@ -17,7 +17,7 @@ namespace
     public:
         virtual emu::IEmulator& getEmulator() override
         {
-            return gb::getEmulatorGB();
+            return gb::Emulator::getEmulatorGB();
         }
 
         virtual void configureController(StandardController& controller, uint32_t player)
@@ -37,7 +37,7 @@ namespace
     public:
         virtual emu::IEmulator& getEmulator() override
         {
-            return gb::getEmulatorGBC();
+            return gb::Emulator::getEmulatorGBC();
         }
     };
 
@@ -46,7 +46,7 @@ namespace
     public:
         virtual emu::IEmulator& getEmulator() override
         {
-            return gb::getEmulatorSGB();
+            return gb::Emulator::getEmulatorSGB();
         }
     };
 

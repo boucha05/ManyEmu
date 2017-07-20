@@ -5,86 +5,90 @@
 
 namespace nes
 {
-    bool Emulator::getSystemInfo(SystemInfo& info)
+    class EmulatorImpl : public Emulator
     {
-        info.name = "NES";
-        info.extensions = "nes";
-        return true;
-    }
+    public:
+        bool getSystemInfo(SystemInfo& info) override
+        {
+            info.name = "NES";
+            info.extensions = "nes";
+            return true;
+        }
 
-    emu::Rom* Emulator::loadRom(const char* path)
-    {
-        return Rom::load(path);
-    }
+        emu::Rom* loadRom(const char* path) override
+        {
+            return Rom::load(path);
+        }
 
-    void Emulator::unloadRom(emu::Rom& rom)
-    {
-        static_cast<Rom&>(rom).dispose();
-    }
+        void unloadRom(emu::Rom& rom) override
+        {
+            static_cast<Rom&>(rom).dispose();
+        }
 
-    emu::Context* Emulator::createContext(const emu::Rom& rom)
-    {
-        return Context::create(static_cast<const Rom&>(rom));
-    }
+        emu::Context* createContext(const emu::Rom& rom) override
+        {
+            return Context::create(static_cast<const Rom&>(rom));
+        }
 
-    void Emulator::destroyContext(emu::Context& context)
-    {
-        static_cast<Context&>(context).dispose();
-    }
+        void destroyContext(emu::Context& context) override
+        {
+            static_cast<Context&>(context).dispose();
+        }
 
-    bool Emulator::getDisplaySize(emu::Context& context, uint32_t& sizeX, uint32_t& sizeY)
-    {
-        EMU_UNUSED(context);
-        sizeX = nes::Context::DisplaySizeX;
-        sizeY = nes::Context::DisplaySizeY;
-        return true;
-    }
+        bool getDisplaySize(emu::Context& context, uint32_t& sizeX, uint32_t& sizeY) override
+        {
+            EMU_UNUSED(context);
+            sizeX = nes::Context::DisplaySizeX;
+            sizeY = nes::Context::DisplaySizeY;
+            return true;
+        }
 
-    bool Emulator::serializeGameData(emu::Context& context, emu::ISerializer& serializer)
-    {
-        static_cast<Context&>(context).serializeGameData(serializer);
-        return true;
-    }
+        bool serializeGameData(emu::Context& context, emu::ISerializer& serializer) override
+        {
+            static_cast<Context&>(context).serializeGameData(serializer);
+            return true;
+        }
 
-    bool Emulator::serializeGameState(emu::Context& context, emu::ISerializer& serializer)
-    {
-        static_cast<Context&>(context).serializeGameState(serializer);
-        return true;
-    }
+        bool serializeGameState(emu::Context& context, emu::ISerializer& serializer) override
+        {
+            static_cast<Context&>(context).serializeGameState(serializer);
+            return true;
+        }
 
-    bool Emulator::setRenderBuffer(emu::Context& context, void* buffer, size_t pitch)
-    {
-        static_cast<Context&>(context).setRenderSurface(buffer, pitch);
-        return true;
-    }
+        bool setRenderBuffer(emu::Context& context, void* buffer, size_t pitch) override
+        {
+            static_cast<Context&>(context).setRenderSurface(buffer, pitch);
+            return true;
+        }
 
-    bool Emulator::setSoundBuffer(emu::Context& context, void* buffer, size_t size)
-    {
-        static_cast<Context&>(context).setSoundBuffer(static_cast<int16_t*>(buffer), size);
-        return true;
-    }
+        bool setSoundBuffer(emu::Context& context, void* buffer, size_t size) override
+        {
+            static_cast<Context&>(context).setSoundBuffer(static_cast<int16_t*>(buffer), size);
+            return true;
+        }
 
-    bool Emulator::setController(emu::Context& context, uint32_t index, uint32_t value)
-    {
-        static_cast<Context&>(context).setController(index, value);
-        return true;
-    }
+        bool setController(emu::Context& context, uint32_t index, uint32_t value) override
+        {
+            static_cast<Context&>(context).setController(index, value);
+            return true;
+        }
 
-    bool Emulator::reset(emu::Context& context)
-    {
-        static_cast<Context&>(context).reset();
-        return true;
-    }
+        bool reset(emu::Context& context) override
+        {
+            static_cast<Context&>(context).reset();
+            return true;
+        }
 
-    bool Emulator::execute(emu::Context& context)
-    {
-        static_cast<Context&>(context).update();
-        return true;
-    }
+        bool execute(emu::Context& context) override
+        {
+            static_cast<Context&>(context).update();
+            return true;
+        }
+    };
 
     Emulator& Emulator::getInstance()
     {
-        static Emulator instance;
+        static EmulatorImpl instance;
         return instance;
     }
 }

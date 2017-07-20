@@ -5,7 +5,7 @@
 
 namespace
 {
-    class EmulatorGB : public emu::IEmulator
+    class EmulatorGB : public gb::Emulator
     {
     public:
         virtual bool getSystemInfo(SystemInfo& info) override
@@ -122,19 +122,19 @@ namespace
 
 namespace gb
 {
-    emu::IEmulator& getEmulatorGB()
+    Emulator& Emulator::getEmulatorGB()
     {
         static EmulatorGB instance;
         return instance;
     }
 
-    emu::IEmulator& getEmulatorGBC()
+    Emulator& Emulator::getEmulatorGBC()
     {
         static EmulatorGBC instance;
         return instance;
     }
 
-    emu::IEmulator& getEmulatorSGB()
+    Emulator& Emulator::getEmulatorSGB()
     {
         static EmulatorSGB instance;
         return instance;
