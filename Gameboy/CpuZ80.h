@@ -2,6 +2,7 @@
 
 #include <Core/Clock.h>
 #include <Core/Core.h>
+#include <Core/Cpu.h>
 #include <Core/MemoryBus.h>
 #include <stdint.h>
 #include <map>
@@ -15,7 +16,7 @@ namespace emu
 
 namespace gb
 {
-    class CpuZ80 : public emu::Clock::IListener
+    class CpuZ80 : public emu::ICPU, public emu::Clock::IListener
     {
     public:
         class IInterruptListener
@@ -44,7 +45,8 @@ namespace gb
         virtual void advanceClock(int32_t ticks) override;
         virtual void setDesiredTicks(int32_t ticks) override;
         virtual void execute() override;
-        uint16_t disassemble(char* buffer, size_t size, uint16_t addr);
+        virtual const char* getName() override { return "Z80"; }
+        virtual bool disassemble(char* buffer, size_t size, size_t& addr) override;
         void serialize(emu::ISerializer& serializer);
         void addInterruptListener(IInterruptListener& listener);
         void removeInterruptListener(IInterruptListener& listener);

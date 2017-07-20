@@ -1802,8 +1802,9 @@ namespace gb
         if (log && (traceCount >= traceStart))
         {
             char temp[32];
-            auto nextPC = disassemble(temp, sizeof(temp), PC);
-            uint16_t byteCount = nextPC - PC;
+            size_t nextPC = PC;
+            disassemble(temp, sizeof(temp), nextPC);
+            uint16_t byteCount = static_cast<uint16_t>(nextPC) - PC;
             char temp2[16];
             char* temp2Pos = temp2;
             for (uint16_t offset = 0; offset < byteCount; ++offset)
@@ -1835,10 +1836,10 @@ namespace gb
         }
     }
 
-    uint16_t CpuZ80::disassemble(char* buffer, size_t size, uint16_t addr)
+    bool CpuZ80::disassemble(char* buffer, size_t size, size_t& addr)
     {
         // Decode
-        auto pc = addr;
+        auto pc = static_cast<uint16_t>(addr);
         auto data = peek8(pc);
         auto insnType = static_cast<INSN_TYPE>(insnTypeMain[data]);
         auto addrMode = static_cast<ADDR_MODE>(addrModeMain[data]);
@@ -1922,7 +1923,8 @@ namespace gb
             strncpy(buffer, temp, size);
         buffer[size] = 0;
 
-        return pc;
+        addr = pc;
+        return true;
     }
 
     void CpuZ80::serialize(emu::ISerializer& serializer)

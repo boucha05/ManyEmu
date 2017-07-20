@@ -202,6 +202,18 @@ namespace
             delete this;
         }
 
+        virtual bool getInfo(Info& info) override
+        {
+            info = Info();
+            info.cpuCount = 0;
+            return true;
+        }
+
+        virtual emu::ICPU* getCpu(uint32_t index) override
+        {
+            return index == 0 ? &cpu : nullptr;
+        }
+
         virtual bool getDisplaySize(uint32_t& sizeX, uint32_t& sizeY) override
         {
             sizeX = nes::Context::DisplaySizeX;

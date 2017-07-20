@@ -95,7 +95,7 @@ public:
     class Visitor
     {
     public:
-        virtual void visit(IBackend& backend);
+        virtual void visit(IBackend& backend) { EMU_UNUSED(backend); }
     };
 
     BackendRegistry();

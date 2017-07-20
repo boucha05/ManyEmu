@@ -68,6 +68,18 @@ namespace gb_context
             mMapper = nullptr;
         }
 
+        virtual bool getInfo(Info& info) override
+        {
+            info = Info();
+            info.cpuCount = 0;
+            return true;
+        }
+
+        virtual emu::ICPU* getCpu(uint32_t index) override
+        {
+            return index == 0 ? &mCpu : nullptr;
+        }
+
         bool create(const gb::Rom& rom, gb::Model model)
         {
             mModel = model;

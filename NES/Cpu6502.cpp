@@ -1348,9 +1348,10 @@ namespace nes
         cpu_execute(mState);
     }
 
-    uint16_t Cpu6502::disassemble(char* buffer, size_t size, uint16_t addr)
+    bool Cpu6502::disassemble(char* buffer, size_t size, size_t& addr)
     {
-        return ::disassemble(mState, addr, buffer, size);
+        addr = ::disassemble(mState, static_cast<uint16_t>(addr), buffer, size);
+        return true;
     }
 
     void Cpu6502::serialize(emu::ISerializer& serializer)

@@ -2,6 +2,7 @@
 #define __CPU_6502_H__
 
 #include <Core/Clock.h>
+#include <Core/Cpu.h>
 #include <stdint.h>
 #include <map>
 
@@ -40,7 +41,7 @@ namespace emu
 
 namespace nes
 {
-    class Cpu6502 : public emu::Clock::IListener
+    class Cpu6502 : public emu::ICPU, public emu::Clock::IListener
     {
     public:
         Cpu6502();
@@ -54,7 +55,8 @@ namespace nes
         virtual void advanceClock(int32_t ticks) override;
         virtual void setDesiredTicks(int32_t ticks) override;
         virtual void execute() override;
-        uint16_t disassemble(char* buffer, size_t size, uint16_t addr);
+        virtual const char* getName() override { return "6502"; }
+        bool disassemble(char* buffer, size_t size, size_t& addr) override;
         void serialize(emu::ISerializer& serializer);
 
         CPU_STATE& getState()
