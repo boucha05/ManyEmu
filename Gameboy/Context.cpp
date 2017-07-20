@@ -166,7 +166,14 @@ namespace gb_context
             delete this;
         }
 
-        virtual void reset()
+        virtual bool getDisplaySize(uint32_t& sizeX, uint32_t& sizeY) override
+        {
+            sizeX = gb::Context::DisplaySizeX;
+            sizeY = gb::Context::DisplaySizeY;
+            return true;
+        }
+
+        virtual bool reset() override
         {
             mBankWRAM = 0;
             mRegSVBK = mBankWRAM;
@@ -189,6 +196,7 @@ namespace gb_context
             mJoypad.reset();
             mTimer.reset();
             mAudio.reset();
+            return true;
         }
 
         void setVariableClockDivider(uint32_t variableClockDivider)
@@ -198,22 +206,25 @@ namespace gb_context
             mTimer.setVariableClockDivider(variableClockDivider);
         }
 
-        virtual void setController(uint32_t index, uint32_t buttons)
+        virtual bool setController(uint32_t index, uint32_t buttons) override
         {
             mJoypad.setController(index, buttons);
+            return true;
         }
 
-        virtual void setSoundBuffer(int16_t* buffer, size_t size)
+        virtual bool setSoundBuffer(void* buffer, size_t size) override
         {
-            mAudio.setSoundBuffer(buffer, size);
+            mAudio.setSoundBuffer(static_cast<int16_t*>(buffer), size);
+            return true;
         }
 
-        virtual void setRenderSurface(void* surface, size_t pitch)
+        virtual bool setRenderBuffer(void* surface, size_t pitch) override
         {
             mDisplay.setRenderSurface(surface, pitch);
+            return true;
         }
 
-        virtual void update()
+        virtual bool execute() override
         {
             mDisplay.beginFrame();
             mTimer.beginFrame();
@@ -221,6 +232,7 @@ namespace gb_context
             mClock.execute(mTicksPerFrame);
             mClock.advance();
             mClock.clearEvents();
+            return true;
         }
 
         virtual uint8_t read8(uint16_t addr)
@@ -234,13 +246,14 @@ namespace gb_context
             mMemory.write8(mMemoryWriteAccessor, mClock.getDesiredTicks(), addr, value);
         }
 
-        virtual void serializeGameData(emu::ISerializer& serializer)
+        virtual bool serializeGameData(emu::ISerializer& serializer) override
         {
             if (mMapper)
                 mMapper->serializeGameData(serializer);
+            return true;
         }
 
-        virtual void serializeGameState(emu::ISerializer& serializer)
+        virtual bool serializeGameState(emu::ISerializer& serializer) override
         {
             uint32_t version = 1;
             EMU_UNUSED(version);
@@ -266,6 +279,7 @@ namespace gb_context
                 updateMemoryMap();
                 setVariableClockDivider(mVariableClockDivider);
             }
+            return true;
         }
 
         emu::RegisterBank& getRegistersIO()

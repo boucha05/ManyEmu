@@ -1,6 +1,8 @@
 #pragma once
+#include <Core/Context.h>
 #include <Core/Core.h>
 #include <Core/Emulator.h>
+#include <Core/Rom.h>
 #include <Core/InputController.h>
 #include "InputManager.h"
 #include <string>

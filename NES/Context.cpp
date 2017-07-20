@@ -202,7 +202,14 @@ namespace
             delete this;
         }
 
-        virtual void reset()
+        virtual bool getDisplaySize(uint32_t& sizeX, uint32_t& sizeY) override
+        {
+            sizeX = nes::Context::DisplaySizeX;
+            sizeY = nes::Context::DisplaySizeY;
+            return true;
+        }
+
+        virtual bool reset() override
         {
             clock.reset();
             cpu.reset();
@@ -212,24 +219,28 @@ namespace
             irqApu = false;
             irqMapper = false;
             updateIrqStatus();
+            return true;
         }
 
-        virtual void setController(uint32_t index, uint32_t buttons)
+        virtual bool setController(uint32_t index, uint32_t buttons) override
         {
             apu.setController(index, static_cast<uint8_t>(buttons));
+            return true;
         }
 
-        virtual void setSoundBuffer(int16_t* buffer, size_t size)
+        virtual bool setSoundBuffer(void* buffer, size_t size) override
         {
-            apu.setSoundBuffer(buffer, size);
+            apu.setSoundBuffer(static_cast<int16_t*>(buffer), size);
+            return true;
         }
 
-        virtual void setRenderSurface(void* surface, size_t pitch)
+        virtual bool setRenderBuffer(void* surface, size_t pitch) override
         {
             ppu.setRenderSurface(surface, pitch);
+            return true;
         }
 
-        virtual void update()
+        virtual bool execute() override
         {
             ppu.beginFrame();
             apu.beginFrame();
@@ -237,6 +248,7 @@ namespace
             clock.execute(MASTER_CLOCK_PER_FRAME_NTSC);
             clock.advance();
             clock.clearEvents();
+            return true;
         }
 
         virtual uint8_t read8(uint16_t addr)
@@ -250,12 +262,13 @@ namespace
             memory_bus_write8(cpuMemory.getState(), clock.getDesiredTicks(), addr, value);
         }
 
-        virtual void serializeGameData(emu::ISerializer& serializer)
+        virtual bool serializeGameData(emu::ISerializer& serializer) override
         {
             mapper->serializeGameData(serializer);
+            return true;
         }
 
-        virtual void serializeGameState(emu::ISerializer& serializer)
+        virtual bool serializeGameState(emu::ISerializer& serializer) override
         {
             uint32_t version = 2;
             clock.serialize(serializer);
@@ -272,6 +285,7 @@ namespace
                     .value("IrqMapper", irqMapper);
             }
             mapper->serializeGameState(serializer);
+            return true;
         }
 
     private:

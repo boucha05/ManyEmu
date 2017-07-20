@@ -86,7 +86,7 @@ bool GameSession::getDisplaySize(uint32_t& sizeX, uint32_t& sizeY)
 {
     if (!mValid)
         return false;
-    return mEmulator->getDisplaySize(*mContext, sizeX, sizeY);
+    return mContext->getDisplaySize(sizeX, sizeY);
 }
 
 bool GameSession::loadGameData()
@@ -99,7 +99,7 @@ bool GameSession::loadGameData()
         return false;
 
     emu::BinaryReader reader(stream);
-    return mEmulator->serializeGameData(*mContext, reader);
+    return mContext->serializeGameData(reader);
 }
 
 bool GameSession::saveGameData()
@@ -109,7 +109,7 @@ bool GameSession::saveGameData()
 
     emu::MemoryStream streamTemp;
     emu::BinaryWriter writer(streamTemp);
-    if (!mEmulator->serializeGameData(*mContext, writer))
+    if (!mContext->serializeGameData(writer))
         return false;
     if (streamTemp.getSize() <= 0)
         return false;
@@ -161,7 +161,7 @@ bool GameSession::serializeGameState(emu::ISerializer& serializer)
         if (!reset())
             return false;
     }
-    return mEmulator->serializeGameState(*mContext, serializer);
+    return mContext->serializeGameState(serializer);
 }
 
 bool GameSession::setRenderBuffer(void* buffer, size_t pitch)
@@ -169,7 +169,7 @@ bool GameSession::setRenderBuffer(void* buffer, size_t pitch)
     if (!mValid)
         return false;
 
-    return mEmulator->setRenderBuffer(*mContext, buffer, pitch);
+    return mContext->setRenderBuffer(buffer, pitch);
 }
 
 bool GameSession::setSoundBuffer(void* buffer, size_t size)
@@ -177,7 +177,7 @@ bool GameSession::setSoundBuffer(void* buffer, size_t size)
     if (!mValid)
         return false;
 
-    return mEmulator->setSoundBuffer(*mContext, static_cast<int16_t*>(buffer), size);
+    return mContext->setSoundBuffer(static_cast<int16_t*>(buffer), size);
 }
 
 bool GameSession::setController(uint32_t index, uint32_t value)
@@ -185,7 +185,7 @@ bool GameSession::setController(uint32_t index, uint32_t value)
     if (!mValid)
         return false;
 
-    return mEmulator->setController(*mContext, index, value);
+    return mContext->setController(index, value);
 }
 
 bool GameSession::reset()
@@ -193,7 +193,7 @@ bool GameSession::reset()
     if (!mValid)
         return false;
 
-    return mEmulator->reset(*mContext);
+    return mContext->reset();
 }
 
 bool GameSession::execute()
@@ -204,7 +204,7 @@ bool GameSession::execute()
     bool success = true;
     __try
     {
-        success = mEmulator->execute(*mContext);
+        success = mContext->execute();
     }
     __except (getExceptionFilter(GetExceptionInformation()))
     {

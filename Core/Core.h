@@ -156,14 +156,6 @@ namespace emu
     public:
         virtual void dispose() = 0;
     };
-
-    struct Rom
-    {
-    };
-
-    struct Context
-    {
-    };
 }
 
 #endif

@@ -38,8 +38,8 @@ private:
     std::string         mSavePath;
     std::string         mGameDataPath;
     std::string         mGameStatePath;
-    emu::Rom*           mRom;
-    emu::Context*       mContext;
+    emu::IRom*          mRom;
+    emu::IContext*      mContext;
     bool                mValid;
 };
 

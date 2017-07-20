@@ -12,10 +12,10 @@ bool runTestRom(const char* path)
         auto context = nes::Context::create(*rom);
         if (context)
         {
-            context->update();
+            context->execute();
             for (uint32_t frame = 0; frame < 250; ++frame)
             {
-                context->update();
+                context->execute();
                 if ((context->read8(0x6001) != 0xde) || (context->read8(0x6002) != 0xb0) || (context->read8(0x6003) != 0x61))
                     continue;
                 uint8_t state = context->read8(0x6000);

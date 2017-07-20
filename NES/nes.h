@@ -2,10 +2,13 @@
 #define __NES_H__
 
 #include <Core/Core.h>
+#include <Core/Context.h>
+#include <Core/Emulator.h>
+#include <Core/Rom.h>
 
 namespace nes
 {
-    class Rom : public emu::Rom, public emu::IDisposable
+    class Rom : public emu::IRom, public emu::IDisposable
     {
     public:
         enum Mirroring
@@ -41,7 +44,7 @@ namespace nes
         static Rom* load(const char* path);
     };
 
-    class Context : public emu::Context, public emu::IDisposable
+    class Context : public emu::IContext, public emu::IDisposable
     {
     public:
         static const uint32_t ButtonA = 0x01;
@@ -56,15 +59,8 @@ namespace nes
         static const uint32_t DisplaySizeX = 256;
         static const uint32_t DisplaySizeY = 224;
 
-        virtual void reset() = 0;
-        virtual void setController(uint32_t index, uint32_t buttons) = 0;
-        virtual void setSoundBuffer(int16_t* buffer, size_t size) = 0;
-        virtual void setRenderSurface(void* surface, size_t pitch) = 0;
-        virtual void update() = 0;
         virtual uint8_t read8(uint16_t addr) = 0;
         virtual void write8(uint16_t addr, uint8_t value) = 0;
-        virtual void serializeGameData(emu::ISerializer& serializer) = 0;
-        virtual void serializeGameState(emu::ISerializer& serializer) = 0;
 
         static Context* create(const Rom& rom);
     };
