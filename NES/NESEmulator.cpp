@@ -5,6 +5,13 @@
 
 namespace nes
 {
+    bool Emulator::getSystemInfo(SystemInfo& info)
+    {
+        info.name = "NES";
+        info.extensions = "nes";
+        return true;
+    }
+
     emu::Rom* Emulator::loadRom(const char* path)
     {
         return Rom::load(path);

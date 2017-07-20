@@ -15,11 +15,6 @@ namespace
     class GBBackend : public IBackend
     {
     public:
-        virtual const char* getExtension() override
-        {
-            return "gb";
-        }
-
         virtual emu::IEmulator& getEmulator() override
         {
             return gb::getEmulatorGB();
@@ -40,14 +35,18 @@ namespace
     class GBCBackend : public GBBackend
     {
     public:
-        virtual const char* getExtension() override
-        {
-            return "gbc";
-        }
-
         virtual emu::IEmulator& getEmulator() override
         {
             return gb::getEmulatorGBC();
+        }
+    };
+
+    class SGBBackend : public GBBackend
+    {
+    public:
+        virtual emu::IEmulator& getEmulator() override
+        {
+            return gb::getEmulatorSGB();
         }
     };
 
@@ -56,13 +55,15 @@ namespace
     public:
         virtual bool create(Application& application) override
         {
-            application.getBackendRegistry().add(mGBBackend);
-            application.getBackendRegistry().add(mGBCBackend);
+            EMU_VERIFY(application.getBackendRegistry().add(mGBBackend));
+            EMU_VERIFY(application.getBackendRegistry().add(mGBCBackend));
+            EMU_VERIFY(application.getBackendRegistry().add(mSGBBackend));
             return true;
         }
 
         virtual void destroy(Application& application) override
         {
+            application.getBackendRegistry().remove(mSGBBackend);
             application.getBackendRegistry().remove(mGBCBackend);
             application.getBackendRegistry().remove(mGBBackend);
         }
@@ -75,6 +76,7 @@ namespace
     private:
         GBBackend   mGBBackend;
         GBCBackend  mGBCBackend;
+        SGBBackend  mSGBBackend;
     };
 }
 

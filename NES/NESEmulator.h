@@ -3,13 +3,14 @@
 
 #include <stdint.h>
 #include <string>
-#include <Core/Core.h>
+#include <Core/Emulator.h>
 
 namespace nes
 {
     class Emulator : public emu::IEmulator
     {
     public:
+        virtual bool getSystemInfo(SystemInfo& info) override;
         virtual emu::Rom* loadRom(const char* path) override;
         virtual void unloadRom(emu::Rom& rom) override;
         virtual emu::Context* createContext(const emu::Rom& rom) override;

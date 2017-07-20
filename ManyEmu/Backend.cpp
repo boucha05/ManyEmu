@@ -11,30 +11,45 @@ BackendRegistry::~BackendRegistry()
 
 IBackend* BackendRegistry::getBackend(const char* extension)
 {
-    for (auto backend : mBackends)
-    {
-        if (strcmpi(backend->getExtension(), extension) == 0)
-        {
-            return backend;
-        }
-    }
-    return nullptr;
+    auto item = mBackends.find(extension);
+    return item == mBackends.end() ? nullptr : item->second;
 }
 
-void BackendRegistry::add(IBackend& backend)
+bool BackendRegistry::add(IBackend& backend)
 {
-    mBackends.push_back(&backend);
+    emu::IEmulator::SystemInfo info;
+    EMU_VERIFY(backend.getEmulator().getSystemInfo(info));
+
+    const char* extensionPos = info.extensions;
+    while (*extensionPos)
+    {
+        const char* separator = extensionPos;
+        while (*separator && *separator != '|')
+            ++separator;
+
+        std::string extension(extensionPos, separator - extensionPos);
+        mBackends[extension] = &backend;
+
+        if (*separator == '|')
+            ++separator;
+        extensionPos = separator;
+    }
+    return true;
 }
 
 void BackendRegistry::remove(IBackend& backend)
 {
-    auto item = std::find(mBackends.begin(), mBackends.end(), &backend);
-    if (item != mBackends.end())
-        mBackends.erase(item);
+    for (auto item = mBackends.begin(); item != mBackends.end();)
+    {
+        if (item->second == &backend)
+            item = mBackends.erase(item);
+        else
+            ++item;
+    }
 }
 
 void BackendRegistry::accept(BackendRegistry::Visitor& visitor)
 {
     for (auto backend : mBackends)
-        visitor.visit(*backend);
+        visitor.visit(*backend.second);
 }

@@ -3,6 +3,11 @@
 
 #include <Core/Core.h>
 
+namespace emu
+{
+    class IEmulator;
+}
+
 namespace gb
 {
     enum class Model : uint8_t
@@ -107,6 +112,7 @@ namespace gb
 
     emu::IEmulator& getEmulatorGB();
     emu::IEmulator& getEmulatorGBC();
+    emu::IEmulator& getEmulatorSGB();
 }
 
 #endif

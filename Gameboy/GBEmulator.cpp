@@ -1,3 +1,4 @@
+#include <Core/Emulator.h>
 #include <Core/Serializer.h>
 #include <Core/Stream.h>
 #include "gb.h"
@@ -7,6 +8,13 @@ namespace
     class EmulatorGB : public emu::IEmulator
     {
     public:
+        virtual bool getSystemInfo(SystemInfo& info) override
+        {
+            info.name = "Game Boy";
+            info.extensions = "gb";
+            return true;
+        }
+
         virtual emu::Rom* loadRom(const char* path) override
         {
             return gb::Rom::load(path);
@@ -81,11 +89,35 @@ namespace
     class EmulatorGBC : public EmulatorGB
     {
     public:
+        virtual bool getSystemInfo(SystemInfo& info) override
+        {
+            info.name = "Game Boy Color";
+            info.extensions = "gbc";
+            return true;
+        }
+
         virtual emu::Context* createContext(const emu::Rom& rom) override
         {
             return gb::Context::create(static_cast<const gb::Rom&>(rom), gb::Model::GBC);
         }
     };
+
+    class EmulatorSGB : public EmulatorGB
+    {
+    public:
+        virtual bool getSystemInfo(SystemInfo& info) override
+        {
+            info.name = "Super Game Boy";
+            info.extensions = "sgb";
+            return true;
+        }
+
+        virtual emu::Context* createContext(const emu::Rom& rom) override
+        {
+            return gb::Context::create(static_cast<const gb::Rom&>(rom), gb::Model::SGB);
+        }
+    };
+
 }
 
 namespace gb
@@ -99,6 +131,12 @@ namespace gb
     emu::IEmulator& getEmulatorGBC()
     {
         static EmulatorGBC instance;
+        return instance;
+    }
+
+    emu::IEmulator& getEmulatorSGB()
+    {
+        static EmulatorSGB instance;
         return instance;
     }
 }

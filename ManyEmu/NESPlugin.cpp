@@ -17,11 +17,6 @@ namespace
     class NESBackend : public IBackend
     {
     public:
-        virtual const char* getExtension() override
-        {
-            return "nes";
-        }
-
         virtual emu::IEmulator& getEmulator() override
         {
             return nes::Emulator::getInstance();

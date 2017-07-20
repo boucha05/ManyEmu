@@ -1,7 +1,10 @@
 #pragma once
 #include <Core/Core.h>
+#include <Core/Emulator.h>
 #include <Core/InputController.h>
 #include "InputManager.h"
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 enum
@@ -80,7 +83,6 @@ private:
 class IBackend
 {
 public:
-    virtual const char* getExtension() = 0;
     virtual emu::IEmulator& getEmulator() = 0;
     virtual void configureController(StandardController& controller, uint32_t player) = 0;
 };
@@ -97,10 +99,10 @@ public:
     BackendRegistry();
     ~BackendRegistry();
     IBackend* getBackend(const char* extension);
-    void add(IBackend& backend);
+    bool add(IBackend& backend);
     void remove(IBackend& backend);
     void accept(Visitor& visitor);
 
 private:
-    std::vector<IBackend*>  mBackends;
+    std::unordered_map<std::string, IBackend*>  mBackends;
 };
