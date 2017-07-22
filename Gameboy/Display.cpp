@@ -1225,10 +1225,19 @@ namespace gb
         uint8_t sprites[SPRITE_LINE_LIMIT];
         uint8_t active = 0;
         line += SPRITE_VISIBLE_Y_BEGIN;
+        auto sizeOAMOrder = mOAMOrder.size();
+        EMU_UNUSED(sizeOAMOrder);
+        auto fastOAMOrder = mOAMOrder.data();
+        auto sizeOAM = mOAM.size();
+        EMU_UNUSED(sizeOAM);
+        auto fastOAM = mOAM.data();
         for (uint8_t key = 0; key < mActiveSprites; ++key)
         {
-            uint8_t index = mOAMOrder[key];
-            uint8_t spriteY = mOAM[index * 4 + 0];
+            EMU_ASSERT(static_cast<size_t>(key) < sizeOAMOrder);
+            uint8_t index = fastOAMOrder[key];
+            auto addrOAM = index * 4 + 0;
+            EMU_ASSERT(static_cast<size_t>(addrOAM) < sizeOAM);
+            uint8_t spriteY = fastOAM[addrOAM];
             if ((spriteY > line) || (spriteY + spriteSizeY <= line))
                 continue;
             sprites[active] = index;
@@ -1243,13 +1252,19 @@ namespace gb
         {
             // Skip sprite if it is not visible horizontally
             uint8_t index = sprites[key];
-            uint8_t spriteX = mOAM[index * 4 + 1];
+            auto addrOAM = index * 4 + 1;
+            EMU_ASSERT(static_cast<size_t>(addrOAM) < sizeOAM);
+            uint8_t spriteX = fastOAM[addrOAM];
             if ((spriteX >= SPRITE_VISIBLE_X_END) || (spriteX + spriteSizeX <= SPRITE_VISIBLE_X_BEGIN))
                 continue;
 
             // Fetch attributes
-            uint8_t spriteY = mOAM[index * 4 + 0];
-            uint8_t flags = mOAM[index * 4 + 3];
+            addrOAM = index * 4 + 0;
+            EMU_ASSERT(static_cast<size_t>(addrOAM) < sizeOAM);
+            uint8_t spriteY = fastOAM[addrOAM];
+            addrOAM = index * 4 + 3;
+            EMU_ASSERT(static_cast<size_t>(addrOAM) < sizeOAM);
+            uint8_t flags = fastOAM[index * 4 + 3];
 
             // Select line to render and adjust tile number
             uint8_t offsetY = line - spriteY;
@@ -1257,15 +1272,24 @@ namespace gb
                 offsetY = spriteSizeY - 1 - offsetY;
 
             // Get the tile number
-            uint8_t tile = mOAM[index * 4 + 2];
+            addrOAM = index * 4 + 2;
+            EMU_ASSERT(static_cast<size_t>(addrOAM) < sizeOAM);
+            uint8_t tile = fastOAM[addrOAM];
             tile = (tile & ~tileMask) | ((offsetY >> 3) & tileMask);
 
             // Get the pattern
             uint8_t flipX = (flags & SPRITE_FLAG_FLIP_X) ? 7 : 0;
             uint32_t tileBank = (flags & bankMask) << 10;
             uint32_t tileAddr = (tile << 4) + ((offsetY & 7) << 1) + tileBank;
-            uint8_t pattern0 = mVRAM[tileAddr + 0];
-            uint8_t pattern1 = mVRAM[tileAddr + 1];
+            auto sizeVRAM = mVRAM.size();
+            EMU_UNUSED(sizeVRAM);
+            auto fastVRAM = mVRAM.data();
+            auto addrVRAM = tileAddr + 0;
+            EMU_ASSERT(static_cast<size_t>(addrVRAM) < sizeVRAM);
+            uint8_t pattern0 = fastVRAM[addrVRAM];
+            addrVRAM = tileAddr + 1;
+            EMU_ASSERT(static_cast<size_t>(addrVRAM) < sizeVRAM);
+            uint8_t pattern1 = fastVRAM[addrVRAM];
             const uint8_t* patternMask0 = patternMask[pattern0];
             const uint8_t* patternMask1 = patternMask[pattern1];
 
@@ -1291,11 +1315,14 @@ namespace gb
 
     void Display::blitLine(uint32_t* dest, uint8_t* src, uint32_t count)
     {
+        auto paletteSize = mPalette.size();
+        EMU_UNUSED(paletteSize);
+        auto paletteData = mPalette.data();
         for (uint32_t index = 0; index < count; ++index)
         {
             uint8_t value = src[index];
-            EMU_ASSERT(value < mPalette.size());
-            uint32_t color = mPalette[value];
+            EMU_ASSERT(static_cast<size_t>(value) < paletteSize);
+            uint32_t color = paletteData[value];
             dest[index] = color;
         }
     }
