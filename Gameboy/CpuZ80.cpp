@@ -395,7 +395,9 @@ PC (program counter)                   C - Carry Flag
 
     static const uint8_t refTicksCB[] =
     {
-        8,  8,  8,  8,  8,  8,  16, 8
+        // Removing 4 ticks on each instruction as 4 ticks
+        // have already been spent on fetching the CB byte
+        4,  4,  4,  4,  4,  4,  12, 4
     };
 
     static const uint8_t refTicksCond_call = 24 - 12;
