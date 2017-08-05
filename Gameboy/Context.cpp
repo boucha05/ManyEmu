@@ -97,7 +97,7 @@ namespace gb_context
                 fixedClockDivider = 2;
                 mVariableClockDivider = 2;
             }
-            mTicksPerFrame = DISPLAY_TICKS_PER_FRAME * fixedClockDivider;
+            mTicksPerFrame = MASTER_TICKS_PER_FRAME * fixedClockDivider;
 
             EMU_VERIFY(mClock.create());
             EMU_VERIFY(mMemory.create(MEM_SIZE_LOG2, MEM_PAGE_SIZE_LOG2));

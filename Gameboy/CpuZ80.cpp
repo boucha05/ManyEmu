@@ -5,6 +5,9 @@
 #include <memory.h>
 #include <stdio.h>
 
+extern uint32_t CLK;
+uint32_t CLK = 0;
+
 #define A           mRegs.r8.a
 #define FLAGS       mRegs.r8.flags
 #define B           mRegs.r8.b
@@ -608,6 +611,10 @@ namespace gb
         PC = addr;
         setIME(false);
         resume(tick);
+
+        // Simulate 12 cycles for context switch
+        mExecutedTicks += mTicksMain[1];
+        CLK += mTicksMain[1];
     }
 
     void CpuZ80::resetClock()
@@ -1195,6 +1202,7 @@ namespace gb
         if (cond)
         {
             mExecutedTicks += mTicksCond_jp;
+            CLK += mTicksCond_jp;
             PC = dest;
         }
     }
@@ -1209,6 +1217,7 @@ namespace gb
         if (cond)
         {
             mExecutedTicks += mTicksCond_jr;
+            CLK += mTicksCond_jr;
             PC = dest;
         }
     }
@@ -1224,6 +1233,7 @@ namespace gb
         if (cond)
         {
             mExecutedTicks += mTicksCond_call;
+            CLK += mTicksCond_call;
             push16(PC);
             PC = dest;
         }
@@ -1239,6 +1249,7 @@ namespace gb
         if (cond)
         {
             mExecutedTicks += mTicksCond_ret;
+            CLK += mTicksCond_ret;
             PC = pop16();
         }
     }
@@ -1264,6 +1275,7 @@ namespace gb
     {
         auto opcode = fetch8();
         mExecutedTicks += mTicksCB[opcode & 7];
+        CLK += mTicksCB[opcode & 7];
         switch (opcode)
         {
         case 0x00: insn_rlc(B); break;
@@ -1530,6 +1542,7 @@ namespace gb
     {
         auto opcode = fetch8();
         mExecutedTicks += mTicksMain[opcode];
+        CLK += mTicksMain[opcode];
         switch (opcode)
         {
         case 0x00: insn_nop(); break;
@@ -1792,8 +1805,42 @@ namespace gb
         }
     }
 
+    struct State
+    {
+        uint16_t    af, bc, de, hl, pc, sp;
+        bool        halt, stop, ime;
+    };
+
     void CpuZ80::trace()
     {
+#if 0
+        State state;
+        state.af = AF;
+        state.bc = BC;
+        state.de = DE;
+        state.hl = HL;
+        state.pc = PC;
+        state.sp = SP;
+        state.halt = mRegs.r8.halted;
+        state.stop = mRegs.r8.stopped;
+        state.ime = mRegs.r8.ime;
+
+        char disassembly[64];
+        size_t pc = state.pc;
+        disassemble(disassembly, sizeof(disassembly), pc);
+
+        char bytecode[64];
+        char* bytecodeStr = bytecode;
+        for (uint16_t addr = state.pc; addr < static_cast<uint16_t>(pc); ++addr)
+            bytecodeStr += sprintf(bytecodeStr, "%02X ", read8(addr));
+
+        static FILE* file = fopen("D:\\Prog\\Emu\\TinyGameBoy\\build\\ref.txt", "w");
+        fprintf(file, "%-10s %-16s PC=%04X SP=%04X AF=%04X BC=%04X DE=%04X HL=%04X halt=%d stop=%d ime=%d %08X\n",
+            bytecode, disassembly,
+            state.pc, state.sp, state.af, state.bc, state.de, state.hl, state.halt, state.stop, state.ime,
+            CLK
+        );
+#endif
 #if 0
         static FILE* log = fopen("..\\gb.log", "w");
         //static FILE* log = nullptr;
