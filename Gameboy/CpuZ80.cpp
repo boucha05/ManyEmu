@@ -697,11 +697,11 @@ namespace gb
 
     void CpuZ80::flags_00hc(uint16_t value1, uint16_t value2)
     {
-        auto result = (value1 & 0x00ff) + (value2 & 0x00ff);
-        auto half = (value1 & 0x000f) + (value2 & 0x000f);
+        uint32_t result = (value1 & 0xffff) + (value2 & 0xffff);
+        uint16_t half = (value1 & 0x0fff) + (value2 & 0x0fff);
         FLAGS = 0;
-        FLAGS |= (half >= 0x10) ? FLAG_H : 0;
-        FLAGS |= (result >= 0x100) ? FLAG_C : 0;
+        FLAGS |= (half >= 0x1000) ? FLAG_H : 0;
+        FLAGS |= (result >= 0x10000) ? FLAG_C : 0;
     }
 
     void CpuZ80::flags_000c(uint8_t carry)
