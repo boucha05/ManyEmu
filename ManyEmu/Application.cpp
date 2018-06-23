@@ -2,10 +2,10 @@
 #include "Application.h"
 #include "Backend.h"
 #include "GameView.h"
+#include "ImGuiContext.h"
 #include "LogView.h"
 #include "ThreadPool.h"
 #include <Core/YamlSerializer.h>
-#include "imgui_impl_sdl_gl3.h"
 #include <SDL.h>
 #include <gl/gl3w.h>
 #include <algorithm>
@@ -187,7 +187,7 @@ namespace
                 SDL_Event event;
                 while (SDL_PollEvent(&event))
                 {
-                    ImGui_ImplSdlGL3_ProcessEvent(&event);
+                    ImGuiContext_ProcessEvent(&event);
                     if (event.type == SDL_QUIT)
                         mRunning = false;
                 }
@@ -197,6 +197,11 @@ namespace
             }
             saveSettings();
             return true;
+        }
+
+        virtual IGraphics& getGraphics() override
+        {
+            return *mGraphics;
         }
 
         virtual void addPlugin(IPlugin& plugin) override
@@ -257,6 +262,7 @@ namespace
             mRunning = false;
             mWindow = nullptr;
             mGLContext = nullptr;
+            mGraphics = nullptr;
         }
 
         bool create()
@@ -284,9 +290,11 @@ namespace
 
             mGLContext = SDL_GL_CreateContext(mWindow);
             gl3wInit();
+            mGraphics = IGraphics::create();
+            EMU_VERIFY(mGraphics);
 
             // Setup ImGui binding
-            ImGui_ImplSdlGL3_Init(mWindow);
+            ImGuiContext_Init(mWindow, *mGraphics);
 
             addView(mGameView);
             addView(mLogView);
@@ -310,7 +318,8 @@ namespace
                 removePlugin(*mPlugins.back());
             }
 
-            ImGui_ImplSdlGL3_Shutdown();
+            ImGuiContext_Shutdown();
+            IGraphics::destroy(mGraphics);
             if (mGLContext) SDL_GL_DeleteContext(mGLContext);
             if (mWindow) SDL_DestroyWindow(mWindow);
             SDL_Quit();
@@ -402,7 +411,7 @@ namespace
                 item->update();
             }
 
-            ImGui_ImplSdlGL3_NewFrame(mWindow);
+            ImGuiContext_NewFrame(mWindow);
 
             float menuHeight = 0.0f;
             if (ImGui::BeginMainMenuBar())
@@ -464,7 +473,7 @@ namespace
             glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
             glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
             glClear(GL_COLOR_BUFFER_BIT);
-            ImGui::Render();
+            ImGuiContext_Draw();
             SDL_GL_SwapWindow(mWindow);
         }
 
@@ -489,6 +498,7 @@ namespace
         bool                                    mRunning;
         SDL_Window*                             mWindow;
         SDL_GLContext                           mGLContext;
+        IGraphics*                              mGraphics;
         std::vector<IPlugin*>                   mPlugins;
         std::vector<IView*>                     mViews;
         std::map<std::string, ViewSettings>     mViewSettings;

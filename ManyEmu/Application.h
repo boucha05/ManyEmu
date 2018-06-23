@@ -1,6 +1,7 @@
 #pragma once
 
 #include <imgui_lib.h>
+#include "Graphics.h"
 
 namespace emu
 {
@@ -36,6 +37,7 @@ public:
     };
 
     virtual bool run() = 0;
+    virtual IGraphics& getGraphics() = 0;
     virtual void addPlugin(IPlugin& plugin) = 0;
     virtual void removePlugin(IPlugin& plugin) = 0;
     virtual void addView(IView& view) = 0;
