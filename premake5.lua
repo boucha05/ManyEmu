@@ -175,6 +175,7 @@ WindowedApplication "ManyEmu"
     {
         "ImGUI",
         "OpenGL32.lib",
+        "GLU32.lib",
         "Core",
         "Gameboy",
         "NES",

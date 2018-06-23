@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Application.h"
-#include <gl/glew.h>
 
 class Texture
 {
@@ -24,13 +23,13 @@ public:
 
     ImTextureID getImTextureID() const
     {
-        return reinterpret_cast<ImTextureID>(static_cast<intptr_t>(mTexture));
+        return mTexture;
     }
 
 private:
     void initialize();
 
-    uint32_t    mWidth;
-    uint32_t    mHeight;
-    GLuint      mTexture;
+    uint32_t        mWidth;
+    uint32_t        mHeight;
+    ImTextureID     mTexture;
 };
