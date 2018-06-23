@@ -1,13 +1,32 @@
 #include "GLGraphics.h"
+#include <Core/Log.h>
 #include <memory>
 
-// SDL,GL3W
 #include <SDL.h>
 #include <SDL_syswm.h>
-#include <GL/gl3w.h>    // This example is using gl3w to access OpenGL functions (because it is small). You may use glew/glad/glLoadGen/etc. whatever already works for you.
+#include <GL/gl3w.h>
+#include <GL/GLU.h>
+
+#if defined(EMU_DEBUG)
+#define GL_VERIFY(expr)     EMU_VERIFY(((expr), ::_checkError(__FILE__, __LINE__)))
+#else
+#define GL_VERIFY(expr)     expr
+#endif
 
 namespace
 {
+    bool _checkError(const char* file, int line)
+    {
+        auto value = glGetError();
+        auto success = value == 0;
+        if (!success)
+        {
+            auto message = gluErrorString(value);
+            emu::Log::printf(emu::Log::Type::Error, "%s(%d): GL check: %s\n", file, line, message);
+        }
+        return success;
+    }
+
     struct ImGuiRenderer
     {
         GLuint          mFontTexture = 0;
@@ -44,8 +63,8 @@ namespace
         bool initialize()
         {
             // Backup GL state
-            glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &mLastArrayBuffer);
-            glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &mLastVertexArray);
+            GL_VERIFY(glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &mLastArrayBuffer));
+            GL_VERIFY(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &mLastVertexArray));
 
             const GLchar *vertex_shader =
                 "#version 330\n"
@@ -76,13 +95,13 @@ namespace
             mShaderHandle = glCreateProgram();
             mVertHandle = glCreateShader(GL_VERTEX_SHADER);
             mFragHandle = glCreateShader(GL_FRAGMENT_SHADER);
-            glShaderSource(mVertHandle, 1, &vertex_shader, 0);
-            glShaderSource(mFragHandle, 1, &fragment_shader, 0);
-            glCompileShader(mVertHandle);
-            glCompileShader(mFragHandle);
-            glAttachShader(mShaderHandle, mVertHandle);
-            glAttachShader(mShaderHandle, mFragHandle);
-            glLinkProgram(mShaderHandle);
+            GL_VERIFY(glShaderSource(mVertHandle, 1, &vertex_shader, 0));
+            GL_VERIFY(glShaderSource(mFragHandle, 1, &fragment_shader, 0));
+            GL_VERIFY(glCompileShader(mVertHandle));
+            GL_VERIFY(glCompileShader(mFragHandle));
+            GL_VERIFY(glAttachShader(mShaderHandle, mVertHandle));
+            GL_VERIFY(glAttachShader(mShaderHandle, mFragHandle));
+            GL_VERIFY(glLinkProgram(mShaderHandle));
 
             mAttribLocationTex = glGetUniformLocation(mShaderHandle, "Texture");
             mAttribLocationProjMtx = glGetUniformLocation(mShaderHandle, "ProjMtx");
@@ -90,109 +109,116 @@ namespace
             mAttribLocationUV = glGetAttribLocation(mShaderHandle, "UV");
             mAttribLocationColor = glGetAttribLocation(mShaderHandle, "Color");
 
-            glGenBuffers(1, &mVboHandle);
-            glGenBuffers(1, &mElementsHandle);
+            GL_VERIFY(glGenBuffers(1, &mVboHandle));
+            GL_VERIFY(glGenBuffers(1, &mElementsHandle));
 
-            glGenVertexArrays(1, &mVaoHandle);
-            glBindVertexArray(mVaoHandle);
-            glBindBuffer(GL_ARRAY_BUFFER, mVboHandle);
-            glEnableVertexAttribArray(mAttribLocationPosition);
-            glEnableVertexAttribArray(mAttribLocationUV);
-            glEnableVertexAttribArray(mAttribLocationColor);
+            GL_VERIFY(glGenVertexArrays(1, &mVaoHandle));
+            GL_VERIFY(glBindVertexArray(mVaoHandle));
+            GL_VERIFY(glBindBuffer(GL_ARRAY_BUFFER, mVboHandle));
+            GL_VERIFY(glEnableVertexAttribArray(mAttribLocationPosition));
+            GL_VERIFY(glEnableVertexAttribArray(mAttribLocationUV));
+            GL_VERIFY(glEnableVertexAttribArray(mAttribLocationColor));
 
 #define OFFSETOF(TYPE, ELEMENT) ((size_t)&(((TYPE *)0)->ELEMENT))
-            glVertexAttribPointer(mAttribLocationPosition, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid*)OFFSETOF(ImDrawVert, pos));
-            glVertexAttribPointer(mAttribLocationUV, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid*)OFFSETOF(ImDrawVert, uv));
-            glVertexAttribPointer(mAttribLocationColor, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(ImDrawVert), (GLvoid*)OFFSETOF(ImDrawVert, col));
+            GL_VERIFY(glVertexAttribPointer(mAttribLocationPosition, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid*)OFFSETOF(ImDrawVert, pos)));
+            GL_VERIFY(glVertexAttribPointer(mAttribLocationUV, 2, GL_FLOAT, GL_FALSE, sizeof(ImDrawVert), (GLvoid*)OFFSETOF(ImDrawVert, uv)));
+            GL_VERIFY(glVertexAttribPointer(mAttribLocationColor, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(ImDrawVert), (GLvoid*)OFFSETOF(ImDrawVert, col)));
 #undef OFFSETOF
 
             // Restore modified GL state
-            glBindBuffer(GL_ARRAY_BUFFER, mLastArrayBuffer);
-            glBindVertexArray(mLastVertexArray);
+            GL_VERIFY(glBindBuffer(GL_ARRAY_BUFFER, mLastArrayBuffer));
+            GL_VERIFY(glBindVertexArray(mLastVertexArray));
 
             return true;
         }
 
         ~ImGuiRenderer()
         {
-            if (mVaoHandle) glDeleteVertexArrays(1, &mVaoHandle);
-            if (mVboHandle) glDeleteBuffers(1, &mVboHandle);
-            if (mElementsHandle) glDeleteBuffers(1, &mElementsHandle);
+            EMU_CHECK(destroyResources());
+        }
+
+        bool destroyResources()
+        {
+            if (mVaoHandle) GL_VERIFY(glDeleteVertexArrays(1, &mVaoHandle));
+            if (mVboHandle) GL_VERIFY(glDeleteBuffers(1, &mVboHandle));
+            if (mElementsHandle) GL_VERIFY(glDeleteBuffers(1, &mElementsHandle));
             mVaoHandle = mVboHandle = mElementsHandle = 0;
 
-            if (mShaderHandle && mVertHandle) glDetachShader(mShaderHandle, mVertHandle);
-            if (mVertHandle) glDeleteShader(mVertHandle);
+            if (mShaderHandle && mVertHandle) GL_VERIFY(glDetachShader(mShaderHandle, mVertHandle));
+            if (mVertHandle) GL_VERIFY(glDeleteShader(mVertHandle));
             mVertHandle = 0;
 
-            if (mShaderHandle && mFragHandle) glDetachShader(mShaderHandle, mFragHandle);
-            if (mFragHandle) glDeleteShader(mFragHandle);
+            if (mShaderHandle && mFragHandle) GL_VERIFY(glDetachShader(mShaderHandle, mFragHandle));
+            if (mFragHandle) GL_VERIFY(glDeleteShader(mFragHandle));
             mFragHandle = 0;
 
-            if (mShaderHandle) glDeleteProgram(mShaderHandle);
+            if (mShaderHandle) GL_VERIFY(glDeleteProgram(mShaderHandle));
             mShaderHandle = 0;
 
-            destroyFontTexture();
+            EMU_ASSERT(destroyFontTexture());
+            return true;
         }
 
         bool createFontTexture(const ImGuiRenderer_SetFontTexture_Params& params)
         {
             // Upload texture to graphics system
-            glGetIntegerv(GL_TEXTURE_BINDING_2D, &mLastTexture);
-            glGenTextures(1, &mFontTexture);
-            glBindTexture(GL_TEXTURE_2D, mFontTexture);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, params.width, params.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, params.pixels);
+            GL_VERIFY(glGetIntegerv(GL_TEXTURE_BINDING_2D, &mLastTexture));
+            GL_VERIFY(glGenTextures(1, &mFontTexture));
+            GL_VERIFY(glBindTexture(GL_TEXTURE_2D, mFontTexture));
+            GL_VERIFY(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+            GL_VERIFY(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+            GL_VERIFY(glPixelStorei(GL_UNPACK_ROW_LENGTH, 0));
+            GL_VERIFY(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, params.width, params.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, params.pixels));
 
             // Restore state
-            glBindTexture(GL_TEXTURE_2D, mLastTexture);
+            GL_VERIFY(glBindTexture(GL_TEXTURE_2D, mLastTexture));
 
             return true;
         }
 
-        void destroyFontTexture()
+        bool destroyFontTexture()
         {
             if (mFontTexture)
             {
-                glDeleteTextures(1, &mFontTexture);
+                GL_VERIFY(glDeleteTextures(1, &mFontTexture));
                 mFontTexture = 0;
             }
+            return true;
         }
 
-        void beginDraw(const ImGuiRenderer_BeginDraw_Params& params)
+        bool beginDraw(const ImGuiRenderer_BeginDraw_Params& params)
         {
             // Backup GL state
-            glGetIntegerv(GL_CURRENT_PROGRAM, &mLastProgram);
-            glGetIntegerv(GL_TEXTURE_BINDING_2D, &mLastTexture);
-            glGetIntegerv(GL_ACTIVE_TEXTURE, &mLastActiveTexture);
-            glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &mLastArrayBuffer);
-            glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &mLastElementArrayBuffer);
-            glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &mLastVertexArray);
-            glGetIntegerv(GL_BLEND_SRC, &mLastBlendSrc);
-            glGetIntegerv(GL_BLEND_DST, &mLastBlendDst);
-            glGetIntegerv(GL_BLEND_EQUATION_RGB, &mLastBlendEquationRgb);
-            glGetIntegerv(GL_BLEND_EQUATION_ALPHA, &mLastBlendEquationAlpha);
-            glGetIntegerv(GL_VIEWPORT, mLastViewport);
-            glGetIntegerv(GL_SCISSOR_BOX, mLastScissorBox);
-            glIsEnabled(GL_BLEND);
-            glIsEnabled(GL_CULL_FACE);
-            glIsEnabled(GL_DEPTH_TEST);
-            glIsEnabled(GL_SCISSOR_TEST);
+            GL_VERIFY(glGetIntegerv(GL_CURRENT_PROGRAM, &mLastProgram));
+            GL_VERIFY(glGetIntegerv(GL_TEXTURE_BINDING_2D, &mLastTexture));
+            GL_VERIFY(glGetIntegerv(GL_ACTIVE_TEXTURE, &mLastActiveTexture));
+            GL_VERIFY(glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &mLastArrayBuffer));
+            GL_VERIFY(glGetIntegerv(GL_ELEMENT_ARRAY_BUFFER_BINDING, &mLastElementArrayBuffer));
+            GL_VERIFY(glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &mLastVertexArray));
+            GL_VERIFY(glGetIntegerv(GL_BLEND_SRC, &mLastBlendSrc));
+            GL_VERIFY(glGetIntegerv(GL_BLEND_DST, &mLastBlendDst));
+            GL_VERIFY(glGetIntegerv(GL_BLEND_EQUATION_RGB, &mLastBlendEquationRgb));
+            GL_VERIFY(glGetIntegerv(GL_BLEND_EQUATION_ALPHA, &mLastBlendEquationAlpha));
+            GL_VERIFY(glGetIntegerv(GL_VIEWPORT, mLastViewport));
+            GL_VERIFY(glGetIntegerv(GL_SCISSOR_BOX, mLastScissorBox));
+            GL_VERIFY(glIsEnabled(GL_BLEND));
+            GL_VERIFY(glIsEnabled(GL_CULL_FACE));
+            GL_VERIFY(glIsEnabled(GL_DEPTH_TEST));
+            GL_VERIFY(glIsEnabled(GL_SCISSOR_TEST));
 
             // Setup render state: alpha-blending enabled, no face culling, no depth testing, scissor enabled
-            glEnable(GL_BLEND);
-            glBlendEquation(GL_FUNC_ADD);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            glDisable(GL_CULL_FACE);
-            glDisable(GL_DEPTH_TEST);
-            glEnable(GL_SCISSOR_TEST);
-            glActiveTexture(GL_TEXTURE0);
+            GL_VERIFY(glEnable(GL_BLEND));
+            GL_VERIFY(glBlendEquation(GL_FUNC_ADD));
+            GL_VERIFY(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+            GL_VERIFY(glDisable(GL_CULL_FACE));
+            GL_VERIFY(glDisable(GL_DEPTH_TEST));
+            GL_VERIFY(glEnable(GL_SCISSOR_TEST));
+            GL_VERIFY(glActiveTexture(GL_TEXTURE0));
 
             // Setup orthographic projection matrix
             mFrameBufferSizeX = params.frameBufferSizeX;
             mFrameBufferSizeY = params.frameBufferSizeY;
-            glViewport(0, 0, (GLsizei)mFrameBufferSizeX, (GLsizei)mFrameBufferSizeY);
+            GL_VERIFY(glViewport(0, 0, (GLsizei)mFrameBufferSizeX, (GLsizei)mFrameBufferSizeY));
             const float ortho_projection[4][4] =
             {
                 { 2.0f / mFrameBufferSizeX, 0.0f,                      0.0f, 0.0f },
@@ -200,42 +226,45 @@ namespace
                 { 0.0f,                     0.0f,                     -1.0f, 0.0f },
                 {-1.0f,                     1.0f,                      0.0f, 1.0f },
             };
-            glUseProgram(mShaderHandle);
-            glUniform1i(mAttribLocationTex, 0);
-            glUniformMatrix4fv(mAttribLocationProjMtx, 1, GL_FALSE, &ortho_projection[0][0]);
-            glBindVertexArray(mVaoHandle);
+            GL_VERIFY(glUseProgram(mShaderHandle));
+            GL_VERIFY(glUniform1i(mAttribLocationTex, 0));
+            GL_VERIFY(glUniformMatrix4fv(mAttribLocationProjMtx, 1, GL_FALSE, &ortho_projection[0][0]));
+            GL_VERIFY(glBindVertexArray(mVaoHandle));
 
-            glBindBuffer(GL_ARRAY_BUFFER, mVboHandle);
-            glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)params.vertexCount * sizeof(ImDrawVert), (GLvoid*)params.vertexData, GL_STREAM_DRAW);
+            GL_VERIFY(glBindBuffer(GL_ARRAY_BUFFER, mVboHandle));
+            GL_VERIFY(glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)params.vertexCount * sizeof(ImDrawVert), (GLvoid*)params.vertexData, GL_STREAM_DRAW));
 
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mElementsHandle);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)params.indexCount * sizeof(ImDrawIdx), (GLvoid*)params.indexData, GL_STREAM_DRAW);
+            GL_VERIFY(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mElementsHandle));
+            GL_VERIFY(glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)params.indexCount * sizeof(ImDrawIdx), (GLvoid*)params.indexData, GL_STREAM_DRAW));
+            return true;
         }
 
-        void drawPrimitives(const ImGuiRenderer_DrawPrimitives_Params& params)
+        bool drawPrimitives(const ImGuiRenderer_DrawPrimitives_Params& params)
         {
-            glBindTexture(GL_TEXTURE_2D, (GLuint)(intptr_t)params.textureId);
-            glScissor((int)params.clipX1, (int)(mFrameBufferSizeY - params.clipY2), (int)(params.clipX2 - params.clipX1), (int)(params.clipY2 - params.clipY1));
-            glDrawElementsBaseVertex(GL_TRIANGLES, (GLsizei)params.elementCount, sizeof(ImDrawIdx) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, (const GLvoid*)(params.indexOffset * sizeof(ImDrawIdx)), params.vertexOffset);
+            GL_VERIFY(glBindTexture(GL_TEXTURE_2D, (GLuint)(intptr_t)params.textureId));
+            GL_VERIFY(glScissor((int)params.clipX1, (int)(mFrameBufferSizeY - params.clipY2), (int)(params.clipX2 - params.clipX1), (int)(params.clipY2 - params.clipY1)));
+            GL_VERIFY(glDrawElementsBaseVertex(GL_TRIANGLES, (GLsizei)params.elementCount, sizeof(ImDrawIdx) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, (const GLvoid*)(params.indexOffset * sizeof(ImDrawIdx)), params.vertexOffset));
+            return true;
         }
 
-        void endDraw()
+        bool endDraw()
         {
             // Restore modified GL state
-            glUseProgram(mLastProgram);
-            glActiveTexture(mLastActiveTexture);
-            glBindTexture(GL_TEXTURE_2D, mLastTexture);
-            glBindVertexArray(mLastVertexArray);
-            glBindBuffer(GL_ARRAY_BUFFER, mLastArrayBuffer);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mLastElementArrayBuffer);
-            glBlendEquationSeparate(mLastBlendEquationRgb, mLastBlendEquationAlpha);
-            glBlendFunc(mLastBlendSrc, mLastBlendDst);
-            if (mLastEnableBlend) glEnable(GL_BLEND); else glDisable(GL_BLEND);
-            if (mLastEnableCullFace) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
-            if (mLastEnableDepthTest) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
-            if (mLastEnableScissorTest) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
-            glViewport(mLastViewport[0], mLastViewport[1], (GLsizei)mLastViewport[2], (GLsizei)mLastViewport[3]);
-            glScissor(mLastScissorBox[0], mLastScissorBox[1], (GLsizei)mLastScissorBox[2], (GLsizei)mLastScissorBox[3]);
+            GL_VERIFY(glUseProgram(mLastProgram));
+            GL_VERIFY(glActiveTexture(mLastActiveTexture));
+            GL_VERIFY(glBindTexture(GL_TEXTURE_2D, mLastTexture));
+            GL_VERIFY(glBindVertexArray(mLastVertexArray));
+            GL_VERIFY(glBindBuffer(GL_ARRAY_BUFFER, mLastArrayBuffer));
+            GL_VERIFY(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mLastElementArrayBuffer));
+            GL_VERIFY(glBlendEquationSeparate(mLastBlendEquationRgb, mLastBlendEquationAlpha));
+            GL_VERIFY(glBlendFunc(mLastBlendSrc, mLastBlendDst));
+            if (mLastEnableBlend) GL_VERIFY(glEnable(GL_BLEND)); else GL_VERIFY(glDisable(GL_BLEND));
+            if (mLastEnableCullFace) GL_VERIFY(glEnable(GL_CULL_FACE)); else GL_VERIFY(glDisable(GL_CULL_FACE));
+            if (mLastEnableDepthTest) GL_VERIFY(glEnable(GL_DEPTH_TEST)); else GL_VERIFY(glDisable(GL_DEPTH_TEST));
+            if (mLastEnableScissorTest) GL_VERIFY(glEnable(GL_SCISSOR_TEST)); else GL_VERIFY(glDisable(GL_SCISSOR_TEST));
+            GL_VERIFY(glViewport(mLastViewport[0], mLastViewport[1], (GLsizei)mLastViewport[2], (GLsizei)mLastViewport[3]));
+            GL_VERIFY(glScissor(mLastScissorBox[0], mLastScissorBox[1], (GLsizei)mLastScissorBox[2], (GLsizei)mLastScissorBox[3]));
+            return true;
         }
     };
 
@@ -259,7 +288,7 @@ namespace
         bool imGuiRenderer_setFontTexture(const ImGuiRenderer_SetFontTexture_Params& params) override
         {
             EMU_VERIFY(mImGuiRenderer);
-            mImGuiRenderer->destroyFontTexture();
+            EMU_VERIFY(mImGuiRenderer->destroyFontTexture());
             EMU_VERIFY(mImGuiRenderer->createFontTexture(params));
             return true;
         }
@@ -272,20 +301,20 @@ namespace
         bool imGuiRenderer_beginDraw(const ImGuiRenderer_BeginDraw_Params& params) override
         {
             EMU_UNUSED(mImGuiRenderer);
-            mImGuiRenderer->beginDraw(params);
+            EMU_VERIFY(mImGuiRenderer->beginDraw(params));
             return true;
         }
 
         void imGuiRenderer_endDraw() override
         {
             if (mImGuiRenderer)
-                mImGuiRenderer->endDraw();
+                EMU_CHECK(mImGuiRenderer->endDraw());
         }
 
         void imGuiRenderer_drawPrimitives(const ImGuiRenderer_DrawPrimitives_Params& params) override
         {
             if (mImGuiRenderer)
-                mImGuiRenderer->drawPrimitives(params);
+                EMU_CHECK(mImGuiRenderer->drawPrimitives(params));
         }
 
     private:

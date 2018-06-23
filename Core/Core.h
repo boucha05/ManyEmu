@@ -8,11 +8,15 @@
 
 #include <cstdint>
 #include <vector>
-#if defined(DEBUG) || defined(_DEBUG)
 #include <cassert>
-#define EMU_ASSERT(e)   emu::Assert(!!(e), #e)
+#define EMU_ALWAYS_ASSERT(e)    emu::Assert(!!(e), #e)
+#if defined(DEBUG) || defined(_DEBUG)
+#define EMU_DEBUG
+#define EMU_ASSERT(e)   EMU_ALWAYS_ASSERT(e)
+#define EMU_CHECK(e)    EMU_ALWAYS_ASSERT(e)
 #else
 #define EMU_ASSERT(e)
+#define EMU_CHECK(e)    EMU_ALWAYS_ASSERT(e)
 #endif
 #define EMU_VERIFY(e)   if (e) ; else return false
 
