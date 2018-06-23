@@ -116,8 +116,6 @@ StaticLib "ImGUI"
         "Contrib/imgui_extensions/*.cpp",
         "Contrib/imgui/*.h",
         "Contrib/imgui/*.cpp",
-        "Contrib/imgui/examples/sdl_opengl3_example/imgui_impl_sdl_gl3.cpp",
-        "Contrib/imgui/examples/sdl_opengl3_example/imgui_impl_sdl_gl3.h",
         "Contrib/imgui/examples/libs/gl3w/**.*",
     }
     removefiles
