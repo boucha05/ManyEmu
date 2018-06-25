@@ -3,6 +3,8 @@
 #include "Core/Core.h"
 #include <imgui_lib.h>
 
+struct ITexture {};
+
 struct ImGuiRenderer_SetFontTexture_Params
 {
     const ImU32*        pixels;
@@ -39,6 +41,10 @@ class IGraphics
 public:
     virtual ~IGraphics() {}
 
+    virtual ITexture* createTexture(uint32_t width, uint32_t height) = 0;
+    virtual void destroyTexture(ITexture* texture) = 0;
+    virtual void updateTexture(ITexture& texture, const void* data, size_t size) = 0;
+
     virtual bool imGuiRenderer_create() = 0;
     virtual void imGuiRenderer_destroy() = 0;
     virtual bool imGuiRenderer_setFontTexture(const ImGuiRenderer_SetFontTexture_Params& params) = 0;
@@ -46,6 +52,7 @@ public:
     virtual bool imGuiRenderer_beginDraw(const ImGuiRenderer_BeginDraw_Params& params) = 0;
     virtual void imGuiRenderer_endDraw() = 0;
     virtual void imGuiRenderer_drawPrimitives(const ImGuiRenderer_DrawPrimitives_Params& params) = 0;
+    virtual ImTextureID imGuiRenderer_getTextureID(ITexture& texture) = 0;
 
     static IGraphics* create();
     static void destroy(IGraphics* graphics);

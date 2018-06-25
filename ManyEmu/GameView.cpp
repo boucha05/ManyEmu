@@ -1,23 +1,27 @@
 #include "GameSession.h"
 #include "GameView.h"
-#include "Texture.h"
 
 GameView::GameView()
-    : mGameSession(nullptr)
-    , mTexture(nullptr)
 {
+    clear();
 }
 
 void GameView::clear()
 {
     mGameSession = nullptr;
+    mGraphics = nullptr;
     mTexture = nullptr;
+    mTexSizeX = 0;
+    mTexSizeY = 0;
 }
 
-void GameView::setGameSession(GameSession& gameSession, Texture& texture)
+void GameView::setGameSession(GameSession& gameSession, IGraphics& graphics, ITexture& texture, uint32_t texSizeX, uint32_t texSizeY)
 {
     mGameSession = &gameSession;
+    mGraphics = &graphics;
     mTexture = &texture;
+    mTexSizeX = texSizeX;
+    mTexSizeY = texSizeY;
 }
 
 const char* GameView::getName() const
@@ -34,8 +38,8 @@ void GameView::onGUI()
     uint32_t screenSizeX = static_cast<uint32_t>(size.x);
     uint32_t screenSizeY = static_cast<uint32_t>(size.y);
 
-    uint32_t imageRectW = mTexture->getWidth();
-    uint32_t imageRectH = mTexture->getHeight();
+    uint32_t imageRectW = mTexSizeX;
+    uint32_t imageRectH = mTexSizeX;
     mGameSession->getDisplaySize(imageRectW, imageRectH);
 
     uint32_t screenRectW = 0;
@@ -57,8 +61,8 @@ void GameView::onGUI()
     }
 
     ImGui::Image(
-        mTexture->getImTextureID(),
+        mGraphics->imGuiRenderer_getTextureID(*mTexture),
         ImVec2(static_cast<float>(screenRectW), static_cast<float>(screenRectH)),
         ImVec2(0, 0),
-        ImVec2(static_cast<float>(imageRectW) / mTexture->getWidth(), static_cast<float>(imageRectH) / mTexture->getHeight()));
+        ImVec2(static_cast<float>(imageRectW) / mTexSizeX, static_cast<float>(imageRectH) / mTexSizeY));
 }

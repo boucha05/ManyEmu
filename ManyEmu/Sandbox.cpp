@@ -11,7 +11,6 @@
 #include "GameView.h"
 #include "InputManager.h"
 #include "Path.h"
-#include "Texture.h"
 
 #define DUMP_ROM_LIST 0
 
@@ -125,9 +124,10 @@ namespace
         typedef std::vector<GameSession*> GameSessionArray;
 
         Config                      mConfig;
+        IGraphics*                  mGraphics = nullptr;
         uint32_t                    mTexSizeX;
         uint32_t                    mTexSizeY;
-        Texture                     mTexture;
+        ITexture*                   mTexture = nullptr;
         std::vector<uint8_t>        mFakeTexture;
         bool                        mValid;
         bool                        mFirst;
@@ -218,13 +218,16 @@ namespace
 
     bool SandboxImpl::create(Application& application)
     {
+        mGraphics = &application.getGraphics();
+
         overrideConfig();
 
         Path::makeDirs(mConfig.saveFolder);
 
         mTexSizeX = 256;
         mTexSizeY = 240;
-        EMU_VERIFY(mTexture.create(mTexSizeX, mTexSizeY));
+        mTexture = mGraphics->createTexture(mTexSizeX, mTexSizeY);
+        EMU_VERIFY(mTexture);
         mFakeTexture.resize(mTexSizeX * mTexSizeY * 4);
 
 #if 0
@@ -380,7 +383,9 @@ namespace
         }
 
         mInputManager.destroy();
-        mTexture.destroy();
+        mGraphics->destroyTexture(mTexture);
+        mTexture = nullptr;
+        mGraphics = nullptr;
     }
 
     bool SandboxImpl::createSound()
@@ -575,7 +580,7 @@ namespace
 
         if (pixels)
         {
-            mTexture.update(pixels, mFakeTexture.size());
+            mGraphics->updateTexture(*mTexture, pixels, mFakeTexture.size());
         }
 
         if (mSoundFile)
@@ -671,7 +676,7 @@ namespace
         }
         if (visible)
         {
-            mGameView->setGameSession(*mGameSessions[mActiveGameSession], mTexture);
+            mGameView->setGameSession(*mGameSessions[mActiveGameSession], *mGraphics, *mTexture, mTexSizeX, mTexSizeY);
         }
     }
 

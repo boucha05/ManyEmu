@@ -1,3 +1,5 @@
+#define NOMINMAX
+
 #include "GLGraphics.h"
 #include <Core/Log.h>
 #include <memory>
@@ -26,6 +28,57 @@ namespace
         }
         return success;
     }
+
+    struct TextureImpl : public ITexture
+    {
+        bool initialize(uint32_t width, uint32_t height)
+        {
+            EMU_VERIFY(width > 0);
+            EMU_VERIFY(height > 0);
+            mWidth = width;
+            mHeight = height;
+            uint32_t mipSize = std::max(width, height);
+            uint32_t mipCount = 0;
+            while (mipSize)
+            {
+                mipSize >>= 1;
+                ++mipCount;
+            }
+
+            GL_VERIFY(glGenTextures(1, &mTextureHandle));
+            GL_VERIFY(glBindTexture(GL_TEXTURE_2D, mTextureHandle));
+            GL_VERIFY(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR));
+            GL_VERIFY(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+            GL_VERIFY(glTexStorage2D(GL_TEXTURE_2D, mipCount, GL_RGBA8, width, height));
+            GL_VERIFY(glBindTexture(GL_TEXTURE_2D, 0));
+            return true;
+        }
+
+        ~TextureImpl()
+        {
+            if (mTextureHandle)
+            {
+                glDeleteTextures(1, &mTextureHandle);
+                mTextureHandle = 0;
+            }
+        }
+
+        bool update(const void* data, size_t size)
+        {
+            auto imageSize = mWidth * mHeight * 4;
+            EMU_VERIFY(size >= imageSize);
+
+            GL_VERIFY(glBindTexture(GL_TEXTURE_2D, mTextureHandle));
+            GL_VERIFY(glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mWidth, mHeight, GL_RGBA, GL_UNSIGNED_BYTE, data));
+            GL_VERIFY(glGenerateMipmap(GL_TEXTURE_2D));
+            GL_VERIFY(glBindTexture(GL_TEXTURE_2D, 0));
+            return true;
+        }
+
+        uint32_t        mWidth = 0;
+        uint32_t        mHeight = 0;
+        GLuint          mTextureHandle;
+    };
 
     struct ImGuiRenderer
     {
@@ -271,6 +324,22 @@ namespace
     class GraphicsImpl : public gl::Graphics
     {
     public:
+        ITexture* createTexture(uint32_t width, uint32_t height) override
+        {
+            auto instance = std::make_unique<TextureImpl>();
+            return instance->initialize(width, height) ? instance.release() : nullptr;
+        }
+
+        void destroyTexture(ITexture* texture) override
+        {
+            delete static_cast<TextureImpl*>(texture);
+        }
+
+        void updateTexture(ITexture& texture, const void* data, size_t size) override
+        {
+            static_cast<TextureImpl&>(texture).update(data, size);
+        }
+
         bool imGuiRenderer_create() override
         {
             auto renderer = std::make_unique<ImGuiRenderer>();
@@ -315,6 +384,11 @@ namespace
         {
             if (mImGuiRenderer)
                 EMU_CHECK(mImGuiRenderer->drawPrimitives(params));
+        }
+
+        ImTextureID imGuiRenderer_getTextureID(ITexture& texture) override
+        {
+            return reinterpret_cast<ImTextureID>(static_cast<intptr_t>(static_cast<TextureImpl&>(texture).mTextureHandle));
         }
 
     private:
