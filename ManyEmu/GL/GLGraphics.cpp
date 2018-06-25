@@ -107,6 +107,7 @@ namespace
         GLint           mLastBlendEquationRgb;
         GLint           mLastBlendEquationAlpha;
         GLint           mLastViewport[4];
+        GLfloat         mLastClearColor[4];
         GLint           mLastScissorBox[4];
         GLboolean       mLastEnableBlend;
         GLboolean       mLastEnableCullFace;
@@ -253,6 +254,7 @@ namespace
             GL_VERIFY(glGetIntegerv(GL_BLEND_EQUATION_RGB, &mLastBlendEquationRgb));
             GL_VERIFY(glGetIntegerv(GL_BLEND_EQUATION_ALPHA, &mLastBlendEquationAlpha));
             GL_VERIFY(glGetIntegerv(GL_VIEWPORT, mLastViewport));
+            GL_VERIFY(glGetFloatv(GL_COLOR_CLEAR_VALUE, mLastClearColor));
             GL_VERIFY(glGetIntegerv(GL_SCISSOR_BOX, mLastScissorBox));
             GL_VERIFY(glIsEnabled(GL_BLEND));
             GL_VERIFY(glIsEnabled(GL_CULL_FACE));
@@ -267,6 +269,12 @@ namespace
             GL_VERIFY(glDisable(GL_DEPTH_TEST));
             GL_VERIFY(glEnable(GL_SCISSOR_TEST));
             GL_VERIFY(glActiveTexture(GL_TEXTURE0));
+
+            // Clear the frame first
+            static const ImVec4 clear_color = ImColor(0, 0, 0);
+            GL_VERIFY(glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y));
+            GL_VERIFY(glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w));
+            GL_VERIFY(glClear(GL_COLOR_BUFFER_BIT));
 
             // Setup orthographic projection matrix
             mFrameBufferSizeX = params.frameBufferSizeX;
@@ -316,6 +324,7 @@ namespace
             if (mLastEnableDepthTest) GL_VERIFY(glEnable(GL_DEPTH_TEST)); else GL_VERIFY(glDisable(GL_DEPTH_TEST));
             if (mLastEnableScissorTest) GL_VERIFY(glEnable(GL_SCISSOR_TEST)); else GL_VERIFY(glDisable(GL_SCISSOR_TEST));
             GL_VERIFY(glViewport(mLastViewport[0], mLastViewport[1], (GLsizei)mLastViewport[2], (GLsizei)mLastViewport[3]));
+            GL_VERIFY(glClearColor(mLastClearColor[0], mLastClearColor[1], mLastClearColor[2], mLastClearColor[3]));
             GL_VERIFY(glScissor(mLastScissorBox[0], mLastScissorBox[1], (GLsizei)mLastScissorBox[2], (GLsizei)mLastScissorBox[3]));
             return true;
         }
@@ -324,6 +333,41 @@ namespace
     class GraphicsImpl : public gl::Graphics
     {
     public:
+        bool initialize(SDL_Window& window)
+        {
+            mWindow = &window;
+
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+            SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+            SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+            SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+            mGLContext = SDL_GL_CreateContext(mWindow);
+
+            gl3wInit();
+            return true;
+        }
+
+        ~GraphicsImpl()
+        {
+            if (mGLContext) SDL_GL_DeleteContext(mGLContext);
+        }
+
+        void getDrawableSize(uint32_t& width, uint32_t& height) override
+        {
+            int w, h;
+            SDL_GL_GetDrawableSize(mWindow, &w, &h);
+            width = w;
+            height = h;
+        }
+
+        void swapBuffers() override
+        {
+            SDL_GL_SwapWindow(mWindow);
+        }
+
         ITexture* createTexture(uint32_t width, uint32_t height) override
         {
             auto instance = std::make_unique<TextureImpl>();
@@ -369,7 +413,6 @@ namespace
 
         bool imGuiRenderer_beginDraw(const ImGuiRenderer_BeginDraw_Params& params) override
         {
-            EMU_UNUSED(mImGuiRenderer);
             EMU_VERIFY(mImGuiRenderer->beginDraw(params));
             return true;
         }
@@ -392,15 +435,18 @@ namespace
         }
 
     private:
+        SDL_Window*                     mWindow = nullptr;
+        SDL_GLContext                   mGLContext = nullptr;
         std::unique_ptr<ImGuiRenderer>  mImGuiRenderer;
     };
 }
 
 namespace gl
 {
-    Graphics* Graphics::create()
+    Graphics* Graphics::create(SDL_Window& window)
     {
-        return new GraphicsImpl();
+        auto instance = std::make_unique<GraphicsImpl>();
+        return instance->initialize(window) ? instance.release() : nullptr;
     }
 
     void Graphics::destroy(Graphics* graphics)

@@ -1,4 +1,3 @@
-#define SDL_MAIN_HANDLED
 #include "Application.h"
 #include "Backend.h"
 #include "GameView.h"
@@ -7,7 +6,6 @@
 #include "ThreadPool.h"
 #include <Core/YamlSerializer.h>
 #include <SDL.h>
-#include <gl/gl3w.h>
 #include <algorithm>
 #include <map>
 #include <vector>
@@ -261,7 +259,6 @@ namespace
         {
             mRunning = false;
             mWindow = nullptr;
-            mGLContext = nullptr;
             mGraphics = nullptr;
         }
 
@@ -271,13 +268,6 @@ namespace
 
             loadSettings();
 
-            SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-            SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-            SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-            SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-            SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
             SDL_DisplayMode current;
             SDL_GetCurrentDisplayMode(0, &current);
 
@@ -288,9 +278,7 @@ namespace
             mWindow = SDL_CreateWindow("ManyEmu", windowX, windowY, windowWidth, windowHeight, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
             EMU_VERIFY(mWindow);
 
-            mGLContext = SDL_GL_CreateContext(mWindow);
-            gl3wInit();
-            mGraphics = IGraphics::create();
+            mGraphics = IGraphics::create(*mWindow);
             EMU_VERIFY(mGraphics);
 
             // Setup ImGui binding
@@ -320,7 +308,6 @@ namespace
 
             ImGuiContext_Shutdown();
             IGraphics::destroy(mGraphics);
-            if (mGLContext) SDL_GL_DeleteContext(mGLContext);
             if (mWindow) SDL_DestroyWindow(mWindow);
             SDL_Quit();
             initialize();
@@ -469,12 +456,8 @@ namespace
 
         void render()
         {
-            static const ImVec4 clear_color = ImColor(0, 0, 0);
-            glViewport(0, 0, (int)ImGui::GetIO().DisplaySize.x, (int)ImGui::GetIO().DisplaySize.y);
-            glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
-            glClear(GL_COLOR_BUFFER_BIT);
             ImGuiContext_Draw();
-            SDL_GL_SwapWindow(mWindow);
+            mGraphics->swapBuffers();
         }
 
         struct ViewSettings
@@ -497,7 +480,6 @@ namespace
         Settings                                mSettings;
         bool                                    mRunning;
         SDL_Window*                             mWindow;
-        SDL_GLContext                           mGLContext;
         IGraphics*                              mGraphics;
         std::vector<IPlugin*>                   mPlugins;
         std::vector<IView*>                     mViews;
@@ -519,15 +501,3 @@ void Application::destroy(Application& instance)
 {
     delete &static_cast<ApplicationImpl&>(instance);
 }
-
-#ifdef _WIN32
-int main();
-int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
-{
-    (void)hInstance;
-    (void)hPrevInstance;
-    (void)lpCmdLine;
-    (void)nCmdShow;
-    return main();
-}
-#endif

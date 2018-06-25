@@ -1,9 +1,9 @@
 #include "Graphics.h"
 #include "GL/GLGraphics.h"
 
-IGraphics* IGraphics::create()
+IGraphics* IGraphics::create(SDL_Window& window)
 {
-    return gl::Graphics::create();
+    return gl::Graphics::create(window);
 }
 
 void IGraphics::destroy(IGraphics* graphics)
