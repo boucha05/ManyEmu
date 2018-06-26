@@ -3,6 +3,7 @@
 #include "GameBrowser.h"
 #include "GameSession.h"
 #include "Path.h"
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -16,6 +17,67 @@
 
 namespace
 {
+    std::string getExtension(const std::string& path)
+    {
+        std::string root;
+        std::string ext;
+        Path::splitExt(path, root, ext);
+        Path::normalizeCase(ext);
+        return ext;
+    }
+
+    IBackend* getBackend(Application& application, const std::string& path)
+    {
+        return application.getBackendRegistry().getBackend(getExtension(path).c_str());
+    }
+
+    struct GameContext
+    {
+        bool initialize(Application& application, const std::string& path, const std::string& saveDirectory)
+        {
+            mApplication = &application;
+
+            auto backend = getBackend(application, path);
+            EMU_VERIFY(backend);
+
+            mSession = std::make_unique<GameSession>();
+            EMU_VERIFY(mSession->loadRom(*backend, path, saveDirectory));
+            mSession->loadGameData();
+
+            const auto& displayInfo = mSession->getDisplayInfo();
+            mSizeX = displayInfo.sizeX;
+            mSizeY = displayInfo.sizeY;
+            mPitch = mSizeX * 4;
+            mRenderBuffer.resize(mSizeY * mPitch);
+            mTexture = mApplication->getGraphics().createTexture(mSizeX, mSizeY);
+            EMU_VERIFY(mTexture);
+
+            return true;
+        }
+
+        ~GameContext()
+        {
+            if (mTexture) mApplication->getGraphics().destroyTexture(mTexture);
+        }
+
+        void update()
+        {
+            mSession->setSoundBuffer(nullptr, 0);
+            mSession->setRenderBuffer(mRenderBuffer.data(), mPitch);
+            mSession->execute();
+            mSession->setRenderBuffer(nullptr, 0);
+            mApplication->getGraphics().updateTexture(*mTexture, mRenderBuffer.data(), mRenderBuffer.size());
+        }
+
+        Application*                    mApplication = nullptr;
+        std::unique_ptr<GameSession>    mSession;
+        uint32_t                        mSizeX = 0;
+        uint32_t                        mSizeY = 0;
+        uint32_t                        mPitch = 0;
+        std::vector<uint8_t>            mRenderBuffer;
+        ITexture*                       mTexture = nullptr;
+    };
+
     class MultipleGamesView : public Application::IView
     {
     public:
@@ -23,10 +85,27 @@ namespace
         {
         }
 
-        bool initialize(const std::string& name)
+        bool initialize(IGraphics& graphics, const std::string& name)
         {
+            mGraphics = &graphics;
             mName = name;
             return true;
+        }
+
+        void addContext(GameContext& context)
+        {
+            if (std::count(std::begin(mContexts), std::end(mContexts), &context) == 0)
+                mContexts.push_back(&context);
+        }
+
+        void removeContext(GameContext& context)
+        {
+            mContexts.erase(std::remove(std::begin(mContexts), std::end(mContexts), &context), std::end(mContexts));
+        }
+
+        void clearContext()
+        {
+            mContexts.clear();
         }
 
         const char* getName() const override
@@ -36,10 +115,78 @@ namespace
 
         void onGUI()
         {
+            ImGui::BeginChild("Games");
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+
+            int imageSize = 128;
+            int count = static_cast<int>(mContexts.size());
+
+            ImGuiStyle& style = ImGui::GetStyle();
+            int spacing = static_cast<int>(style.ItemSpacing.x);
+
+            int sizeX = static_cast<int>(ImGui::GetContentRegionAvailWidth());
+            int countX = (sizeX + spacing) / (imageSize + spacing);
+            countX = std::max(countX, 1);
+            int countY = (count + countX - 1) / countX;
+            ImGuiListClipper clipper(countY);
+
+            while (clipper.Step())
+            {
+                for (int indexY = clipper.DisplayStart; indexY < clipper.DisplayEnd; ++indexY)
+                {
+                    for (int indexX = 0; indexX < countX; ++indexX)
+                    {
+                        int index = indexX + indexY * countX;
+                        if (index >= count) continue;
+                        if (indexX > 0)
+                            ImGui::SameLine();
+
+                        ImGui::BeginGroup();
+
+                        // Game image
+                        auto& context = *mContexts[index];
+                        auto textureID = mGraphics->imGuiRenderer_getTextureID(*context.mTexture);
+                        ImGui::Image(textureID, ImVec2(static_cast<float>(imageSize), static_cast<float>(imageSize)));
+                        
+                        if (ImGui::IsItemHovered())
+                        {
+                            ImGui::BeginTooltip();
+
+                            // Scaling for focus preview
+                            auto maxAxis = std::max(context.mSizeX, context.mSizeY);
+                            auto size = std::max(imageSize * 1.5f, maxAxis * 1.0f);
+                            auto scale = size / maxAxis;
+
+                            // Game preview
+                            ImDrawList* drawList = ImGui::GetWindowDrawList();
+                            auto previewSize = ImVec2(context.mSizeX * scale, context.mSizeY * scale);
+                            auto screenPos = ImGui::GetCursorScreenPos();
+                            auto screenEnd = ImVec2(screenPos.x + previewSize.x, screenPos.y + previewSize.y);
+                            ImU32 backgroundColor = ImColor(0, 0, 0, 255);
+                            drawList->AddRectFilled(screenPos, screenEnd, backgroundColor);
+                            ImGui::Image(textureID, previewSize);
+
+                            // Game name
+                            ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + context.mSizeX * scale);
+                            ImGui::Text(context.mSession->getRomName().c_str());
+                            ImGui::PopTextWrapPos();
+                            
+                            ImGui::EndTooltip();
+                        }
+
+                        ImGui::EndGroup();
+                    }
+                }
+            }
+
+            ImGui::PopStyleVar();
+            ImGui::EndChild();
         }
 
     private:
-        std::string     mName;
+        IGraphics*                  mGraphics = nullptr;
+        std::string                 mName;
+        std::vector<GameContext*>   mContexts;
     };
 
     class GameBrowserImpl : public GameBrowser
@@ -56,42 +203,29 @@ namespace
 
         bool create(Application& application) override
         {
-            mGraphics = &application.getGraphics();
+            mView = std::make_unique<MultipleGamesView>();
+            EMU_VERIFY(mView->initialize(application.getGraphics(), getName()));
+            application.addView(*mView.get());
 
             overrideConfig();
 
-            Path::makeDirs(mConfig.saveFolder);
-
-            mTexSizeX = 256;
-            mTexSizeY = 240;
-            mTexture = mGraphics->createTexture(mTexSizeX, mTexSizeY);
-            EMU_VERIFY(mTexture);
-            mFakeTexture.resize(mTexSizeX * mTexSizeY * 4);
-
             for (auto rom : mConfig.roms)
             {
-                auto gameSession = createGameSession(application, Path::join(mConfig.romFolder, rom), mConfig.saveFolder);
-                EMU_VERIFY(gameSession);
-                mGameSessions.push_back(gameSession);
+                auto context = std::make_unique<GameContext>();
+                if (context->initialize(application, Path::join(mConfig.romFolder, rom), mConfig.saveFolder))
+                {
+                    mGameContexts.push_back(std::move(context));
+                    mView->addContext(*mGameContexts.back().get());
+                }
             }
-
-            mView = std::make_unique<MultipleGamesView>();
-            EMU_VERIFY(mView->initialize(getName()));
-            application.addView(*mView.get());
 
             return true;
         }
 
         void destroy(Application& application) override
         {
+            mGameContexts.clear();
             if (mView) application.removeView(*mView.get());
-
-            for (auto gameSession : mGameSessions)
-                destroyGameSession(*gameSession);
-            mGameSessions.clear();
-            mGraphics->destroyTexture(mTexture);
-            mTexture = nullptr;
-            mGraphics = nullptr;
         }
 
         const char* getName() const override
@@ -101,61 +235,11 @@ namespace
 
         void update() override
         {
-            if (mGameSessions.size() == 0)
-                return;
-
-            auto& gameSession = *mGameSessions[0];
-            if (!gameSession.isValid())
-                return;
-
-            void* pixels = nullptr;
-            int pitch = 0;
-            gameSession.setRenderBuffer(nullptr, 0);
-            if (true)
-            {
-                pixels = mFakeTexture.data();
-                pitch = mTexSizeX * 4;
-                gameSession.setRenderBuffer(mFakeTexture.data(), mTexSizeX * 4);
-            }
-
-            gameSession.setSoundBuffer(nullptr, 0);
-
-            gameSession.execute();
-
-            if (pixels)
-            {
-                mGraphics->updateTexture(*mTexture, pixels, mFakeTexture.size());
-            }
+            for (auto& context : mGameContexts)
+                context->update();
         }
 
     private:
-        GameSession* createGameSession(Application& application, const std::string& path, const std::string& saveDirectory)
-        {
-            std::string root;
-            std::string ext;
-            Path::splitExt(path, root, ext);
-            Path::normalizeCase(ext);
-            auto backend = application.getBackendRegistry().getBackend(ext.c_str());
-            if (!backend)
-                return nullptr;
-
-            auto& gameSession = *new GameSession();
-            if (!gameSession.loadRom(*backend, path, saveDirectory))
-            {
-                delete &gameSession;
-                return nullptr;
-            }
-            gameSession.loadGameData();
-            return &gameSession;
-        }
-
-        void destroyGameSession(GameSession& gameSession)
-        {
-            gameSession.unloadRom();
-            delete &gameSession;
-        }
-
-
         void overrideConfig()
         {
             auto& config = mConfig;
@@ -163,25 +247,21 @@ namespace
             // Configuration for Gameboy development
             config.saveFolder = "C:\\Emu\\Gameboy\\save";
             config.romFolder = "C:\\Emu\\Gameboy\\roms";
-            //config.roms.push_back("mario & yoshi (e) [o2].gb");
-            //config.roms.push_back("Donkey Kong Country (UE) (M5) [C][t1].gbc");
-            //config.roms.push_back("Legend of Zelda, The - Oracle of Ages (U) [C][h2].gbc");
-            //config.roms.push_back("Donkey Kong Land 2 (UE) [S][b2].gb");
             config.roms.push_back("Mario Tennis (U) [C][!].gbc");
-            //config.roms.push_back("p-shntae.gbc");
-            //config.roms.push_back("rayman (u) [c][t1].gbc");
-            //config.roms.push_back("Asterix - Search for Dogmatix (E) (M6) [C][!].gbc");
-            //config.roms.push_back("3D Pocket Pool (E) (M6) [C][!].gbc");
-            //config.roms.push_back("super mario land (v1.1) (jua) [t1].gb");
-            //config.roms.push_back("Tetris (V1.1) (JU) [!].gb");
-            //config.roms.push_back("Metroid 2 - Return of Samus (UA) [b1].gb");
-            //config.roms.push_back("Legend of Zelda, The - Link's Awakening (V1.2) (U) [!].gb");
+            config.roms.push_back("p-shntae.gbc");
+            config.roms.push_back("rayman (u) [c][t1].gbc");
+            config.roms.push_back("Asterix - Search for Dogmatix (E) (M6) [C][!].gbc");
+            config.roms.push_back("3D Pocket Pool (E) (M6) [C][!].gbc");
+            config.roms.push_back("super mario land (v1.1) (jua) [t1].gb");
+            config.roms.push_back("Tetris (V1.1) (JU) [!].gb");
+            config.roms.push_back("Metroid 2 - Return of Samus (UA) [b1].gb");
+            config.roms.push_back("Legend of Zelda, The - Link's Awakening (V1.2) (U) [!].gb");
 #else
             // Configuration for NES development
             config.saveFolder = "C:\\Emu\\NES\\save";
             config.romFolder = "C:\\Emu\\NES\\roms";
-            //config.roms.push_back("smb3.nes");
-            //config.roms.push_back("exitbike.nes");
+            config.roms.push_back("smb3.nes");
+            config.roms.push_back("exitbike.nes");
             config.roms.push_back("megaman2.nes");
             config.roms.push_back("mario.nes");
             config.roms.push_back("zelda2.nes");
@@ -224,15 +304,10 @@ namespace
 #endif
         }
 
-        typedef std::vector<GameSession*> GameSessionArray;
+        typedef std::vector<std::unique_ptr<GameContext>> GameContextArray;
 
         Config                              mConfig;
-        IGraphics*                          mGraphics = nullptr;
-        uint32_t                            mTexSizeX = 0;
-        uint32_t                            mTexSizeY = 0;
-        ITexture*                           mTexture = nullptr;
-        std::vector<uint8_t>                mFakeTexture;
-        GameSessionArray                    mGameSessions;
+        GameContextArray                    mGameContexts;
         std::unique_ptr<MultipleGamesView>  mView;
     };
 }

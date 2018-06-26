@@ -335,7 +335,7 @@ namespace nes
         mSoundBuffer = buffer;
         mSoundBufferSize = static_cast<uint32_t>(size);
         mSoundBufferOffset = 0;
-        mSampleSpeed = mMasterClockFrequency / (60 * static_cast<uint32_t>(size));
+        mSampleSpeed = buffer && size ? mMasterClockFrequency / (60 * static_cast<uint32_t>(size)) : 1000000;
     }
 
     void APU::updateEnvelopesAndLinearCounter()

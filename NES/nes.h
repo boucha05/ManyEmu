@@ -57,7 +57,7 @@ namespace nes
         static const uint32_t ButtonRight = 0x80;
 
         static const uint32_t DisplaySizeX = 256;
-        static const uint32_t DisplaySizeY = 224;
+        static const uint32_t DisplaySizeY = 240;
 
         static constexpr float getDisplayFPS_NTSC() { return 60.0988f; }
         static constexpr float getDisplayFPS_PAL() { return 50.0070f; }

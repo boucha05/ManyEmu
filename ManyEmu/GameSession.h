@@ -14,7 +14,6 @@ public:
 
     GameSession();
     ~GameSession();
-    IBackend* getBackend() { return mBackend; }
     bool loadRom(IBackend& backend, const std::string& path, const std::string& saveDirectory);
     void unloadRom();
     bool loadGameData();
@@ -27,6 +26,36 @@ public:
     bool setController(uint32_t index, uint32_t value);
     bool reset();
     bool execute();
+
+    IBackend* getBackend()
+    {
+        return mBackend;
+    }
+
+    const std::string& getRomName() const
+    {
+        return mRomName;
+    }
+
+    const std::string& getRomPath() const
+    {
+        return mRomPath;
+    }
+
+    const std::string& getSavePath() const
+    {
+        return mSavePath;
+    }
+
+    const std::string& getGameDataPath() const
+    {
+        return mGameDataPath;
+    }
+
+    const std::string& getGameStatePath() const
+    {
+        return mGameDataPath;
+    }
 
     const SystemInfo& getSystemInfo() const
     {
@@ -46,6 +75,7 @@ public:
 private:
     IBackend*           mBackend;
     emu::IEmulator*     mEmulator;
+    std::string         mRomName;
     std::string         mRomPath;
     std::string         mSavePath;
     std::string         mGameDataPath;

@@ -36,17 +36,16 @@ bool GameSession::loadRom(IBackend& backend, const std::string& path, const std:
     mBackend = &backend;
     mEmulator = &mBackend->getEmulator();
 
-    std::string romName;
     std::string romExtension;
     std::string romFilename;
     std::string romDirectory;
     Path::split(path, romDirectory, romFilename);
-    Path::splitExt(romFilename, romName, romExtension);
-    if (romName.empty())
+    Path::splitExt(romFilename, mRomName, romExtension);
+    if (mRomName.empty())
         return false;
 
     mRomPath = path;
-    mSavePath = Path::join(saveDirectory, romName);
+    mSavePath = Path::join(saveDirectory, mRomName);
     mGameDataPath = mSavePath + FileExtensionData;
     mGameStatePath = mSavePath + FileExtensionState;
 
