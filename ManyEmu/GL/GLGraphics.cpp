@@ -135,8 +135,17 @@ namespace
             height = h;
         }
 
-        void swapBuffers() override
+        void swapBuffers(SwapInterval swapInterval) override
         {
+            int32_t swapInternalNative = 1;
+            switch (swapInterval)
+            {
+            case SwapInterval::AdaptiveVsync: swapInternalNative = -1; break;
+            case SwapInterval::NoVsync: swapInternalNative = 0; break;
+            case SwapInterval::Vsync: swapInternalNative = 1; break;
+            }
+
+            SDL_GL_SetSwapInterval(swapInternalNative);
             SDL_GL_SwapWindow(mWindow);
         }
 

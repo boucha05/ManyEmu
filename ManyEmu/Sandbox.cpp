@@ -44,7 +44,7 @@ namespace
             std::string     romFolder;          // Location where the ROM files are to be found.
             std::string     recorded;           // File where inputs are recorded (created if playback is falsed, read if playback is true)
             std::string     saveFolder;         // Savegame folder
-            uint32_t        frameSkip;          // Number of simulated frames to skip before the first frame is rendered (used for reproducing bugs faster)
+            uint32_t        frameSkip;          // Number of simulated frames to skip when late
             uint32_t        replayBufferSize;   // Size of buffer used to rewind game in time
             uint32_t        replayFrameSeek;    // Number of frames between two rewind snapshots
             uint32_t        samplingRate;       // Sound buffer sampling rate
@@ -118,13 +118,15 @@ namespace
         void destroySound();
         GameSession* createGameSession(Application& application, const std::string& path, const std::string& saveDirectory);
         void destroyGameSession(GameSession& gameSession);
+        void singleFrame(bool frameSkip);
         void audioCallback(int16_t* data, uint32_t size);
         static void audioCallback(void* userData, Uint8* stream, int len);
 
-        typedef std::vector<GameSession*> GameSessionArray;
-
         Config                      mConfig;
         IGraphics*                  mGraphics = nullptr;
+        uint64_t                    mTicksPerFrame;
+        uint64_t                    mTicksAccumulated;
+        uint64_t                    mLastFrameTimeStamp;
         uint32_t                    mTexSizeX;
         uint32_t                    mTexSizeY;
         ITexture*                   mTexture = nullptr;
@@ -155,10 +157,7 @@ namespace
         emu::MemoryStream           mTestStream0;
         emu::MemoryStream           mTestStream1;
         emu::MemoryStream           mTestStream2;
-
-        GameSessionArray            mGameSessions;
-        uint32_t                    mActiveGameSession;
-
+        GameSession*                mGameSession;
         GameView*                   mGameView;
 
         struct Playback
@@ -201,7 +200,6 @@ namespace
         , mInputRecorder(nullptr)
         , mInputPlayback(nullptr)
         , mPlayer1(nullptr)
-        , mActiveGameSession(0)
         , mPlayback(nullptr)
         , mGameView(nullptr)
     {
@@ -223,12 +221,6 @@ namespace
         overrideConfig();
 
         Path::makeDirs(mConfig.saveFolder);
-
-        mTexSizeX = 256;
-        mTexSizeY = 240;
-        mTexture = mGraphics->createTexture(mTexSizeX, mTexSizeY);
-        EMU_VERIFY(mTexture);
-        mFakeTexture.resize(mTexSizeX * mTexSizeY * 4);
 
 #if 0
         if (!runTestRoms())
@@ -315,13 +307,25 @@ namespace
         for (auto rom : mConfig.roms)
         {
             auto gameSession = createGameSession(application, Path::join(mConfig.romFolder, rom), mConfig.saveFolder);
-            EMU_VERIFY(gameSession);
-            mGameSessions.push_back(gameSession);
+            if (gameSession)
+            {
+                mGameSession = gameSession;
+                break;
+            }
         }
 
-        if (mGameSessions.size() > 0)
+        if (mGameSession)
         {
-            mGameSessions[mActiveGameSession]->getBackend()->configureController(*mPlayer1Controller, 0);
+            mGameSession->getBackend()->configureController(*mPlayer1Controller, 0);
+
+            auto& displayInfo = mGameSession->getDisplayInfo();
+            mTicksPerFrame = static_cast<uint64_t>(SDL_GetPerformanceFrequency() / static_cast<double>(displayInfo.fps));
+            mTicksAccumulated = 0;
+            mTexSizeX = displayInfo.sizeX;
+            mTexSizeY = displayInfo.sizeY;
+            mTexture = mGraphics->createTexture(mTexSizeX, mTexSizeY);
+            EMU_VERIFY(mTexture);
+            mFakeTexture.resize(mTexSizeX * mTexSizeY * 4);
         }
 
         mGameView = &application.getGameView();
@@ -334,11 +338,14 @@ namespace
     {
         EMU_UNUSED(application);
 
+        if (mTexture) mGraphics->destroyTexture(mTexture);
+        mTexture = nullptr;
+
         mGameView = nullptr;
 
-        for (auto gameSession : mGameSessions)
-            destroyGameSession(*gameSession);
-        mGameSessions.clear();
+        if (mGameSession)
+            destroyGameSession(*mGameSession);
+        mGameSession = nullptr;
 
         destroySound();
 
@@ -383,8 +390,6 @@ namespace
         }
 
         mInputManager.destroy();
-        mGraphics->destroyTexture(mTexture);
-        mTexture = nullptr;
         mGraphics = nullptr;
     }
 
@@ -481,13 +486,40 @@ namespace
 
     void SandboxImpl::update()
     {
-        if (mGameView)
-            mGameView->clear();
-
-        if (!mValid)
+        if (!mValid || !mGameSession || !mGameSession->isValid())
             return;
 
+        // Figure out how much time has passed since the last frame
+        uint64_t currentTimeStamp = SDL_GetPerformanceCounter();
+        if (mFirst)
+        {
+            mLastFrameTimeStamp = currentTimeStamp;
+            mFirst = false;
+        }
+        uint64_t elapsedTime = currentTimeStamp - mLastFrameTimeStamp;
+        mTicksAccumulated += elapsedTime;
+        mLastFrameTimeStamp = currentTimeStamp;
+
+        // Execute as many frames as necessary to catch up to a
+        // configurable number of frames to skip + the frame to display
+        uint32_t frameCount = static_cast<uint32_t>(mTicksAccumulated / mTicksPerFrame);
+        uint32_t maxFramesExecuted = mConfig.frameSkip + 1;
+        frameCount = std::min(frameCount, maxFramesExecuted);
+        mTicksAccumulated = mTicksAccumulated % mTicksPerFrame;
+        while (frameCount > 0)
+        {
+            // All frames but the last must skip the display
+            bool frameSkip = frameCount-- > 1;
+            singleFrame(frameSkip);
+        }
+    }
+
+    void SandboxImpl::singleFrame(bool frameSkip)
+    {
         static uint32_t frameTrigger = 640;
+
+        if (mGameView)
+            mGameView->clear();
 
         mInputManager.clearInputs();
         mKeyboard->update(mInputManager);
@@ -497,17 +529,11 @@ namespace
         if (mInputManager.isPressed(Input_Exit))
             terminate();
 
-        if (mActiveGameSession >= mGameSessions.size())
-            return;
-
-        auto& gameSession = *mGameSessions[mActiveGameSession];
-        if (!gameSession.isValid())
-            return;
-
         void* pixels = nullptr;
         int pitch = 0;
+        auto& gameSession = *mGameSession;
         gameSession.setRenderBuffer(nullptr, 0);
-        if (mConfig.display && !mConfig.frameSkip)
+        if (mConfig.display && !frameSkip)
         {
             if (!mConfig.stubDisplay)
             {
@@ -666,17 +692,9 @@ namespace
         }
 
         ++mFrameIndex;
-
-        bool visible = !mFirst;
-        mFirst = false;
-        if (mConfig.frameSkip)
+        if (!frameSkip)
         {
-            --mConfig.frameSkip;
-            visible = false;
-        }
-        if (visible)
-        {
-            mGameView->setGameSession(*mGameSessions[mActiveGameSession], *mGraphics, *mTexture, mTexSizeX, mTexSizeY);
+            mGameView->setGameSession(*mGameSession, *mGraphics, *mTexture, mTexSizeX, mTexSizeY);
         }
     }
 

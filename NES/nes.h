@@ -59,6 +59,9 @@ namespace nes
         static const uint32_t DisplaySizeX = 256;
         static const uint32_t DisplaySizeY = 224;
 
+        static constexpr float getDisplayFPS_NTSC() { return 60.0988f; }
+        static constexpr float getDisplayFPS_PAL() { return 50.0070f; }
+
         virtual uint8_t read8(uint16_t addr) = 0;
         virtual void write8(uint16_t addr, uint8_t value) = 0;
 

@@ -202,9 +202,9 @@ namespace
             delete this;
         }
 
-        virtual bool getInfo(Info& info) override
+        virtual bool getSystemInfo(SystemInfo& info) override
         {
-            info = Info();
+            info = SystemInfo();
             info.cpuCount = 0;
             return true;
         }
@@ -214,10 +214,12 @@ namespace
             return index == 0 ? &cpu : nullptr;
         }
 
-        virtual bool getDisplaySize(uint32_t& sizeX, uint32_t& sizeY) override
+        virtual bool getDisplayInfo(DisplayInfo& info) override
         {
-            sizeX = nes::Context::DisplaySizeX;
-            sizeY = nes::Context::DisplaySizeY;
+            info = DisplayInfo();
+            info.sizeX = nes::Context::DisplaySizeX;
+            info.sizeY = nes::Context::DisplaySizeY;
+            info.fps = getDisplayFPS_NTSC();
             return true;
         }
 

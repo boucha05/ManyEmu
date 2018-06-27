@@ -9,13 +9,20 @@ namespace emu
     class IContext
     {
     public:
-        struct Info
+        struct SystemInfo
         {
             uint32_t    cpuCount = 0;
         };
 
-        virtual bool getInfo(Info& info) = 0;
-        virtual bool getDisplaySize(uint32_t& sizeX, uint32_t& sizeY) = 0;
+        struct DisplayInfo
+        {
+            uint32_t    sizeX = 0;
+            uint32_t    sizeY = 0;
+            float       fps = 60.0f;
+        };
+
+        virtual bool getSystemInfo(SystemInfo& info) = 0;
+        virtual bool getDisplayInfo(DisplayInfo& info) = 0;
         virtual bool serializeGameData(ISerializer& serializer) = 0;
         virtual bool serializeGameState(ISerializer& serializer) = 0;
         virtual bool setRenderBuffer(void* buffer, size_t pitch) = 0;

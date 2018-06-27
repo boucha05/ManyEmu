@@ -402,7 +402,7 @@ namespace
         void render()
         {
             ImGuiContext_Draw();
-            mGraphics->swapBuffers();
+            mGraphics->swapBuffers(SwapInterval::NoVsync);
         }
 
         struct ViewSettings

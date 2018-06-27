@@ -6,6 +6,13 @@
 
 struct ITexture {};
 
+enum class SwapInterval
+{
+    NoVsync,
+    Vsync,
+    AdaptiveVsync,
+};
+
 class IGraphics
 {
 public:
@@ -13,7 +20,7 @@ public:
 
     virtual void* getGLContext() = 0;
     virtual void getDrawableSize(uint32_t& width, uint32_t& height) = 0;
-    virtual void swapBuffers() = 0;
+    virtual void swapBuffers(SwapInterval swapInterval) = 0;
 
     virtual ITexture* createTexture(uint32_t width, uint32_t height) = 0;
     virtual void destroyTexture(ITexture* texture) = 0;

@@ -38,9 +38,9 @@ void GameView::onGUI()
     uint32_t screenSizeX = static_cast<uint32_t>(size.x);
     uint32_t screenSizeY = static_cast<uint32_t>(size.y);
 
-    uint32_t imageRectW = mTexSizeX;
-    uint32_t imageRectH = mTexSizeX;
-    mGameSession->getDisplaySize(imageRectW, imageRectH);
+    auto& displayInfo = mGameSession->getDisplayInfo();
+    uint32_t imageRectW = displayInfo.sizeX;
+    uint32_t imageRectH = displayInfo.sizeY;
 
     uint32_t screenRectW = 0;
     uint32_t screenRectH = 0;

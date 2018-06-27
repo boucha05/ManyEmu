@@ -68,9 +68,9 @@ namespace gb_context
             mMapper = nullptr;
         }
 
-        virtual bool getInfo(Info& info) override
+        virtual bool getSystemInfo(SystemInfo& info) override
         {
-            info = Info();
+            info = SystemInfo();
             info.cpuCount = 0;
             return true;
         }
@@ -178,10 +178,12 @@ namespace gb_context
             delete this;
         }
 
-        virtual bool getDisplaySize(uint32_t& sizeX, uint32_t& sizeY) override
+        virtual bool getDisplayInfo(DisplayInfo& info) override
         {
-            sizeX = gb::Context::DisplaySizeX;
-            sizeY = gb::Context::DisplaySizeY;
+            info = DisplayInfo();
+            info.sizeX = gb::Context::DisplaySizeX;
+            info.sizeY = gb::Context::DisplaySizeY;
+            info.fps = mModel == gb::Model::SGB ? 61.17f : 59.73f;
             return true;
         }
 

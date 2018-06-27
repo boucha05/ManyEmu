@@ -9,12 +9,14 @@
 class GameSession
 {
 public:
+    typedef emu::IContext::SystemInfo SystemInfo;
+    typedef emu::IContext::DisplayInfo DisplayInfo;
+
     GameSession();
     ~GameSession();
     IBackend* getBackend() { return mBackend; }
     bool loadRom(IBackend& backend, const std::string& path, const std::string& saveDirectory);
     void unloadRom();
-    bool getDisplaySize(uint32_t& sizeX, uint32_t& sizeY);
     bool loadGameData();
     bool saveGameData();
     bool loadGameState();
@@ -25,6 +27,16 @@ public:
     bool setController(uint32_t index, uint32_t value);
     bool reset();
     bool execute();
+
+    const SystemInfo& getSystemInfo() const
+    {
+        return mSystemInfo;
+    }
+
+    const DisplayInfo& getDisplayInfo() const
+    {
+        return mDisplayInfo;
+    }
 
     bool isValid() const
     {
@@ -40,6 +52,8 @@ private:
     std::string         mGameStatePath;
     emu::IRom*          mRom;
     emu::IContext*      mContext;
+    SystemInfo          mSystemInfo;
+    DisplayInfo         mDisplayInfo;
     bool                mValid;
 };
 

@@ -58,6 +58,9 @@ bool GameSession::loadRom(IBackend& backend, const std::string& path, const std:
     if (!mContext)
         return false;
 
+    EMU_VERIFY(mContext->getSystemInfo(mSystemInfo));
+    EMU_VERIFY(mContext->getDisplayInfo(mDisplayInfo));
+
     mValid = true;
     return true;
 }
@@ -80,13 +83,8 @@ void GameSession::unloadRom()
 
     mBackend = nullptr;
     mEmulator = nullptr;
-}
-
-bool GameSession::getDisplaySize(uint32_t& sizeX, uint32_t& sizeY)
-{
-    if (!mValid)
-        return false;
-    return mContext->getDisplaySize(sizeX, sizeY);
+    mSystemInfo = SystemInfo();
+    mDisplayInfo = DisplayInfo();
 }
 
 bool GameSession::loadGameData()
