@@ -354,8 +354,9 @@ namespace gb
         mMemoryOAM.write.setWriteMethod(&onWriteOAM, this);
         EMU_VERIFY(memory.addMemoryRange(0xfe00, 0xfe9f, mMemoryOAM));
 
+        mMemoryNotUsable.read.setReadMethod(&onReadNotUsable, this, 0);
         mMemoryNotUsable.write.setWriteMethod(&onWriteNotUsable, this, 0);
-        EMU_VERIFY(memory.addMemoryRange(MEMORY_BUS::PAGE_TABLE_WRITE, 0xfea0, 0xfeff, mMemoryNotUsable.write));
+        EMU_VERIFY(memory.addMemoryRange(0xfea0, 0xfeff, mMemoryNotUsable));
 
         mPalette.resize(PALETTE_SIZE, *reinterpret_cast<const uint32_t*>(&kMonoPalette[0]));
 

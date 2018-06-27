@@ -78,13 +78,16 @@ void memory_write8(const MEM_PAGE& page, int32_t ticks, uint16_t addr, uint8_t v
 uint8_t memory_bus_read8(const MEMORY_BUS& bus, int32_t ticks, uint16_t addr)
 {
     MEM_PAGE* page = find_page(bus, addr, MEMORY_BUS::PAGE_TABLE_READ);
-    return memory_read8(*page, ticks, addr);
+    if (page)
+        return memory_read8(*page, ticks, addr);
+    return 0;
 }
 
 void memory_bus_write8(const MEMORY_BUS& bus, int32_t ticks, uint16_t addr, uint8_t value)
 {
     MEM_PAGE* page = find_page(bus, addr, MEMORY_BUS::PAGE_TABLE_WRITE);
-    memory_write8(*page, ticks, addr, value);
+    if (page)
+        memory_write8(*page, ticks, addr, value);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

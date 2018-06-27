@@ -145,6 +145,14 @@ namespace gb
             static_cast<Display*>(context)->writeOAM(tick, static_cast<uint16_t>(addr), value);
         }
 
+        static uint8_t onReadNotUsable(void* context, int32_t tick, uint32_t addr)
+        {
+            EMU_UNUSED(context);
+            EMU_UNUSED(tick);
+            EMU_UNUSED(addr);
+            return 0;
+        }
+
         static void onWriteNotUsable(void* context, int32_t tick, uint32_t addr, uint8_t value)
         {
             EMU_UNUSED(context);

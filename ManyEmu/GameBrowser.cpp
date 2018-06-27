@@ -8,13 +8,6 @@
 #include <string>
 #include <vector>
 
-#define DUMP_ROM_LIST 0
-
-#if DUMP_ROM_LIST
-#include <io.h>
-#include "Gameboy/GB.h"
-#endif
-
 namespace
 {
     std::string getExtension(const std::string& path)
@@ -194,38 +187,51 @@ namespace
     public:
         struct Config
         {
-            typedef std::vector<std::string> StringArray;
-
-            StringArray     roms;               // ROM files to execute. Only the first rom specified is playable for now.
             std::string     romFolder;          // Location where the ROM files are to be found.
             std::string     saveFolder;         // Savegame folder
         };
 
         bool create(Application& application) override
         {
+            mApplication = &application;
             mView = std::make_unique<MultipleGamesView>();
             EMU_VERIFY(mView->initialize(application.getGraphics(), getName()));
             application.addView(*mView.get());
 
             overrideConfig();
 
-            for (auto rom : mConfig.roms)
-            {
-                auto context = std::make_unique<GameContext>();
-                if (context->initialize(application, Path::join(mConfig.romFolder, rom), mConfig.saveFolder))
-                {
-                    mGameContexts.push_back(std::move(context));
-                    mView->addContext(*mGameContexts.back().get());
-                }
-            }
+            loadFolder(mConfig.romFolder);
 
             return true;
         }
 
         void destroy(Application& application) override
         {
-            mGameContexts.clear();
+            clearContexts();
             if (mView) application.removeView(*mView.get());
+            mApplication = nullptr;
+        }
+
+        bool loadFolder(const std::string& folder)
+        {
+            Path::FileList fileList;
+            EMU_VERIFY(Path::walkFiles(fileList, folder, "", "*.*", false));
+            for (auto file : fileList)
+            {
+                std::string path = Path::join(folder, file);
+                auto context = std::make_unique<GameContext>();
+                if (context->initialize(*mApplication, path, mConfig.saveFolder))
+                {
+                    mGameContexts.push_back(std::move(context));
+                    mView->addContext(*mGameContexts.back().get());
+                }
+            }
+            return true;
+        }
+
+        void clearContexts()
+        {
+            mGameContexts.clear();
         }
 
         const char* getName() const override
@@ -247,66 +253,17 @@ namespace
             // Configuration for Gameboy development
             config.saveFolder = "C:\\Emu\\Gameboy\\save";
             config.romFolder = "C:\\Emu\\Gameboy\\roms";
-            config.roms.push_back("Mario Tennis (U) [C][!].gbc");
-            config.roms.push_back("p-shntae.gbc");
-            config.roms.push_back("rayman (u) [c][t1].gbc");
-            config.roms.push_back("Asterix - Search for Dogmatix (E) (M6) [C][!].gbc");
-            config.roms.push_back("3D Pocket Pool (E) (M6) [C][!].gbc");
-            config.roms.push_back("super mario land (v1.1) (jua) [t1].gb");
-            config.roms.push_back("Tetris (V1.1) (JU) [!].gb");
-            config.roms.push_back("Metroid 2 - Return of Samus (UA) [b1].gb");
-            config.roms.push_back("Legend of Zelda, The - Link's Awakening (V1.2) (U) [!].gb");
 #else
             // Configuration for NES development
             config.saveFolder = "C:\\Emu\\NES\\save";
             config.romFolder = "C:\\Emu\\NES\\roms";
-            config.roms.push_back("smb3.nes");
-            config.roms.push_back("exitbike.nes");
-            config.roms.push_back("megaman2.nes");
-            config.roms.push_back("mario.nes");
-            config.roms.push_back("zelda2.nes");
-#endif
-
-#if DUMP_ROM_LIST
-            std::string filter = Path::join(config.romFolder, "*.gb*");
-            _finddata_t data;
-            auto handle = _findfirst(filter.c_str(), &data);
-            int valid = 1;
-            emu::Log::printf(emu::Log::Type::Debug, "File;ROM size;RAM size;Title;UseCGB;OnlyCGB;UseSGB;RAM;Battery;Timer;Rumble;Mapper;Destination;Cartridge type;Version;Licensee old;Licensee new;Manufacturer;Header checksum;Global checksum\n");
-            while (handle && valid)
-            {
-                std::string path = Path::join(config.romFolder, data.name);
-                gb::Rom::Description desc;
-                gb::Rom::readDescription(desc, path.c_str());
-                emu::Log::printf(emu::Log::Type::Debug, "%s;%d;%d;%s;%d;%d;%d;%d;%d;%d;%d;%s;%s;0x%02x;%d;0x%02x;0x%04x;0x%08x;0x%02x;0x%04x\n",
-                    data.name,
-                    desc.romSize,
-                    desc.ramSize,
-                    desc.title,
-                    desc.useCGB,
-                    desc.onlyCGB,
-                    desc.useSGB,
-                    desc.hasRam,
-                    desc.hasBattery,
-                    desc.hasTimer,
-                    desc.hasRumble,
-                    gb::Rom::getMapperName(desc.mapper),
-                    gb::Rom::getDestinationName(desc.destination),
-                    desc.cartridgeType,
-                    desc.version,
-                    desc.licenseeOld,
-                    desc.licenseeNew,
-                    desc.manufacturer,
-                    desc.headerChecksum,
-                    desc.globalChecksum);
-                valid = !_findnext(handle, &data);
-            }
 #endif
         }
 
         typedef std::vector<std::unique_ptr<GameContext>> GameContextArray;
 
         Config                              mConfig;
+        Application*                        mApplication = nullptr;
         GameContextArray                    mGameContexts;
         std::unique_ptr<MultipleGamesView>  mView;
     };

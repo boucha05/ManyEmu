@@ -2,13 +2,13 @@
 #ifndef __PATH_H__
 #define __PATH_H__
 
-#include <list>
+#include <vector>
 #include <string>
 
 class Path
 {
 public:
-    typedef std::list<std::string> FileList;
+    typedef std::vector<std::string> FileList;
 
     static std::string join(const std::string& path1, const std::string& path2);
     static void makeDirs(const std::string& path);
