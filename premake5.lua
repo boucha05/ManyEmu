@@ -99,7 +99,7 @@ workspace "ManyEmu"
 
     filter "configurations:Release"
         defines { "NDEBUG" }
-        flags { "Optimize" }
+        optimize "On"
 
     filter {}
         defines
@@ -166,6 +166,7 @@ WindowedApplication "ManyEmu"
     }
 
     externalStaticLib("Contrib/SDL2", "SDL2")
+    externalStaticLib("Contrib/SDL2", "SDL2main")
     externalStaticLib("Contrib/glew", "glew32s")
     externalSharedLib("Contrib/SDL2/lib", "SDL2")
     

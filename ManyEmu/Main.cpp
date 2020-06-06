@@ -1,11 +1,12 @@
-#define SDL_MAIN_HANDLED
 #include "Application.h"
 #include "GameboyPlugin.h"
 #include "NESPlugin.h"
 #include "Sandbox.h"
 
-int main()
+int SDL_main(int argc, char* argv[])
 {
+    EMU_UNUSED(argc);
+    EMU_UNUSED(argv);
     bool success = false;
     auto application = Application::create();
     auto sandbox = Sandbox::create();
