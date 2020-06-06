@@ -1,6 +1,6 @@
 #pragma once
 
-#include <imgui_lib.h>
+#include <imgui.h>
 #include "Graphics.h"
 
 namespace emu

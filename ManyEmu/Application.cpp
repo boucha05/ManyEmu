@@ -14,102 +14,6 @@ using namespace emu;
 
 namespace
 {
-    class ImGuiSerializer : public ImGui::ISerializer
-    {
-    public:
-        ImGuiSerializer(emu::ISerializer& serializer)
-            : mSerializer(serializer)
-            , mTextSize(0)
-        {
-        }
-
-        ~ImGuiSerializer()
-        {
-        }
-
-        virtual bool isReading() override
-        {
-            return mSerializer.isReading();
-        }
-
-        virtual void serialize(bool& value, const char* name) override
-        {
-            mSerializer.value(name, value);
-        }
-
-        virtual void serializeTextSize(size_t& value, const char* name) override
-        {
-            if (mSerializer.isReading())
-            {
-                mSerializer.value(name, mText);
-                mTextSize = value = static_cast<uint32_t>(mText.size());
-            }
-            else
-            {
-                mTextSize = value;
-            }
-        }
-
-        virtual void serializeTextData(char* value, const char* name) override
-        {
-            if (mSerializer.isReading())
-            {
-                memcpy(value, mText.c_str(), mTextSize);
-            }
-            else
-            {
-                mText.resize(static_cast<int32_t>(mTextSize));
-                if (mTextSize > 0)
-                    memcpy(&mText.at(0), value, mTextSize);
-                mSerializer.value(name, mText);
-            }
-        }
-
-        virtual void serialize(float& value, const char* name) override
-        {
-            mSerializer.value(name, value);
-        }
-
-        virtual void serialize(int32_t& value, const char* name) override
-        {
-            mSerializer.value(name, value);
-        }
-
-        virtual bool serializeSequenceBegin(size_t& size, const char* name) override
-        {
-            auto success = mSerializer.nodeBegin(name);
-            if (success)
-            {
-                success = mSerializer.sequenceBegin(size);
-                if (!success || !size)
-                {
-                    mSerializer.nodeEnd();
-                }
-            }
-            if (!success)
-            {
-                size = 0;
-            }
-            return success;
-        }
-
-        virtual void serializeSequenceEnd() override
-        {
-            mSerializer.sequenceEnd();
-            mSerializer.nodeEnd();
-        }
-
-        virtual void serializeSequenceItem() override
-        {
-            mSerializer.sequenceItem();
-        }
-
-    private:
-        emu::ISerializer&           mSerializer;
-        size_t                      mTextSize;
-        std::string                 mText;
-    };
-
     bool readFile(std::string& buffer, const char* path)
     {
         auto file = fopen(path, "rb");
@@ -281,8 +185,39 @@ namespace
             mGraphics = IGraphics::create(*mWindow);
             EMU_VERIFY(mGraphics);
 
-            // Setup ImGui binding
-            ImGuiContext_Init(mWindow, *mGraphics);
+            // Setup Dear ImGui context
+            IMGUI_CHECKVERSION();
+            ImGui::CreateContext();
+            ImGuiIO& io = ImGui::GetIO(); (void)io;
+            io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
+            //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+            io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
+            io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // Enable Multi-Viewport / Platform Windows
+            //io.ConfigViewportsNoAutoMerge = true;
+            //io.ConfigViewportsNoTaskBarIcon = true;
+
+            // Initialize ImGui
+            EMU_VERIFY(ImGuiContext_Init(mWindow, *mGraphics));
+
+            // Setup Dear ImGui style
+            ImGui::StyleColorsDark();
+            //ImGui::StyleColorsClassic();
+
+            // When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
+            ImGuiStyle& style = ImGui::GetStyle();
+            if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+            {
+                style.WindowRounding = 0.0f;
+                style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+            }
+
+            // Load Fonts
+            io.Fonts->AddFontDefault();
+            io.Fonts->AddFontFromFileTTF("fonts\\DroidSans.ttf", 14.0f);
+            io.Fonts->AddFontFromFileTTF("fonts\\Roboto-Medium.ttf", 16.0f);
+            io.Fonts->AddFontFromFileTTF("fonts\\Cousine-Regular.ttf", 15.0f);
+            io.Fonts->AddFontFromFileTTF("fonts\\ProggyTiny.ttf", 10.0f);
+            io.Fonts->AddFontFromFileTTF("fonts\\Karla-Regular.ttf", 14.0f);
 
             addView(mGameView);
             addView(mLogView);
@@ -316,12 +251,6 @@ namespace
         bool serializeConfig(emu::ISerializer& serializer)
         {
             serializer.value("Settings", mSettings);
-            if (serializer.nodeBegin("Layout"))
-            {
-                ImGuiSerializer imGuiSerializer(serializer);
-                ImGui::SerializeDock(imGuiSerializer);
-                serializer.nodeEnd();
-            }
             if (serializer.nodeBegin("Views"))
             {
                 for (auto viewSettings : mViewSettings)
@@ -400,6 +329,22 @@ namespace
 
             ImGuiContext_NewFrame(mWindow);
 
+            // Begin docking
+            ImGuiViewport* viewport = ImGui::GetMainViewport();
+            ImGui::SetNextWindowPos(viewport->Pos);
+            ImGui::SetNextWindowSize(viewport->Size);
+            ImGui::SetNextWindowViewport(viewport->ID);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+            ImGuiWindowFlags windowFlags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+            windowFlags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+            windowFlags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+            ImGuiDockNodeFlags dockspaceFlags = ImGuiDockNodeFlags_None;
+            ImGui::Begin("DockSpace", nullptr, windowFlags);
+            ImGui::PopStyleVar(3);
+            ImGui::DockSpace(ImGui::GetID("MyDockSpace"), ImVec2(0.0f, 0.0f), dockspaceFlags);
+
             float menuHeight = 0.0f;
             if (ImGui::BeginMainMenuBar())
             {
@@ -425,33 +370,33 @@ namespace
                 ImGui::EndMainMenuBar();
             }
 
-            if (ImGui::GetIO().DisplaySize.y > 0)
-            {
-                auto pos = ImVec2(0, menuHeight);
-                auto size = ImGui::GetIO().DisplaySize;
-                size.y -= pos.y;
-                ImGui::RootDock(pos, size);
-            }
-
             if (mSettings.showImGuiTestView)
             {
-                ImGui::ShowTestWindow(&mSettings.showImGuiTestView);
+                ImGui::ShowDemoWindow(&mSettings.showImGuiTestView);
             }
 
             for (auto view : mViews)
             {
-                auto name = view->getName();
-                if (ImGui::BeginDock(name, &mViewSettings[name].visible))
+                const char* name = view->getName();
+                ViewSettings& viewSettings = mViewSettings[name];
+                if (viewSettings.visible)
                 {
-                    view->onGUI();
+                    ImGui::SetNextWindowSize(ImVec2(640.0f, 360.0f), ImGuiCond_FirstUseEver);
+                    if (ImGui::Begin(name, &viewSettings.visible))
+                    {
+                        view->onGUI();
+                    }
+                    ImGui::End();
                 }
-                ImGui::EndDock();
             }
 
             for (auto item : mPlugins)
             {
                 item->onGUI();
             }
+
+            // End docking
+            ImGui::End();
         }
 
         void render()

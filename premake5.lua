@@ -33,6 +33,19 @@ function externalStaticLib(location, libname)
     links { "" .. libname }
 end
 
+function deployFiles(targetSubDir, files)
+    postbuildcommands
+    {
+        "{MKDIR} " .. targetSubDir
+    }
+    for key,file in pairs(files) do
+        postbuildcommands
+        {
+            "{COPY} " .. path.getabsolute(file) .. " " .. targetSubDir
+        }
+    end
+end
+
 function configure()
     configurations { "Debug", "Release" }
     platforms { "Win32", "x64" }
@@ -50,7 +63,6 @@ function configure()
     {
         ".",
         "Contrib/imgui",
-        "Contrib/imgui_extensions",
         "Contrib/imgui/examples/libs/gl3w",
         "Contrib/imgui/examples/sdl_opengl3_example",
     }
@@ -111,17 +123,22 @@ workspace "ManyEmu"
 StaticLib "ImGUI"
     files
     {
-        "Contrib/imgui_extensions/*.h",
-        "Contrib/imgui_extensions/*.inl",
-        "Contrib/imgui_extensions/*.cpp",
         "Contrib/imgui/*.h",
         "Contrib/imgui/*.cpp",
         "Contrib/imgui/examples/libs/gl3w/**.*",
+        "Contrib/imgui/examples/imgui_impl_sdl.cpp",
+        "Contrib/imgui/examples/imgui_impl_opengl3.cpp",
     }
-    removefiles
-    {
-        "Contrib/imgui/imgui.cpp"
-    }
+    deployFiles("fonts",
+        {
+            "Contrib/imgui/misc/fonts/Cousine-Regular.ttf",
+            "Contrib/imgui/misc/fonts/DroidSans.ttf",
+            "Contrib/imgui/misc/fonts/Karla-Regular.ttf",
+            "Contrib/imgui/misc/fonts/ProggyClean.ttf",
+            "Contrib/imgui/misc/fonts/ProggyTiny.ttf",
+            "Contrib/imgui/misc/fonts/Roboto-Medium.ttf",
+        }
+    )
     externalStaticLib("Contrib/SDL2", "SDL2")
 
 StaticLib "yaml-cpp"
